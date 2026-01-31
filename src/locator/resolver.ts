@@ -1,0 +1,222 @@
+/**
+ * Strategy Resolver - coordinates locator strategies and aggregates results.
+ *
+ * Responsibilities:
+ * - Register and manage locator strategies
+ * - Run strategies in priority order for each issue
+ * - Deduplicate and rank code locations by confidence
+ * - Produce batch resolution results with metrics
+ */
+
+import { Effect } from 'effect';
+import type { CodeLocation, Issue } from '../core/types.js';
+import type {
+  BatchResolutionResult,
+  LocatorContext,
+  LocatorError,
+  LocatorStrategy,
+  ResolutionResult,
+  ResolverOptions,
+} from './types.js';
+import { DEFAULT_RESOLVER_OPTIONS } from './types.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Confidence Utilities
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CONFIDENCE_ORDER: Record<CodeLocation['confidence'], number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+function compareConfidence(a: CodeLocation['confidence'], b: CodeLocation['confidence']): number {
+  return CONFIDENCE_ORDER[a] - CONFIDENCE_ORDER[b];
+}
+
+function meetsMinConfidence(location: CodeLocation, minConfidence: CodeLocation['confidence']): boolean {
+  return CONFIDENCE_ORDER[location.confidence] <= CONFIDENCE_ORDER[minConfidence];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Deduplication
+// ═══════════════════════════════════════════════════════════════════════════
+
+function locationKey(loc: CodeLocation): string {
+  return `${loc.file}:${loc.lineNumber ?? 0}`;
+}
+
+function dedupeLocations(locations: CodeLocation[]): CodeLocation[] {
+  const seen = new Map<string, CodeLocation>();
+
+  for (const loc of locations) {
+    const key = locationKey(loc);
+    const existing = seen.get(key);
+
+    // Keep higher confidence version
+    if (!existing || compareConfidence(loc.confidence, existing.confidence) < 0) {
+      seen.set(key, loc);
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Strategy Resolver
+// ═══════════════════════════════════════════════════════════════════════════
+
+export class StrategyResolver {
+  private strategies: LocatorStrategy[] = [];
+
+  /**
+   * Register a locator strategy.
+   */
+  register(strategy: LocatorStrategy): void {
+    this.strategies.push(strategy);
+    // Sort by priority (highest first)
+    this.strategies.sort((a, b) => b.priority - a.priority);
+  }
+
+  /**
+   * Get registered strategy names.
+   */
+  getStrategyNames(): string[] {
+    return this.strategies.map((s) => s.name);
+  }
+
+  /**
+   * Locate code for a single issue.
+   */
+  locateOne(
+    issue: Issue,
+    ctx: LocatorContext,
+    options: Partial<ResolverOptions> = {},
+  ): Effect.Effect<ResolutionResult, LocatorError> {
+    const opts = { ...DEFAULT_RESOLVER_OPTIONS, ...options };
+
+    return Effect.gen(this, function* () {
+      const startTime = Date.now();
+      const allLocations: CodeLocation[] = [];
+      const strategiesUsed: string[] = [];
+
+      // Filter strategies if specific ones requested
+      const applicableStrategies =
+        opts.strategies.length > 0 ? this.strategies.filter((s) => opts.strategies.includes(s.name)) : this.strategies;
+
+      // Run strategies in priority order
+      for (const strategy of applicableStrategies) {
+        if (!strategy.canHandle(issue, ctx)) {
+          continue;
+        }
+
+        strategiesUsed.push(strategy.name);
+
+        const locations = yield* strategy.locate(issue, ctx).pipe(
+          Effect.catchAll((e) => {
+            // Log but don't fail - continue with other strategies
+            console.warn(`Strategy ${strategy.name} failed: ${e.message}`);
+            return Effect.succeed([] as readonly CodeLocation[]);
+          }),
+        );
+
+        allLocations.push(...locations);
+
+        // Early exit if we have enough high-confidence matches
+        const highConfidenceCount = allLocations.filter((l) => l.confidence === 'high').length;
+        if (highConfidenceCount >= opts.maxLocationsPerIssue) {
+          break;
+        }
+      }
+
+      // Filter by minimum confidence
+      const filtered = allLocations.filter((loc) => meetsMinConfidence(loc, opts.minConfidence));
+
+      // Dedupe and sort by confidence
+      const deduped = dedupeLocations(filtered);
+      deduped.sort((a, b) => compareConfidence(a.confidence, b.confidence));
+
+      // Limit results
+      const limited = deduped.slice(0, opts.maxLocationsPerIssue);
+
+      return {
+        issue,
+        locations: limited,
+        strategiesUsed,
+        durationMs: Date.now() - startTime,
+      };
+    });
+  }
+
+  /**
+   * Locate code for multiple issues.
+   */
+  locateAll(
+    issues: readonly Issue[],
+    ctx: LocatorContext,
+    options: Partial<ResolverOptions> = {},
+  ): Effect.Effect<BatchResolutionResult, LocatorError> {
+    return Effect.gen(this, function* () {
+      const startTime = Date.now();
+      const results: ResolutionResult[] = [];
+
+      for (const issue of issues) {
+        const result = yield* this.locateOne(issue, ctx, options);
+        results.push(result);
+      }
+
+      // Build summary
+      const byConfidence: Record<CodeLocation['confidence'], number> = {
+        high: 0,
+        medium: 0,
+        low: 0,
+      };
+
+      let totalLocations = 0;
+      let issuesWithLocations = 0;
+
+      for (const result of results) {
+        if (result.locations.length > 0) {
+          issuesWithLocations++;
+        }
+        for (const loc of result.locations) {
+          totalLocations++;
+          byConfidence[loc.confidence]++;
+        }
+      }
+
+      return {
+        results,
+        totalDurationMs: Date.now() - startTime,
+        summary: {
+          issuesProcessed: issues.length,
+          issuesWithLocations,
+          totalLocations,
+          byConfidence,
+        },
+      };
+    });
+  }
+}
+
+/**
+ * Create a resolver with default strategies.
+ */
+export function createResolver(): StrategyResolver {
+  const resolver = new StrategyResolver();
+
+  // Import and register default strategies
+  // This is done lazily to avoid circular dependencies
+  return resolver;
+}
+
+/**
+ * Create a resolver with pre-registered strategies.
+ */
+export function createResolverWithStrategies(strategies: LocatorStrategy[]): StrategyResolver {
+  const resolver = new StrategyResolver();
+  for (const strategy of strategies) {
+    resolver.register(strategy);
+  }
+  return resolver;
+}

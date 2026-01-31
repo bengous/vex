@@ -1,0 +1,131 @@
+{
+  "definition": {
+    "name": "fixture-for-locate-test",
+    "description": "Deterministic fixture for testing locate command",
+    "inputs": ["url"],
+    "outputs": ["analysis"],
+    "nodes": [
+      {
+        "id": "capture",
+        "operation": "capture",
+        "config": {
+          "url": "https://mpzinc.fr",
+          "viewport": {
+            "width": 1920,
+            "height": 1080,
+            "deviceScaleFactor": 1,
+            "isMobile": false
+          },
+          "filename": "screenshot.png",
+          "withDOM": true
+        },
+        "inputs": [],
+        "outputs": ["image"]
+      },
+      {
+        "id": "analyze",
+        "operation": "analyze",
+        "config": { "provider": "fixture" },
+        "inputs": ["image"],
+        "outputs": ["analysis"]
+      }
+    ],
+    "edges": [{ "from": "capture", "to": "analyze", "artifact": "image" }]
+  },
+  "sessionDir": "vex/fixtures/locate-fixture",
+  "startedAt": "2026-01-30T12:00:00.000Z",
+  "status": "completed",
+  "nodes": {
+    "capture": {
+      "id": "capture",
+      "status": "completed",
+      "outputArtifacts": ["img_fixture_001"],
+      "startedAt": "2026-01-30T12:00:00.000Z",
+      "completedAt": "2026-01-30T12:00:01.000Z"
+    },
+    "analyze": {
+      "id": "analyze",
+      "status": "completed",
+      "outputArtifacts": ["analysis_fixture_001"],
+      "startedAt": "2026-01-30T12:00:01.000Z",
+      "completedAt": "2026-01-30T12:00:02.000Z"
+    }
+  },
+  "artifacts": {
+    "img_fixture_001": {
+      "id": "img_fixture_001",
+      "type": "image",
+      "path": "vex/fixtures/locate-fixture/artifacts/screenshot.png",
+      "createdAt": "2026-01-30T12:00:01.000Z",
+      "createdBy": "capture-with-dom",
+      "metadata": {
+        "width": 1920,
+        "height": 1080,
+        "url": "https://mpzinc.fr",
+        "viewport": {
+          "width": 1920,
+          "height": 1080,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "hasGrid": false,
+        "hasFoldLines": false,
+        "hasAnnotations": false
+      }
+    },
+    "dom_fixture_001": {
+      "id": "dom_fixture_001",
+      "type": "dom-snapshot",
+      "path": "vex/fixtures/locate-fixture/artifacts/screenshot-dom.json",
+      "createdAt": "2026-01-30T12:00:01.000Z",
+      "createdBy": "capture-with-dom",
+      "metadata": {
+        "url": "https://mpzinc.fr",
+        "elementCount": 10,
+        "viewport": {
+          "width": 1920,
+          "height": 1080,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        }
+      }
+    },
+    "analysis_fixture_001": {
+      "id": "analysis_fixture_001",
+      "type": "analysis",
+      "path": "vex/fixtures/locate-fixture/artifacts/analysis-fixture.json",
+      "createdAt": "2026-01-30T12:00:02.000Z",
+      "createdBy": "analyze",
+      "metadata": {
+        "provider": "fixture",
+        "model": "test-fixture",
+        "durationMs": 0,
+        "issueCount": 3
+      }
+    }
+  },
+  "issues": [
+    {
+      "id": 1,
+      "description": "Header navigation text too small for accessibility",
+      "severity": "high",
+      "region": { "x": 459, "y": 44, "width": 760, "height": 48 },
+      "suggestedFix": "Increase nav font size to 16px minimum"
+    },
+    {
+      "id": 2,
+      "description": "Low contrast text in Actualités section",
+      "severity": "medium",
+      "region": "C3",
+      "suggestedFix": "Use darker text color for better readability"
+    },
+    {
+      "id": 3,
+      "description": "Footer links too cramped, insufficient spacing",
+      "severity": "low",
+      "region": { "x": 100, "y": 7800, "width": 200, "height": 100 },
+      "suggestedFix": "Add 8px vertical margin between footer links"
+    }
+  ],
+  "completedAt": "2026-01-30T12:00:02.000Z"
+}

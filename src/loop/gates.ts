@@ -1,0 +1,214 @@
+/**
+ * Gates module - human-in-the-loop decision making for issue resolution.
+ *
+ * Decision matrix:
+ * ┌────────────┬──────────┬─────────────┬───────────────────┐
+ * │ Confidence │ Severity │    Scope    │      Action       │
+ * ├────────────┼──────────┼─────────────┼───────────────────┤
+ * │ High       │ Any      │ Single file │ auto-fix          │
+ * ├────────────┼──────────┼─────────────┼───────────────────┤
+ * │ Medium     │ Low/Med  │ Single file │ auto-fix with log │
+ * ├────────────┼──────────┼─────────────┼───────────────────┤
+ * │ Medium     │ High     │ Any         │ human-review      │
+ * ├────────────┼──────────┼─────────────┼───────────────────┤
+ * │ Low        │ Any      │ Any         │ human-review      │
+ * ├────────────┼──────────┼─────────────┼───────────────────┤
+ * │ Any        │ Any      │ Multi-file  │ human-review      │
+ * └────────────┴──────────┴─────────────┴───────────────────┘
+ */
+
+import type { CodeLocation, Issue, Severity } from '../core/types.js';
+import type { GateAction, GateConfig, GateDecision } from './types.js';
+import { DEFAULT_GATE_CONFIG } from './types.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Severity Ordering
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SEVERITY_RANK: Record<Severity, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+function isSeverityAtLeast(actual: Severity, threshold: Severity): boolean {
+  return SEVERITY_RANK[actual] <= SEVERITY_RANK[threshold];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Scope Detection
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ResolutionScope {
+  isSingleFile: boolean;
+  files: string[];
+}
+
+function analyzeScope(locations: readonly CodeLocation[]): ResolutionScope {
+  const files = [...new Set(locations.map((l) => l.file))];
+  return {
+    isSingleFile: files.length === 1,
+    files,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Decision Logic
+// ═══════════════════════════════════════════════════════════════════════════
+
+function buildReasoning(
+  action: GateAction,
+  confidence: CodeLocation['confidence'],
+  severity: Severity,
+  scope: ResolutionScope,
+): string {
+  const parts: string[] = [];
+
+  if (action === 'auto-fix') {
+    parts.push(`Auto-fixing: ${confidence} confidence`);
+    if (scope.isSingleFile) {
+      parts.push(`single file (${scope.files[0]})`);
+    }
+  } else if (action === 'human-review') {
+    if (!scope.isSingleFile) {
+      parts.push(`Requires review: multi-file change (${scope.files.length} files)`);
+    } else if (confidence === 'low') {
+      parts.push('Requires review: low confidence location');
+    } else if (severity === 'high') {
+      parts.push('Requires review: high severity issue');
+    } else {
+      parts.push('Requires review');
+    }
+  } else if (action === 'skip') {
+    parts.push('Skipped: no suitable code location found');
+  }
+
+  return parts.join(', ') || `Action: ${action}`;
+}
+
+/**
+ * Evaluate gate decision for an issue with its code locations.
+ */
+export function evaluateGate(
+  issue: Issue,
+  locations: readonly CodeLocation[],
+  config: Partial<GateConfig> = {},
+): GateDecision {
+  const opts = { ...DEFAULT_GATE_CONFIG, ...config };
+
+  // No locations - skip
+  if (locations.length === 0) {
+    return {
+      action: 'skip',
+      issue,
+      reasoning: 'No code locations found for this issue',
+    };
+  }
+
+  // Pick best location
+  const bestLocation = locations[0]; // Already sorted by confidence
+  if (!bestLocation) {
+    return {
+      action: 'skip',
+      issue,
+      reasoning: 'No valid code location',
+    };
+  }
+
+  const scope = analyzeScope(locations);
+  const confidence = bestLocation.confidence;
+  const severity = issue.severity;
+
+  // Decision matrix implementation
+  let action: GateAction;
+
+  // Multi-file always requires review (unless explicitly allowed)
+  if (!scope.isSingleFile && !opts.allowMultiFileAutoFix) {
+    action = 'human-review';
+  }
+  // Low confidence always requires review
+  else if (confidence === 'low') {
+    action = 'human-review';
+  }
+  // High confidence, single file = auto-fix
+  else if (confidence === 'high' && scope.isSingleFile) {
+    action = 'auto-fix';
+  }
+  // Medium confidence with high severity = review
+  else if (confidence === 'medium' && isSeverityAtLeast(severity, opts.humanReviewSeverity)) {
+    action = 'human-review';
+  }
+  // Medium confidence with lower severity = auto-fix
+  else if (confidence === 'medium' && scope.isSingleFile) {
+    action = 'auto-fix';
+  }
+  // Default to review
+  else {
+    action = 'human-review';
+  }
+
+  return {
+    action,
+    issue,
+    location: bestLocation,
+    reasoning: buildReasoning(action, confidence, severity, scope),
+  };
+}
+
+/**
+ * Batch evaluate gates for multiple issues.
+ */
+export function evaluateGates(
+  issuesWithLocations: Array<{ issue: Issue; locations: readonly CodeLocation[] }>,
+  config: Partial<GateConfig> = {},
+): GateDecision[] {
+  const opts = { ...DEFAULT_GATE_CONFIG, ...config };
+  const decisions: GateDecision[] = [];
+  let autoFixCount = 0;
+
+  for (const { issue, locations } of issuesWithLocations) {
+    let decision = evaluateGate(issue, locations, opts);
+
+    // Enforce max auto-fixes per iteration
+    if (decision.action === 'auto-fix') {
+      if (autoFixCount >= opts.maxAutoFixesPerIteration) {
+        decision = {
+          ...decision,
+          action: 'human-review',
+          reasoning: `${decision.reasoning} (auto-fix limit reached)`,
+        };
+      } else {
+        autoFixCount++;
+      }
+    }
+
+    decisions.push(decision);
+  }
+
+  return decisions;
+}
+
+/**
+ * Filter decisions by action type.
+ */
+export function filterByAction(decisions: readonly GateDecision[], action: GateAction): GateDecision[] {
+  return decisions.filter((d) => d.action === action);
+}
+
+/**
+ * Get summary of gate decisions.
+ */
+export function summarizeDecisions(decisions: readonly GateDecision[]): Record<GateAction, number> {
+  const summary: Record<GateAction, number> = {
+    'auto-fix': 0,
+    'human-review': 0,
+    skip: 0,
+    abort: 0,
+  };
+
+  for (const decision of decisions) {
+    summary[decision.action]++;
+  }
+
+  return summary;
+}
