@@ -32,6 +32,15 @@ export class VexConfigError extends Error {
 }
 
 /**
+ * Default placeholder media options.
+ * Used when --placeholder-media flag is enabled.
+ */
+export const DEFAULT_PLACEHOLDER_MEDIA = {
+  svgMinSize: 100,
+  preserve: ['.header__heading-logo'] as readonly string[],
+} as const;
+
+/**
  * Find project root by looking for package.json.
  */
 function findProjectRoot(startDir: string = process.cwd()): string {

@@ -57,6 +57,11 @@ vex/
 
 ## Key Patterns
 
+**Options flow (CLI → Core):**
+CLI (parseArgs) → ScanOptions → preset function → PipelineNode.config → Operation → Core
+
+When adding CLI flags: update all 4 layers (cli/commands/_.ts → pipeline/presets.ts → pipeline/operations/_.ts → core/\*.ts)
+
 **Effect.ts for error handling:**
 
 ```typescript
@@ -113,6 +118,10 @@ Human-in-the-loop controls based on confidence × severity × scope:
 cd vex
 bunx tsc --noEmit                    # Type check
 bunx biome check --write .           # Lint + format
+
+# Test with VLM providers
+bun vex/cli/index.ts scan <url> --provider codex-cli --model gpt-5.2 --reasoning low
+bun vex/cli/index.ts scan <url> --placeholder-media  # Replace images with X-boxes
 ```
 
 ## Consolidation Note
