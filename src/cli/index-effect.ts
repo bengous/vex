@@ -21,7 +21,7 @@ import { Effect } from 'effect';
 
 // Commands (imported as migrated)
 import { scanCommand } from './commands/scan.js';
-// import { loopCommand } from './commands/loop.js';
+import { loopCommand } from './commands/loop.js';
 // import { providersCommand } from './commands/providers.js';
 // import { analyzeCommand } from './commands/analyze.js';
 // import { locateCommand } from './commands/locate.js';
@@ -39,7 +39,10 @@ const vexCommand = Command.make('vex', {}, () =>
     console.log('');
     console.log('Use --help to see available commands.');
   }),
-).pipe(Command.withDescription('Visual extraction and analysis tool'), Command.withSubcommands([scanCommand]));
+).pipe(
+  Command.withDescription('Visual extraction and analysis tool'),
+  Command.withSubcommands([scanCommand, loopCommand]),
+);
 
 /**
  * CLI runner with @effect/cli.
