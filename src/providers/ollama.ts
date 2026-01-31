@@ -140,4 +140,7 @@ const OllamaProviderService: VisionProviderService = {
 
 export const OllamaProviderLayer = Layer.succeed(VisionProvider, OllamaProviderService);
 
-registerProvider('ollama', OllamaProviderLayer);
+registerProvider('ollama', OllamaProviderLayer, {
+  displayName: 'Ollama',
+  type: 'http',
+});

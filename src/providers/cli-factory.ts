@@ -32,6 +32,8 @@ export interface CliProviderConfig {
   readonly command: string;
   readonly timeoutMs: number;
   readonly modelAliases?: Record<string, string>;
+  /** Known models supported by this CLI provider (for introspection) */
+  readonly knownModels?: readonly string[];
   /** Build command arguments from inputs */
   readonly buildArgs: (
     model: string,
@@ -56,7 +58,7 @@ function mapSubprocessError(provider: string, err: SubprocessError): AnalysisFai
  * Includes SubprocessLive as a dependency.
  */
 export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<VisionProvider> {
-  const { name, displayName, command, timeoutMs, modelAliases, buildArgs } = config;
+  const { name, displayName, command, timeoutMs, modelAliases, knownModels, buildArgs } = config;
 
   const providerLayer = Layer.effect(
     VisionProvider,
@@ -86,7 +88,7 @@ export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<V
 
         isAvailable: () => subprocess.commandExists(command),
 
-        listModels: () => Effect.succeed([] as readonly string[]),
+        listModels: () => Effect.succeed(knownModels ?? ([] as readonly string[])),
 
         hasModel: () => Effect.succeed(true),
 
