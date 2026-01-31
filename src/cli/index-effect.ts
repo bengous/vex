@@ -19,8 +19,8 @@ import { Command } from '@effect/cli';
 import { BunContext, BunRuntime } from '@effect/platform-bun';
 import { Effect } from 'effect';
 
-// Commands will be imported and added here as they're migrated
-// import { scanCommand } from './commands/scan.js';
+// Commands (imported as migrated)
+import { scanCommand } from './commands/scan.js';
 // import { loopCommand } from './commands/loop.js';
 // import { providersCommand } from './commands/providers.js';
 // import { analyzeCommand } from './commands/analyze.js';
@@ -39,11 +39,7 @@ const vexCommand = Command.make('vex', {}, () =>
     console.log('');
     console.log('Use --help to see available commands.');
   }),
-).pipe(
-  Command.withDescription('Visual extraction and analysis tool'),
-  // Subcommands added here as they're migrated:
-  // Command.withSubcommands([scanCommand, loopCommand, ...]),
-);
+).pipe(Command.withDescription('Visual extraction and analysis tool'), Command.withSubcommands([scanCommand]));
 
 /**
  * CLI runner with @effect/cli.

@@ -3,247 +3,167 @@
  *
  * Usage: vex scan <url> [options]
  *
- * Options:
- *   --device <name>     Device preset (e.g., iphone-15-pro, desktop-1920)
- *   --viewport <WxH>    Viewport size (default: 1920x1080)
- *   --mobile            Use mobile viewport
- *   --list-devices      List available device presets
- *   --output <dir>      Output directory (overrides VEX_OUTPUT_DIR/.vexrc.json)
- *   --provider <name>   VLM provider (default: ollama)
- *   --model <name>      Model override
+ * Migrated to @effect/cli with Effect Schema validation.
  */
 
-import { parseArgs } from 'node:util';
+import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
-import { loadConfig, VexConfigError } from '../../core/config.js';
-import { getAllDeviceIds, listDevices, lookupDevice } from '../../core/devices.js';
+import { Url } from '../../config/schema.js';
+import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { AnalysisResult, ViewportConfig } from '../../core/types.js';
 import { fullAnnotation, runPipeline, simpleAnalysis } from '../../pipeline/index.js';
+import {
+  deviceOption,
+  fullOption,
+  listDevicesOption,
+  modelOption,
+  outputOption,
+  placeholderMediaOption,
+  presetOption,
+  providerOption,
+  reasoningOption,
+} from '../options.js';
+import { resolveScanOptions } from '../resolve.js';
+import type { ScanCliArgs } from '../resolve.js';
 // Import providers for self-registration
 import '../../providers/index.js';
 
-const DEFAULT_VIEWPORT: ViewportConfig = {
-  width: 1920,
-  height: 1080,
-  deviceScaleFactor: 1,
-  isMobile: false,
-};
+// ═══════════════════════════════════════════════════════════════════════════
+// URL Argument
+// ═══════════════════════════════════════════════════════════════════════════
 
-const MOBILE_VIEWPORT: ViewportConfig = {
-  width: 375,
-  height: 812,
-  deviceScaleFactor: 2,
-  isMobile: true,
-  hasTouch: true,
-};
+/**
+ * URL positional argument (optional - can come from preset).
+ */
+const urlArg = Args.text({ name: 'url' }).pipe(Args.withSchema(Url), Args.optional);
 
-interface ScanOptions {
-  url: string;
-  viewport: ViewportConfig;
-  outputDir: string;
-  provider: string;
-  model?: string;
-  reasoning?: string;
-  full?: boolean;
-  placeholderMedia?: boolean;
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// Scan Command
+// ═══════════════════════════════════════════════════════════════════════════
 
-function parseViewport(input: string): ViewportConfig {
-  const match = input.match(/^(\d+)x(\d+)$/);
-  if (!match || !match[1] || !match[2]) {
-    throw new Error(`Invalid viewport format: ${input}. Use WxH format (e.g., 1920x1080)`);
-  }
-  return {
-    width: Number.parseInt(match[1], 10),
-    height: Number.parseInt(match[2], 10),
-    deviceScaleFactor: 1,
-    isMobile: false,
-  };
-}
-
-function isValidUrl(url: string): boolean {
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function parseOptions(args: string[]): ScanOptions | 'list-devices' {
-  const { values, positionals } = parseArgs({
-    args,
-    options: {
-      device: { type: 'string', short: 'd' },
-      viewport: { type: 'string', short: 'V' },
-      mobile: { type: 'boolean', short: 'm' },
-      'list-devices': { type: 'boolean' },
-      output: { type: 'string', short: 'o' },
-      provider: { type: 'string', short: 'p' },
-      model: { type: 'string', short: 'M' },
-      reasoning: { type: 'string', short: 'R' },
-      full: { type: 'boolean', short: 'f' },
-      'placeholder-media': { type: 'boolean' },
-      help: { type: 'boolean', short: 'h' },
-    },
-    allowPositionals: true,
-  });
-
-  if (values['list-devices']) {
-    return 'list-devices';
-  }
-
-  if (values.help) {
-    console.log(`
-Usage: vex scan <url> [options]
-
-Options:
-  --device, -d <name>    Device preset (e.g., iphone-15-pro, desktop-1920)
-  --viewport, -V <WxH>   Viewport size (default: 1920x1080)
-  --mobile, -m           Use mobile viewport (375x812)
-  --list-devices         List available device presets
-  --output, -o <dir>     Output directory (overrides VEX_OUTPUT_DIR/.vexrc.json)
-  --provider, -p <name>  VLM provider (default: ollama)
-  --model, -M <name>     Model override
-  --reasoning, -R <level> Reasoning effort (codex-cli: low, medium, high, xhigh)
-  --full, -f             Full annotation pipeline (analyze + annotate + render)
-  --placeholder-media    Replace images/videos with placeholder boxes
-  --help, -h             Show this help
-
-Configuration:
-  Set output directory via:
-  - --output flag (highest priority)
-  - VEX_OUTPUT_DIR environment variable
-  - outputDir in .vexrc.json
-`);
-    process.exit(0);
-  }
-
-  const url = positionals[0];
-  if (!url) {
-    throw new Error('URL is required. Usage: vex scan <url>');
-  }
-
-  if (!isValidUrl(url)) {
-    throw new Error(`Invalid URL: ${url}. URL must be a valid http:// or https:// URL.`);
-  }
-
-  // Priority: --device > --viewport > --mobile > default
-  let viewport = DEFAULT_VIEWPORT;
-  if (values.device) {
-    const result = lookupDevice(values.device);
-    if (!result) {
-      const available = getAllDeviceIds().join(', ');
-      throw new Error(
-        `Unknown device "${values.device}".\n\nAvailable devices: ${available}\n\nRun 'vex scan --list-devices' for full list.`,
-      );
-    }
-    viewport = result.preset.viewport;
-  } else if (values.viewport) {
-    viewport = parseViewport(values.viewport);
-  } else if (values.mobile) {
-    viewport = MOBILE_VIEWPORT;
-  }
-
-  // Resolve output directory: --output flag > config file/env
-  let outputDir: string;
-  if (values.output) {
-    outputDir = values.output;
-  } else {
-    try {
-      const config = loadConfig();
-      outputDir = config.outputDir;
-    } catch (e) {
-      if (e instanceof VexConfigError) {
-        throw new Error(`${e.message}\n\nOr use --output <dir> to specify directly.`);
+/**
+ * Scan command implementation.
+ */
+export const scanCommand = Command.make(
+  'scan',
+  {
+    url: urlArg,
+    preset: presetOption,
+    device: deviceOption,
+    provider: providerOption,
+    model: modelOption,
+    reasoning: reasoningOption,
+    full: fullOption,
+    placeholderMedia: placeholderMediaOption,
+    output: outputOption,
+    listDevices: listDevicesOption,
+  },
+  (args) =>
+    Effect.gen(function* () {
+      // Handle --list-devices
+      if (args.listDevices) {
+        listDevices();
+        return;
       }
-      throw e;
-    }
-  }
 
-  return {
-    url,
-    viewport,
-    outputDir,
-    provider: values.provider ?? 'ollama',
-    model: values.model,
-    reasoning: values.reasoning,
-    full: values.full,
-    placeholderMedia: values['placeholder-media'],
-  };
-}
+      // Convert to ScanCliArgs format
+      const cliArgs: ScanCliArgs = {
+        url: args.url,
+        preset: args.preset,
+        device: args.device,
+        provider: args.provider,
+        model: args.model,
+        reasoning: args.reasoning,
+        full: args.full,
+        placeholderMedia: args.placeholderMedia,
+        output: args.output,
+      };
 
-export async function scanCommand(args: string[]): Promise<void> {
-  const options = parseOptions(args);
+      // Resolve options with preset/defaults
+      const resolved = yield* resolveScanOptions(cliArgs);
 
-  if (options === 'list-devices') {
-    listDevices();
-    return;
-  }
+      // Run pipeline for each URL and device
+      for (const url of resolved.urls) {
+        for (const deviceId of resolved.devices) {
+          // Get viewport config
+          const deviceResult = lookupDevice(deviceId);
+          if (!deviceResult) {
+            console.error(`Unknown device: ${deviceId}`);
+            continue;
+          }
+          const viewport: ViewportConfig = deviceResult.preset.viewport;
 
-  console.log(`Scanning ${options.url}`);
-  console.log(`Viewport: ${options.viewport.width}x${options.viewport.height}`);
-  console.log(
-    `Provider: ${options.provider}${options.model ? ` (model: ${options.model})` : ''}${options.reasoning ? ` (reasoning: ${options.reasoning})` : ''}`,
-  );
-  if (options.full) {
-    console.log('Pipeline: full-annotation (analyze + annotate + render)');
-  }
-  if (options.placeholderMedia) {
-    console.log('Placeholder media: enabled');
-  }
-  console.log('');
+          console.log(`Scanning ${url}`);
+          console.log(`Viewport: ${viewport.width}x${viewport.height} (${deviceId})`);
+          console.log(
+            `Provider: ${resolved.provider}${resolved.model ? ` (model: ${resolved.model})` : ''}${resolved.reasoning ? ` (reasoning: ${resolved.reasoning})` : ''}`,
+          );
+          if (resolved.full) {
+            console.log('Pipeline: full-annotation (analyze + annotate + render)');
+          }
+          if (resolved.placeholderMedia) {
+            console.log('Placeholder media: enabled');
+          }
+          console.log('');
 
-  const pipeline = options.full
-    ? fullAnnotation(
-        options.url,
-        options.viewport,
-        options.provider,
-        options.model,
-        options.reasoning,
-        options.placeholderMedia,
-      )
-    : simpleAnalysis(
-        options.url,
-        options.viewport,
-        options.provider,
-        options.model,
-        options.reasoning,
-        options.placeholderMedia,
-      );
+          // Build pipeline
+          const pipeline = resolved.full
+            ? fullAnnotation(
+                url,
+                viewport,
+                resolved.provider,
+                resolved.model,
+                resolved.reasoning,
+                resolved.placeholderMedia,
+              )
+            : simpleAnalysis(
+                url,
+                viewport,
+                resolved.provider,
+                resolved.model,
+                resolved.reasoning,
+                resolved.placeholderMedia,
+              );
 
-  const result = await Effect.runPromise(runPipeline(pipeline, options.outputDir));
+          // Run pipeline
+          const result = yield* runPipeline(pipeline, resolved.outputDir);
 
-  console.log(`\nSession: ${result.sessionDir}`);
-  console.log(`Status: ${result.status}`);
+          console.log(`\nSession: ${result.sessionDir}`);
+          console.log(`Status: ${result.status}`);
 
-  // Display artifacts
-  const artifacts = Object.values(result.artifacts);
-  console.log(`\nArtifacts (${artifacts.length}):`);
-  for (const artifact of artifacts) {
-    console.log(`  - ${artifact.type}: ${artifact.path}`);
-  }
+          // Display artifacts
+          const artifacts = Object.values(result.artifacts);
+          console.log(`\nArtifacts (${artifacts.length}):`);
+          for (const artifact of artifacts) {
+            console.log(`  - ${artifact.type}: ${artifact.path}`);
+          }
 
-  // Find and display analysis results
-  const analysisArtifact = artifacts.find((a) => a.type === 'analysis');
-  if (analysisArtifact) {
-    const analysisContent = await Bun.file(analysisArtifact.path).text();
-    const analysis = JSON.parse(analysisContent) as AnalysisResult;
+          // Find and display analysis results
+          const analysisArtifact = artifacts.find((a) => a.type === 'analysis');
+          if (analysisArtifact) {
+            const analysisContent = yield* Effect.promise(() => Bun.file(analysisArtifact.path).text());
+            const analysis = JSON.parse(analysisContent) as AnalysisResult;
 
-    console.log(`\nAnalysis (${analysis.provider}/${analysis.model}):`);
-    console.log(`Duration: ${analysis.durationMs}ms`);
+            console.log(`\nAnalysis (${analysis.provider}/${analysis.model}):`);
+            console.log(`Duration: ${analysis.durationMs}ms`);
 
-    if (analysis.issues.length > 0) {
-      console.log(`\nIssues found (${analysis.issues.length}):`);
-      for (const issue of analysis.issues) {
-        const regionStr = typeof issue.region === 'string' ? issue.region : `(${issue.region.x},${issue.region.y})`;
-        console.log(`  [${issue.severity.toUpperCase()}] ${issue.description} @ ${regionStr}`);
-        if (issue.suggestedFix) {
-          console.log(`           Fix: ${issue.suggestedFix}`);
+            if (analysis.issues.length > 0) {
+              console.log(`\nIssues found (${analysis.issues.length}):`);
+              for (const issue of analysis.issues) {
+                const regionStr =
+                  typeof issue.region === 'string' ? issue.region : `(${issue.region.x},${issue.region.y})`;
+                console.log(`  [${issue.severity.toUpperCase()}] ${issue.description} @ ${regionStr}`);
+                if (issue.suggestedFix) {
+                  console.log(`           Fix: ${issue.suggestedFix}`);
+                }
+              }
+            } else {
+              console.log('\nNo issues found.');
+            }
+          }
+
+          console.log('');
         }
       }
-    } else {
-      console.log('\nNo issues found.');
-    }
-  }
-}
+    }),
+).pipe(Command.withDescription('Capture and analyze a URL for visual issues'));
