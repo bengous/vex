@@ -57,7 +57,11 @@ export function getProviderInfo(name: string): Effect.Effect<ProviderInfo | unde
 export function getAllProviders(): Effect.Effect<ProviderInfo[], never> {
   const allMetadata = getAllProviderMetadata();
 
-  return Effect.forEach(allMetadata, (metadata) => getProviderInfo(metadata.name).pipe(Effect.map((info) => info!)), {
+  return Effect.forEach(allMetadata, (metadata) => getProviderInfo(metadata.name), {
     concurrency: 'unbounded',
-  });
+  }).pipe(
+    // Filter out undefined (shouldn't happen since we're iterating registered providers,
+    // but the type system can't prove this - use type guard instead of non-null assertion)
+    Effect.map((infos) => infos.filter((info): info is ProviderInfo => info !== undefined)),
+  );
 }

@@ -7,6 +7,7 @@ import { dirname } from 'node:path';
 import { Effect } from 'effect';
 import { chromium } from 'playwright';
 import { captureScreenshot, captureWithDOM } from '../../core/capture.js';
+import { DEFAULT_PLACEHOLDER_MEDIA } from '../../core/config.js';
 import type { DOMSnapshotArtifact, ImageArtifact, ViewportConfig } from '../../core/types.js';
 import type { Operation, OperationError } from '../types.js';
 
@@ -14,6 +15,7 @@ export interface CaptureConfig {
   readonly url: string;
   readonly viewport: ViewportConfig;
   readonly withDOM?: boolean;
+  readonly placeholderMedia?: boolean;
 }
 
 export interface CaptureOutput {
@@ -34,7 +36,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
 
   execute: (_, config, ctx) =>
     Effect.gen(function* () {
-      const { url, viewport, withDOM = false } = config;
+      const { url, viewport, withDOM = false, placeholderMedia } = config;
 
       ctx.logger.info(`Capturing ${url} at ${viewport.width}x${viewport.height}`);
 
@@ -68,6 +70,13 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
               viewport,
               outputDir: dirname(screenshotPath),
               filename: '01-screenshot.png',
+              placeholderMedia: placeholderMedia
+                ? {
+                    enabled: true,
+                    svgMinSize: DEFAULT_PLACEHOLDER_MEDIA.svgMinSize,
+                    preserve: [...DEFAULT_PLACEHOLDER_MEDIA.preserve],
+                  }
+                : undefined,
             }),
           catch: (e) => makeError('Failed to capture with DOM', e),
         });
@@ -117,6 +126,13 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
             viewport,
             outputDir: dirname(screenshotPath),
             filename: '01-screenshot.png',
+            placeholderMedia: placeholderMedia
+              ? {
+                  enabled: true,
+                  svgMinSize: DEFAULT_PLACEHOLDER_MEDIA.svgMinSize,
+                  preserve: [...DEFAULT_PLACEHOLDER_MEDIA.preserve],
+                }
+              : undefined,
           }),
         catch: (e) => makeError('Failed to capture screenshot', e),
       });

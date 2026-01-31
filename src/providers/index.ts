@@ -9,6 +9,9 @@
  * @module vex/providers
  */
 
+// Re-export introspection functions
+export { getAllProviders, getProviderInfo, type ProviderInfo } from './introspection.js';
+
 // Re-export registry functions
 export {
   getAllProviderMetadata,
@@ -18,9 +21,6 @@ export {
   registerProvider,
   resolveProviderLayer,
 } from './registry.js';
-
-// Re-export introspection functions
-export { getAllProviders, getProviderInfo, type ProviderInfo } from './introspection.js';
 
 // Re-export service types and tag
 export {
