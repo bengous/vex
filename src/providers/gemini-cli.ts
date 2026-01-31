@@ -11,6 +11,13 @@ const config: CliProviderConfig = {
   displayName: 'Gemini CLI',
   command: 'gemini',
   timeoutMs: CLI_DEFAULT_TIMEOUT_MS,
+  knownModels: [
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-pro',
+    'gemini-3-flash-preview',
+    'gemini-3-pro-preview',
+  ],
   modelAliases: {
     flash: 'gemini-2.5-flash',
     'flash-lite': 'gemini-2.5-flash-lite',
@@ -29,4 +36,10 @@ const config: CliProviderConfig = {
 
 export const GeminiCliProviderLayer = createCliProviderLayer(config);
 
-registerProvider('gemini-cli', GeminiCliProviderLayer);
+registerProvider('gemini-cli', GeminiCliProviderLayer, {
+  displayName: config.displayName,
+  type: 'cli',
+  command: config.command,
+  knownModels: config.knownModels,
+  modelAliases: config.modelAliases,
+});
