@@ -66,6 +66,7 @@ interface ParsedOptions {
   outputDir?: string; // --output flag value (before resolution)
   projectRoot: string;
   dryRun: boolean;
+  placeholderMedia?: boolean;
 }
 
 function parseOptions(args: string[]): ParsedOptions | 'list-devices' {
@@ -82,6 +83,7 @@ function parseOptions(args: string[]): ParsedOptions | 'list-devices' {
       'dry-run': { type: 'boolean', short: 'D' },
       provider: { type: 'string', short: 'p' },
       project: { type: 'string', short: 'P' },
+      'placeholder-media': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: true,
@@ -106,6 +108,7 @@ Options:
   --dry-run, -D             Run without applying code changes (default in Phase 1)
   --provider, -p <name>     VLM provider (default: ollama)
   --project, -P <dir>       Project root for code search (required)
+  --placeholder-media       Replace images/videos with placeholder boxes
   --help, -h                Show this help
 
 Configuration:
@@ -157,6 +160,7 @@ Configuration:
     outputDir: values.output,
     projectRoot,
     dryRun: values['dry-run'] ?? false,
+    placeholderMedia: values['placeholder-media'],
   };
 }
 
@@ -200,12 +204,17 @@ function makeLoopError(phase: LoopError['phase'], message: string, cause?: unkno
  *
  * Each pipeline session directory IS the iteration directory.
  */
-function createCaptureCallback(loopSessionDir: string, provider: string, model?: string): LoopCallbacks['capture'] {
+function createCaptureCallback(
+  loopSessionDir: string,
+  provider: string,
+  model?: string,
+  placeholderMedia?: boolean,
+): LoopCallbacks['capture'] {
   return (url, viewport) =>
     Effect.gen(function* () {
       // runPipeline creates its own session directory inside loopSessionDir
       // Each pipeline session becomes one iteration
-      const pipeline = simpleAnalysis(url, viewport, provider, model);
+      const pipeline = simpleAnalysis(url, viewport, provider, model, undefined, placeholderMedia);
       const state = yield* runPipeline(pipeline, loopSessionDir).pipe(
         Effect.mapError((e) => makeLoopError('capture', e.message, e)),
       );
@@ -359,6 +368,9 @@ export async function loopCommand(args: string[]): Promise<void> {
   console.log(`Max iterations: ${loopOptions.maxIterations}`);
   console.log(`Auto-fix threshold: ${loopOptions.autoFixThreshold}`);
   console.log(`Provider: ${loopOptions.provider}`);
+  if (parsed.placeholderMedia) {
+    console.log('Placeholder media: enabled');
+  }
   console.log('');
   console.log('[Phase 1] Dry-run mode: applyFix disabled (no code changes)');
   console.log('[Phase 1] Interactive mode: disabled (promptHuman returns skip)');
@@ -370,7 +382,7 @@ export async function loopCommand(args: string[]): Promise<void> {
   }
 
   const callbacks: LoopCallbacks = {
-    capture: createCaptureCallback(sessionDir, loopOptions.provider, loopOptions.model),
+    capture: createCaptureCallback(sessionDir, loopOptions.provider, loopOptions.model, parsed.placeholderMedia),
     applyFix: createDryRunApplyFix(),
     promptHuman: createDryRunPromptHuman(),
     onIterationComplete: createIterationLogger(),
