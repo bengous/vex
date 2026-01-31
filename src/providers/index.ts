@@ -10,7 +10,17 @@
  */
 
 // Re-export registry functions
-export { listProviderNames, registerProvider, resolveProviderLayer } from './registry.js';
+export {
+  getAllProviderMetadata,
+  getProviderMetadata,
+  listProviderNames,
+  type ProviderMetadata,
+  registerProvider,
+  resolveProviderLayer,
+} from './registry.js';
+
+// Re-export introspection functions
+export { getAllProviders, getProviderInfo, type ProviderInfo } from './introspection.js';
 
 // Re-export service types and tag
 export {
