@@ -22,6 +22,7 @@ const config: CliProviderConfig = {
   displayName: 'Codex CLI',
   command: 'codex',
   timeoutMs: CLI_DEFAULT_TIMEOUT_MS,
+  knownModels: ['gpt-5.2', 'gpt-5.2-codex', 'gpt-5.1-codex-max', 'gpt-5.1-codex-mini'],
   buildArgs: (model, prompt, imagePaths, options) => {
     const args: string[] = ['exec', prompt, ...imagePaths.flatMap((img) => ['--image', img])];
     if (model) {
@@ -36,4 +37,9 @@ const config: CliProviderConfig = {
 
 export const CodexCliProviderLayer = createCliProviderLayer(config);
 
-registerProvider('codex-cli', CodexCliProviderLayer);
+registerProvider('codex-cli', CodexCliProviderLayer, {
+  displayName: config.displayName,
+  type: 'cli',
+  command: config.command,
+  knownModels: config.knownModels,
+});

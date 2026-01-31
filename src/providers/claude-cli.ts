@@ -20,6 +20,7 @@ const config: CliProviderConfig = {
   displayName: 'Claude CLI',
   command: 'claude',
   timeoutMs: CLI_DEFAULT_TIMEOUT_MS,
+  knownModels: ['claude-sonnet-4-20250514', 'claude-opus-4-20250514'],
   buildArgs: (model, prompt, imagePaths, _options) => {
     const imageList = imagePaths.map((p) => `- ${p}`).join('\n');
     const fullPrompt = `Read and analyze these image files:\n${imageList}\n\n${prompt}`;
@@ -33,4 +34,9 @@ const config: CliProviderConfig = {
 
 export const ClaudeCliProviderLayer = createCliProviderLayer(config);
 
-registerProvider('claude-cli', ClaudeCliProviderLayer);
+registerProvider('claude-cli', ClaudeCliProviderLayer, {
+  displayName: config.displayName,
+  type: 'cli',
+  command: config.command,
+  knownModels: config.knownModels,
+});
