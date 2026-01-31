@@ -14,6 +14,7 @@ export function simpleAnalysis(
   provider: string,
   model?: string,
   reasoning?: string,
+  placeholderMedia?: boolean,
 ): PipelineDefinition {
   return {
     name: 'simple-analysis',
@@ -24,7 +25,7 @@ export function simpleAnalysis(
       {
         id: 'capture',
         operation: 'capture',
-        config: { url, viewport, filename: 'screenshot.png', withDOM: true },
+        config: { url, viewport, filename: 'screenshot.png', withDOM: true, placeholderMedia },
         inputs: [],
         outputs: ['image'],
       },
@@ -67,6 +68,7 @@ export function fullAnnotation(
   provider: string,
   model?: string,
   reasoning?: string,
+  placeholderMedia?: boolean,
 ): PipelineDefinition {
   return {
     name: 'full-annotation',
@@ -77,7 +79,7 @@ export function fullAnnotation(
       {
         id: 'capture',
         operation: 'capture',
-        config: { url, viewport, filename: 'screenshot.png', withDOM: true },
+        config: { url, viewport, filename: 'screenshot.png', withDOM: true, placeholderMedia },
         inputs: [],
         outputs: ['image'],
       },

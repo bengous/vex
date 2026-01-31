@@ -45,6 +45,7 @@ interface ScanOptions {
   model?: string;
   reasoning?: string;
   full?: boolean;
+  placeholderMedia?: boolean;
 }
 
 function parseViewport(input: string): ViewportConfig {
@@ -82,6 +83,7 @@ function parseOptions(args: string[]): ScanOptions | 'list-devices' {
       model: { type: 'string', short: 'M' },
       reasoning: { type: 'string', short: 'R' },
       full: { type: 'boolean', short: 'f' },
+      'placeholder-media': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: true,
@@ -105,6 +107,7 @@ Options:
   --model, -M <name>     Model override
   --reasoning, -R <level> Reasoning effort (codex-cli: low, medium, high, xhigh)
   --full, -f             Full annotation pipeline (analyze + annotate + render)
+  --placeholder-media    Replace images/videos with placeholder boxes
   --help, -h             Show this help
 
 Configuration:
@@ -166,6 +169,7 @@ Configuration:
     model: values.model,
     reasoning: values.reasoning,
     full: values.full,
+    placeholderMedia: values['placeholder-media'],
   };
 }
 
@@ -185,11 +189,28 @@ export async function scanCommand(args: string[]): Promise<void> {
   if (options.full) {
     console.log('Pipeline: full-annotation (analyze + annotate + render)');
   }
+  if (options.placeholderMedia) {
+    console.log('Placeholder media: enabled');
+  }
   console.log('');
 
   const pipeline = options.full
-    ? fullAnnotation(options.url, options.viewport, options.provider, options.model, options.reasoning)
-    : simpleAnalysis(options.url, options.viewport, options.provider, options.model, options.reasoning);
+    ? fullAnnotation(
+        options.url,
+        options.viewport,
+        options.provider,
+        options.model,
+        options.reasoning,
+        options.placeholderMedia,
+      )
+    : simpleAnalysis(
+        options.url,
+        options.viewport,
+        options.provider,
+        options.model,
+        options.reasoning,
+        options.placeholderMedia,
+      );
 
   const result = await Effect.runPromise(runPipeline(pipeline, options.outputDir));
 
