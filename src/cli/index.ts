@@ -14,9 +14,9 @@
 
 import { analyzeCommand } from './commands/analyze.js';
 import { locateCommand } from './commands/locate.js';
-import { loopCommand } from './commands/loop.js';
+// During migration: use legacy commands
+import { loopCommand } from '../cli-legacy/commands/loop.js';
 import { providersCommand } from './commands/providers.js';
-// During migration: use legacy scan command
 import { scanCommand } from '../cli-legacy/commands/scan.js';
 import { verifyCommand } from './commands/verify.js';
 

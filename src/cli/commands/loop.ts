@@ -3,207 +3,52 @@
  *
  * Usage: vex loop <url> [options]
  *
- * Options:
- *   --max-iterations <n>  Maximum iterations (default: 5)
- *   --device <name>       Device preset (e.g., iphone-15-pro, desktop-1920)
- *   --viewport <WxH>      Viewport size (default: 1920x1080)
- *   --list-devices        List available device presets
- *   --interactive         Enable human-in-the-loop review (Phase 2+)
- *   --auto-fix <level>    Auto-fix threshold: high, medium, none (default: high)
- *   --output <dir>        Session output directory (overrides VEX_OUTPUT_DIR/.vexrc.json)
- *   --dry-run             Run without applying code changes (default in Phase 1)
+ * Migrated to @effect/cli with Effect Schema validation.
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parseArgs } from 'node:util';
+import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
-import { loadConfig, VexConfigError } from '../../core/config.js';
-import { getAllDeviceIds, listDevices, lookupDevice } from '../../core/devices.js';
+import { Url } from '../../config/schema.js';
+import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { CodeLocation, Issue, ViewportConfig } from '../../core/types.js';
 import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from '../../loop/orchestrator.js';
-import type {
-  AppliedFix,
-  AutoFixThreshold,
-  GateDecision,
-  HumanResponse,
-  LoopError,
-  LoopOptions,
-  LoopResult,
-} from '../../loop/types.js';
+import type { AppliedFix, GateDecision, HumanResponse, LoopError, LoopOptions, LoopResult } from '../../loop/types.js';
 import { generateSessionId, runPipeline, simpleAnalysis } from '../../pipeline/index.js';
+import {
+  autoFixOption,
+  deviceOption,
+  dryRunOption,
+  interactiveOption,
+  listDevicesOption,
+  maxIterationsOption,
+  modelOption,
+  outputOption,
+  placeholderMediaOption,
+  presetOption,
+  projectOption,
+  providerOption,
+} from '../options.js';
+import { resolveLoopOptions } from '../resolve.js';
+import type { LoopCliArgs } from '../resolve.js';
 // Import providers for self-registration
 import '../../providers/index.js';
 
-const DEFAULT_VIEWPORT: ViewportConfig = {
-  width: 1920,
-  height: 1080,
-  deviceScaleFactor: 1,
-  isMobile: false,
-};
+// ═══════════════════════════════════════════════════════════════════════════
+// URL Argument
+// ═══════════════════════════════════════════════════════════════════════════
 
-function parseViewport(input: string): ViewportConfig {
-  const match = input.match(/^(\d+)x(\d+)$/);
-  if (!match || !match[1] || !match[2]) {
-    throw new Error(`Invalid viewport format: ${input}. Use WxH format (e.g., 1920x1080)`);
-  }
-  return {
-    width: Number.parseInt(match[1], 10),
-    height: Number.parseInt(match[2], 10),
-    deviceScaleFactor: 1,
-    isMobile: false,
-  };
-}
+const urlArg = Args.text({ name: 'url' }).pipe(Args.withSchema(Url), Args.optional);
 
-interface ParsedOptions {
-  url: string;
-  maxIterations: number;
-  interactive: boolean;
-  autoFixThreshold: AutoFixThreshold;
-  viewports: readonly ViewportConfig[];
-  provider: string;
-  model?: string;
-  outputDir?: string; // --output flag value (before resolution)
-  projectRoot: string;
-  dryRun: boolean;
-  placeholderMedia?: boolean;
-}
-
-function parseOptions(args: string[]): ParsedOptions | 'list-devices' {
-  const { values, positionals } = parseArgs({
-    args,
-    options: {
-      'max-iterations': { type: 'string', short: 'n' },
-      device: { type: 'string', short: 'd' },
-      viewport: { type: 'string', short: 'V' },
-      'list-devices': { type: 'boolean' },
-      interactive: { type: 'boolean', short: 'i' },
-      'auto-fix': { type: 'string' },
-      output: { type: 'string', short: 'o' },
-      'dry-run': { type: 'boolean', short: 'D' },
-      provider: { type: 'string', short: 'p' },
-      project: { type: 'string', short: 'P' },
-      'placeholder-media': { type: 'boolean' },
-      help: { type: 'boolean', short: 'h' },
-    },
-    allowPositionals: true,
-  });
-
-  if (values['list-devices']) {
-    return 'list-devices';
-  }
-
-  if (values.help) {
-    console.log(`
-Usage: vex loop <url> [options]
-
-Options:
-  --max-iterations, -n <n>  Maximum iterations (default: 5)
-  --device, -d <name>       Device preset (e.g., iphone-15-pro, desktop-1920)
-  --viewport, -V <WxH>      Viewport size (default: 1920x1080)
-  --list-devices            List available device presets
-  --interactive, -i         Enable human-in-the-loop review (Phase 2+, ignored in Phase 1)
-  --auto-fix <level>        Auto-fix threshold: high, medium, none (default: high)
-  --output, -o <dir>        Session output directory (overrides VEX_OUTPUT_DIR/.vexrc.json)
-  --dry-run, -D             Run without applying code changes (default in Phase 1)
-  --provider, -p <name>     VLM provider (default: ollama)
-  --project, -P <dir>       Project root for code search (required)
-  --placeholder-media       Replace images/videos with placeholder boxes
-  --help, -h                Show this help
-
-Configuration:
-  Set output directory via:
-  - --output flag (highest priority)
-  - VEX_OUTPUT_DIR environment variable
-  - outputDir in .vexrc.json
-`);
-    process.exit(0);
-  }
-
-  const url = positionals[0];
-  if (!url) {
-    throw new Error('URL is required. Usage: vex loop <url>');
-  }
-
-  // Priority: --device > --viewport > default
-  let viewport = DEFAULT_VIEWPORT;
-  if (values.device) {
-    const result = lookupDevice(values.device);
-    if (!result) {
-      const available = getAllDeviceIds().join(', ');
-      throw new Error(
-        `Unknown device "${values.device}".\n\nAvailable devices: ${available}\n\nRun 'vex loop --list-devices' for full list.`,
-      );
-    }
-    viewport = result.preset.viewport;
-  } else if (values.viewport) {
-    viewport = parseViewport(values.viewport);
-  }
-
-  const autoFixThreshold = (values['auto-fix'] ?? 'high') as AutoFixThreshold;
-  if (!['high', 'medium', 'none'].includes(autoFixThreshold)) {
-    throw new Error('Invalid auto-fix threshold. Use: high, medium, or none');
-  }
-
-  const projectRoot = values.project;
-  if (!projectRoot) {
-    throw new Error('--project is required. Specify the repository root to search for code.');
-  }
-
-  return {
-    url,
-    maxIterations: values['max-iterations'] ? Number.parseInt(values['max-iterations'], 10) : 5,
-    interactive: values.interactive ?? false,
-    autoFixThreshold,
-    viewports: [viewport],
-    provider: values.provider ?? 'ollama',
-    outputDir: values.output,
-    projectRoot,
-    dryRun: values['dry-run'] ?? false,
-    placeholderMedia: values['placeholder-media'],
-  };
-}
-
-/**
- * Resolve output directory using the same priority as scan command:
- * 1. --output flag (highest priority)
- * 2. VEX_OUTPUT_DIR environment variable
- * 3. outputDir in .vexrc.json
- */
-function resolveOutputDir(outputFlag?: string): string {
-  if (outputFlag) {
-    return outputFlag;
-  }
-
-  try {
-    const config = loadConfig();
-    return config.outputDir;
-  } catch (e) {
-    if (e instanceof VexConfigError) {
-      throw new Error(`${e.message}\n\nOr use --output <dir> to specify directly.`);
-    }
-    throw e;
-  }
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// Loop Helpers
+// ═══════════════════════════════════════════════════════════════════════════
 
 function makeLoopError(phase: LoopError['phase'], message: string, cause?: unknown): LoopError {
   return { _tag: 'LoopError', phase, message, cause };
 }
 
-/**
- * Create capture callback that runs the pipeline for each iteration.
- *
- * Directory structure (flat, no double-nesting):
- * ```
- * loop-<id>/
- *   <timestamp-1>/    ← iteration 0 (created by pipeline)
- *   <timestamp-2>/    ← iteration 1 (created by pipeline)
- *   iterations.json
- *   state.json
- * ```
- *
- * Each pipeline session directory IS the iteration directory.
- */
 function createCaptureCallback(
   loopSessionDir: string,
   provider: string,
@@ -212,20 +57,14 @@ function createCaptureCallback(
 ): LoopCallbacks['capture'] {
   return (url, viewport) =>
     Effect.gen(function* () {
-      // runPipeline creates its own session directory inside loopSessionDir
-      // Each pipeline session becomes one iteration
       const pipeline = simpleAnalysis(url, viewport, provider, model, undefined, placeholderMedia);
       const state = yield* runPipeline(pipeline, loopSessionDir).pipe(
         Effect.mapError((e) => makeLoopError('capture', e.message, e)),
       );
-
       return { state, issues: state.issues } satisfies LoopCaptureResult;
     });
 }
 
-/**
- * Phase 1: Dry-run applyFix - logs but doesn't modify files.
- */
 function createDryRunApplyFix(): LoopCallbacks['applyFix'] {
   return (issue: Issue, location: CodeLocation, _decision: GateDecision) =>
     Effect.succeed({
@@ -237,9 +76,6 @@ function createDryRunApplyFix(): LoopCallbacks['applyFix'] {
     } satisfies AppliedFix);
 }
 
-/**
- * Phase 1: Dry-run promptHuman - always skips (no interactive mode yet).
- */
 function createDryRunPromptHuman(): LoopCallbacks['promptHuman'] {
   return (_issue: Issue, _locations: readonly CodeLocation[], _decision: GateDecision) =>
     Effect.succeed({ action: 'skip' } satisfies HumanResponse);
@@ -253,7 +89,6 @@ function createIterationLogger(): LoopCallbacks['onIterationComplete'] {
     if (state.fixesApplied.length > 0) {
       console.log(`Fixes applied: ${state.fixesApplied.length} (simulated)`);
     }
-
     if (state.verification) {
       console.log(`Verification: ${state.verification.verdict}`);
       console.log(`  Resolved: ${state.verification.resolved.length}`);
@@ -270,8 +105,8 @@ async function saveIterationHistory(sessionDir: string, result: LoopResult, opti
     startedAt: result.startedAt,
     completedAt: result.completedAt,
     status: result.status,
-    phase: 1, // Track implementation phase
-    dryRun: true, // Phase 1 is always dry-run
+    phase: 1,
+    dryRun: true,
     summary: {
       initialIssueCount: result.initialIssueCount,
       finalIssueCount: result.finalIssueCount,
@@ -282,7 +117,7 @@ async function saveIterationHistory(sessionDir: string, result: LoopResult, opti
       number: iter.number,
       startedAt: iter.startedAt,
       completedAt: iter.completedAt,
-      sessionDir: iter.pipelineState.sessionDir, // Flat: each pipeline session IS the iteration
+      sessionDir: iter.pipelineState.sessionDir,
       issueCount: iter.issuesFound.length,
       fixCount: iter.fixesApplied.length,
       verification: iter.verification
@@ -297,8 +132,6 @@ async function saveIterationHistory(sessionDir: string, result: LoopResult, opti
   };
 
   await writeFile(join(sessionDir, 'iterations.json'), JSON.stringify(historyFile, null, 2), 'utf-8');
-
-  // Compatibility: allow `vex verify <loop-session>` by writing a minimal state.json with iterationHistory.
   await writeFile(
     join(sessionDir, 'state.json'),
     JSON.stringify(
@@ -332,77 +165,121 @@ function printLoopSummary(result: LoopResult): void {
   console.log(`Session: ${result.sessionDir}`);
 }
 
-export async function loopCommand(args: string[]): Promise<void> {
-  const parsed = parseOptions(args);
+// ═══════════════════════════════════════════════════════════════════════════
+// Loop Command
+// ═══════════════════════════════════════════════════════════════════════════
 
-  if (parsed === 'list-devices') {
-    listDevices();
-    return;
-  }
+export const loopCommand = Command.make(
+  'loop',
+  {
+    url: urlArg,
+    preset: presetOption,
+    device: deviceOption,
+    provider: providerOption,
+    model: modelOption,
+    maxIterations: maxIterationsOption,
+    autoFix: autoFixOption,
+    project: projectOption,
+    dryRun: dryRunOption,
+    placeholderMedia: placeholderMediaOption,
+    output: outputOption,
+    listDevices: listDevicesOption,
+    interactive: interactiveOption,
+  },
+  (args) =>
+    Effect.gen(function* () {
+      // Handle --list-devices
+      if (args.listDevices) {
+        listDevices();
+        return;
+      }
 
-  // Resolve output directory (respects VEX_OUTPUT_DIR/.vexrc.json like scan command)
-  const baseDir = resolveOutputDir(parsed.outputDir);
+      // Convert to LoopCliArgs format
+      const cliArgs: LoopCliArgs = {
+        url: args.url,
+        preset: args.preset,
+        device: args.device,
+        provider: args.provider,
+        model: args.model,
+        maxIterations: args.maxIterations,
+        autoFix: args.autoFix,
+        dryRun: args.dryRun,
+        placeholderMedia: args.placeholderMedia,
+        output: args.output,
+        project: args.project,
+      };
 
-  // Create loop session directory
-  const sessionId = `loop-${generateSessionId()}`;
-  const sessionDir = join(baseDir, sessionId);
-  await mkdir(sessionDir, { recursive: true });
+      // Resolve options with preset/defaults
+      const resolved = yield* resolveLoopOptions(cliArgs);
 
-  // Phase 1: Force dry-run and disable interactive mode
-  // These features will be enabled in Phase 2/3
-  const loopOptions: LoopOptions = {
-    url: parsed.url,
-    maxIterations: parsed.maxIterations,
-    interactive: false, // Phase 1: always disabled
-    autoFixThreshold: parsed.autoFixThreshold,
-    viewports: parsed.viewports,
-    provider: parsed.provider,
-    model: parsed.model,
-    sessionDir,
-    projectRoot: parsed.projectRoot,
-    dryRun: true, // Phase 1: always dry-run
-  };
+      // Get viewport for first device
+      const deviceResult = lookupDevice(resolved.devices[0] as string);
+      if (!deviceResult) {
+        console.error(`Unknown device: ${resolved.devices[0]}`);
+        return;
+      }
+      const viewport: ViewportConfig = deviceResult.preset.viewport;
 
-  // Print configuration
-  console.log(`Starting improvement loop for ${loopOptions.url}`);
-  console.log(`Max iterations: ${loopOptions.maxIterations}`);
-  console.log(`Auto-fix threshold: ${loopOptions.autoFixThreshold}`);
-  console.log(`Provider: ${loopOptions.provider}`);
-  if (parsed.placeholderMedia) {
-    console.log('Placeholder media: enabled');
-  }
-  console.log('');
-  console.log('[Phase 1] Dry-run mode: applyFix disabled (no code changes)');
-  console.log('[Phase 1] Interactive mode: disabled (promptHuman returns skip)');
-  if (parsed.interactive) {
-    console.log('         (--interactive flag ignored until Phase 2)');
-  }
-  if (parsed.dryRun === false) {
-    console.log('         (--dry-run=false ignored until Phase 3)');
-  }
+      // Create loop session directory
+      const sessionId = `loop-${generateSessionId()}`;
+      const sessionDir = join(resolved.outputDir, sessionId);
+      yield* Effect.promise(() => mkdir(sessionDir, { recursive: true }));
 
-  const callbacks: LoopCallbacks = {
-    capture: createCaptureCallback(sessionDir, loopOptions.provider, loopOptions.model, parsed.placeholderMedia),
-    applyFix: createDryRunApplyFix(),
-    promptHuman: createDryRunPromptHuman(),
-    onIterationComplete: createIterationLogger(),
-  };
+      // Phase 1: Force dry-run and disable interactive mode
+      const loopOptions: LoopOptions = {
+        url: resolved.urls[0] as string,
+        maxIterations: resolved.maxIterations,
+        interactive: false, // Phase 1: always disabled
+        autoFixThreshold: resolved.autoFix,
+        viewports: [viewport],
+        provider: resolved.provider,
+        model: resolved.model,
+        sessionDir,
+        projectRoot: resolved.projectRoot,
+        dryRun: true, // Phase 1: always dry-run
+      };
 
-  const orchestrator = new LoopOrchestrator(loopOptions, callbacks);
+      // Print configuration
+      console.log(`Starting improvement loop for ${loopOptions.url}`);
+      console.log(`Max iterations: ${loopOptions.maxIterations}`);
+      console.log(`Auto-fix threshold: ${loopOptions.autoFixThreshold}`);
+      console.log(`Provider: ${loopOptions.provider}${resolved.model ? ` (model: ${resolved.model})` : ''}`);
+      console.log(`Viewport: ${viewport.width}x${viewport.height} (${resolved.devices[0]})`);
+      if (resolved.placeholderMedia) {
+        console.log('Placeholder media: enabled');
+      }
+      console.log('');
+      console.log('[Phase 1] Dry-run mode: applyFix disabled (no code changes)');
+      console.log('[Phase 1] Interactive mode: disabled (promptHuman returns skip)');
+      if (args.interactive) {
+        console.log('         (--interactive flag ignored until Phase 2)');
+      }
+      if (!args.dryRun) {
+        console.log('         (--dry-run=false ignored until Phase 3)');
+      }
 
-  let result: LoopResult;
-  try {
-    result = await Effect.runPromise(orchestrator.run());
-  } catch (err) {
-    if (typeof err === 'object' && err !== null && '_tag' in err && (err as { _tag?: unknown })._tag === 'LoopError') {
-      const e = err as LoopError;
-      console.error(`\nLoop failed at ${e.phase}: ${e.message}`);
-    } else {
-      console.error('\nLoop failed:', err);
-    }
-    process.exit(1);
-  }
+      const callbacks: LoopCallbacks = {
+        capture: createCaptureCallback(sessionDir, loopOptions.provider, loopOptions.model, resolved.placeholderMedia),
+        applyFix: createDryRunApplyFix(),
+        promptHuman: createDryRunPromptHuman(),
+        onIterationComplete: createIterationLogger(),
+      };
 
-  await saveIterationHistory(sessionDir, result, loopOptions);
-  printLoopSummary(result);
-}
+      const orchestrator = new LoopOrchestrator(loopOptions, callbacks);
+
+      const result = yield* orchestrator.run().pipe(
+        Effect.catchAll((err) => {
+          if (typeof err === 'object' && err !== null && '_tag' in err && err._tag === 'LoopError') {
+            const e = err as LoopError;
+            console.error(`\nLoop failed at ${e.phase}: ${e.message}`);
+          } else {
+            console.error('\nLoop failed:', err);
+          }
+          return Effect.fail(err);
+        }),
+      );
+
+      yield* Effect.promise(() => saveIterationHistory(sessionDir, result, loopOptions));
+      printLoopSummary(result);
+    }),
+).pipe(Command.withDescription('Run iterative improvement loop on a URL'));
