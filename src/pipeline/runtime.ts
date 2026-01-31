@@ -1,0 +1,368 @@
+/**
+ * Pipeline runtime - DAG executor for composable operations.
+ */
+
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { Effect } from 'effect';
+import type { Artifact, ViewportConfig } from '../core/types.js';
+import { ARTIFACT_NAMES, getViewportDirName } from '../core/types.js';
+import {
+  analyzeOperation,
+  annotateOperation,
+  captureOperation,
+  diffOperation,
+  overlayFoldsOperation,
+  overlayGridOperation,
+  renderOperation,
+} from './operations/index.js';
+import {
+  createSessionDir,
+  getReadyNodes,
+  hasFailed,
+  initializePipelineState,
+  isComplete,
+  savePipelineState,
+  storeArtifact,
+  storeData,
+  updateNodeState,
+} from './state.js';
+import type {
+  Logger,
+  Operation,
+  OperationError,
+  PipelineContext,
+  PipelineDefinition,
+  PipelineError,
+  PipelineState,
+} from './types.js';
+
+// Operation registry - use any to avoid complex generic constraints
+// biome-ignore lint/suspicious/noExplicitAny: Operations have varying signatures
+const OPERATIONS: Record<string, Operation<any, any, any>> = {
+  capture: captureOperation,
+  'overlay-grid': overlayGridOperation,
+  'overlay-folds': overlayFoldsOperation,
+  analyze: analyzeOperation,
+  annotate: annotateOperation,
+  render: renderOperation,
+  diff: diffOperation,
+};
+
+function makeError(phase: PipelineError['phase'], message: string, cause?: OperationError): PipelineError {
+  return { _tag: 'PipelineError', phase, message, cause };
+}
+
+/**
+ * Extract viewport from pipeline definition.
+ * Looks for a capture node and returns its viewport config.
+ */
+function extractViewport(definition: PipelineDefinition): ViewportConfig | undefined {
+  const captureNode = definition.nodes.find((n) => n.operation === 'capture');
+  if (!captureNode) return undefined;
+
+  const config = captureNode.config as { viewport?: ViewportConfig };
+  return config.viewport;
+}
+
+function createLogger(_sessionDir: string): Logger {
+  return {
+    debug: (msg) => console.debug(`[DEBUG] ${msg}`),
+    info: (msg) => console.info(`[INFO] ${msg}`),
+    warn: (msg) => console.warn(`[WARN] ${msg}`),
+    error: (msg) => console.error(`[ERROR] ${msg}`),
+  };
+}
+
+/**
+ * Create pipeline context for operation execution.
+ */
+function createContext(state: PipelineState, viewport?: ViewportConfig): PipelineContext {
+  const artifacts = new Map<string, Artifact>();
+  for (const [id, artifact] of Object.entries(state.artifacts)) {
+    artifacts.set(id, artifact);
+  }
+
+  // Also map semantic names from node outputs
+  const semanticNames = new Map<string, Artifact>();
+
+  // Non-artifact data channel (e.g., AnalysisResult, ToolCall[])
+  const dataMap = new Map<string, unknown>();
+  for (const [key, value] of Object.entries(state.data)) {
+    dataMap.set(key, value);
+  }
+
+  // Cache for created viewport directories
+  const createdDirs = new Set<string>();
+
+  const getViewportDir = async (): Promise<string> => {
+    if (!viewport) {
+      return state.sessionDir;
+    }
+    const viewportDir = join(state.sessionDir, getViewportDirName(viewport));
+    if (!createdDirs.has(viewportDir)) {
+      await mkdir(viewportDir, { recursive: true });
+      createdDirs.add(viewportDir);
+    }
+    return viewportDir;
+  };
+
+  const getArtifactPath = async (name: keyof typeof ARTIFACT_NAMES): Promise<string> => {
+    const viewportDir = await getViewportDir();
+    return join(viewportDir, ARTIFACT_NAMES[name]);
+  };
+
+  return {
+    sessionDir: state.sessionDir,
+    artifacts,
+    logger: createLogger(state.sessionDir),
+    viewport,
+    storeArtifact: (artifact) => {
+      artifacts.set(artifact.id, artifact);
+      return artifact.id;
+    },
+    getArtifact: (id) => artifacts.get(id) ?? semanticNames.get(id),
+    getData: (key) => dataMap.get(key),
+    getViewportDir,
+    getArtifactPath,
+    // Internal methods for mapping semantic names
+    _mapSemanticName: (name: string, artifact: Artifact) => {
+      semanticNames.set(name, artifact);
+    },
+    _mapData: (name: string, value: unknown) => {
+      dataMap.set(name, value);
+    },
+  } as PipelineContext & {
+    _mapSemanticName: (name: string, artifact: Artifact) => void;
+    _mapData: (name: string, value: unknown) => void;
+  };
+}
+
+/**
+ * Execute a single pipeline node.
+ */
+function executeNode(
+  state: PipelineState,
+  nodeId: string,
+  ctx: PipelineContext,
+): Effect.Effect<{ artifacts: Artifact[]; state: PipelineState }, OperationError> {
+  return Effect.gen(function* () {
+    const node = state.definition.nodes.find((n) => n.id === nodeId);
+    if (!node) {
+      return yield* Effect.fail({
+        _tag: 'OperationError',
+        operation: nodeId,
+        message: `Node not found: ${nodeId}`,
+      } as OperationError);
+    }
+
+    const operation = OPERATIONS[node.operation];
+    if (!operation) {
+      return yield* Effect.fail({
+        _tag: 'OperationError',
+        operation: node.operation,
+        message: `Unknown operation: ${node.operation}`,
+      } as OperationError);
+    }
+
+    // Mark node as running
+    let currentState = updateNodeState(state, nodeId, {
+      status: 'running',
+      startedAt: new Date().toISOString(),
+    });
+
+    ctx.logger.info(`Executing ${node.operation} (${nodeId})`);
+
+    // Gather inputs from edges (check artifacts first, then data channel)
+    const inputEdges = state.definition.edges.filter((e) => e.to === nodeId);
+    const inputs: Record<string, unknown> = {};
+    for (const edge of inputEdges) {
+      const sourceKey = `${edge.from}:${edge.artifact}`;
+      const targetKey = edge.targetField ?? edge.artifact;
+      const artifact = ctx.getArtifact(sourceKey);
+      if (artifact) {
+        inputs[targetKey] = artifact;
+      } else {
+        const data = ctx.getData(sourceKey);
+        if (data !== undefined) {
+          inputs[targetKey] = data;
+        }
+      }
+    }
+
+    // Execute operation
+    const result = yield* operation.execute(inputs, node.config, ctx);
+
+    // Collect output artifacts and data, map semantic names
+    const outputArtifacts: string[] = [];
+    const ctxWithMapping = ctx as PipelineContext & {
+      _mapSemanticName: (name: string, artifact: Artifact) => void;
+      _mapData: (name: string, value: unknown) => void;
+    };
+    const resultObj = result as Record<string, unknown>;
+    for (const [key, value] of Object.entries(resultObj)) {
+      if (value && typeof value === 'object' && 'id' in value && 'type' in value) {
+        // This is an artifact - store in artifacts channel
+        const artifact = value as Artifact;
+        currentState = storeArtifact(currentState, artifact);
+        outputArtifacts.push(artifact.id);
+        ctxWithMapping._mapSemanticName(`${nodeId}:${key}`, artifact);
+      } else if (value !== undefined) {
+        // Non-artifact data - store in data channel
+        const dataKey = `${nodeId}:${key}`;
+        currentState = storeData(currentState, dataKey, value);
+        ctxWithMapping._mapData(dataKey, value);
+      }
+    }
+
+    // Populate state.issues from analysis result for external consumers
+    if (node.operation === 'analyze') {
+      const dataKey = `${nodeId}:result`;
+      const analysisResult = currentState.data[dataKey] as { issues?: unknown[] } | undefined;
+      if (analysisResult && Array.isArray(analysisResult.issues)) {
+        currentState = { ...currentState, issues: analysisResult.issues as typeof currentState.issues };
+      }
+    }
+
+    // Mark node as completed
+    currentState = updateNodeState(currentState, nodeId, {
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+      outputArtifacts,
+    });
+
+    return {
+      artifacts: outputArtifacts.map((id) => currentState.artifacts[id]).filter((a): a is Artifact => a !== undefined),
+      state: currentState,
+    };
+  });
+}
+
+/**
+ * Run a pipeline definition.
+ */
+export function runPipeline(
+  definition: PipelineDefinition,
+  baseDir: string,
+  _inputs?: Record<string, unknown>,
+): Effect.Effect<PipelineState, PipelineError> {
+  return Effect.gen(function* () {
+    // Validate definition
+    if (definition.nodes.length === 0) {
+      return yield* Effect.fail(makeError('validation', 'Pipeline has no nodes'));
+    }
+
+    // Create session
+    const sessionDir = yield* Effect.tryPromise({
+      try: () => createSessionDir(baseDir),
+      catch: () => makeError('execution', 'Failed to create session directory', undefined),
+    });
+
+    // Initialize state
+    let state = initializePipelineState(definition, sessionDir);
+    const viewport = extractViewport(definition);
+    const ctx = createContext(state, viewport);
+
+    ctx.logger.info(`Starting pipeline: ${definition.name}`);
+    ctx.logger.info(`Session: ${sessionDir}`);
+
+    // Execute nodes in topological order
+    while (!isComplete(state) && !hasFailed(state)) {
+      const readyNodes = getReadyNodes(state);
+
+      if (readyNodes.length === 0 && !isComplete(state)) {
+        return yield* Effect.fail(makeError('execution', 'Pipeline deadlock: no ready nodes but not complete'));
+      }
+
+      // Execute ready nodes (could be parallelized in future)
+      for (const nodeId of readyNodes) {
+        const result = yield* executeNode(state, nodeId, ctx).pipe(
+          Effect.mapError((e) => makeError('execution', `Node ${nodeId} failed: ${e.message}`, e)),
+        );
+        state = result.state;
+      }
+
+      // Save state after each batch
+      yield* Effect.tryPromise({
+        try: () => savePipelineState(state),
+        catch: () => makeError('persistence', 'Failed to save state'),
+      });
+    }
+
+    // Finalize
+    state = {
+      ...state,
+      completedAt: new Date().toISOString(),
+      status: hasFailed(state) ? 'failed' : 'completed',
+    };
+
+    yield* Effect.tryPromise({
+      try: () => savePipelineState(state),
+      catch: () => makeError('persistence', 'Failed to save final state'),
+    });
+
+    ctx.logger.info(`Pipeline ${state.status}: ${Object.keys(state.artifacts).length} artifacts`);
+
+    return state;
+  });
+}
+
+/**
+ * Resume a paused pipeline.
+ */
+export function resumePipeline(sessionDir: string): Effect.Effect<PipelineState, PipelineError> {
+  return Effect.gen(function* () {
+    const { loadPipelineState } = yield* Effect.tryPromise({
+      try: () => import('./state.js'),
+      catch: () => makeError('execution', 'Failed to load state module'),
+    });
+
+    let state = yield* Effect.tryPromise({
+      try: () => loadPipelineState(sessionDir),
+      catch: () => makeError('execution', 'Failed to load pipeline state'),
+    });
+
+    if (state.status === 'completed' || state.status === 'failed') {
+      return state;
+    }
+
+    const viewport = extractViewport(state.definition);
+    const ctx = createContext(state, viewport);
+    ctx.logger.info(`Resuming pipeline from ${sessionDir}`);
+
+    state = { ...state, status: 'running' };
+
+    while (!isComplete(state) && !hasFailed(state)) {
+      const readyNodes = getReadyNodes(state);
+
+      if (readyNodes.length === 0 && !isComplete(state)) {
+        return yield* Effect.fail(makeError('execution', 'Pipeline deadlock'));
+      }
+
+      for (const nodeId of readyNodes) {
+        const result = yield* executeNode(state, nodeId, ctx).pipe(
+          Effect.mapError((e) => makeError('execution', `Node ${nodeId} failed: ${e.message}`, e)),
+        );
+        state = result.state;
+      }
+
+      yield* Effect.tryPromise({
+        try: () => savePipelineState(state),
+        catch: () => makeError('persistence', 'Failed to save state'),
+      });
+    }
+
+    state = {
+      ...state,
+      completedAt: new Date().toISOString(),
+      status: hasFailed(state) ? 'failed' : 'completed',
+    };
+
+    yield* Effect.tryPromise({
+      try: () => savePipelineState(state),
+      catch: () => makeError('persistence', 'Failed to save final state'),
+    });
+
+    return state;
+  });
+}
