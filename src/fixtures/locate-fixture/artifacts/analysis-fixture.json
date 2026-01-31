@@ -1,0 +1,29 @@
+{
+  "provider": "fixture",
+  "model": "test-fixture",
+  "response": "Mock analysis for testing locate command",
+  "durationMs": 0,
+  "issues": [
+    {
+      "id": 1,
+      "description": "Header navigation text too small for accessibility",
+      "severity": "high",
+      "region": { "x": 459, "y": 44, "width": 760, "height": 48 },
+      "suggestedFix": "Increase nav font size to 16px minimum"
+    },
+    {
+      "id": 2,
+      "description": "Low contrast text in Actualités section",
+      "severity": "medium",
+      "region": "C3",
+      "suggestedFix": "Use darker text color for better readability"
+    },
+    {
+      "id": 3,
+      "description": "Footer links too cramped, insufficient spacing",
+      "severity": "low",
+      "region": { "x": 100, "y": 7800, "width": 200, "height": 100 },
+      "suggestedFix": "Add 8px vertical margin between footer links"
+    }
+  ]
+}
