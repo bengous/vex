@@ -1,0 +1,153 @@
+/**
+ * Analyze operation - sends image to VLM for analysis.
+ */
+
+import { Effect } from 'effect';
+import type { AnalysisArtifact, AnalysisResult, ImageArtifact, Issue } from '../../core/types.js';
+import { resolveProviderLayer } from '../../providers/index.js';
+import { VisionProvider } from '../../providers/service.js';
+import type { Operation, OperationError } from '../types.js';
+
+export interface AnalyzeConfig {
+  readonly provider: string;
+  readonly model?: string;
+  readonly prompt?: string;
+  readonly reasoning?: string;
+}
+
+/** Providers that support the reasoning effort option */
+const REASONING_PROVIDERS = ['codex-cli'] as const;
+
+export interface AnalyzeInput {
+  readonly image: ImageArtifact;
+}
+
+export interface AnalyzeOutput {
+  readonly analysis: AnalysisArtifact;
+  readonly result: AnalysisResult;
+}
+
+const DEFAULT_PROMPT = `Analyze this web page screenshot for visual and layout issues.
+
+For each issue found, provide:
+1. A clear description of the problem
+2. The severity (high, medium, low)
+3. The approximate location using grid cell references (A1-J99) or pixel coordinates
+4. A suggested fix
+
+Format your response as JSON:
+{
+  "issues": [
+    {
+      "id": 1,
+      "description": "...",
+      "severity": "high|medium|low",
+      "region": "A1" or {"x": 0, "y": 0, "width": 100, "height": 100},
+      "suggestedFix": "..."
+    }
+  ]
+}`;
+
+function makeError(message: string, cause?: unknown): OperationError {
+  return { _tag: 'OperationError', operation: 'analyze', message, cause };
+}
+
+function parseIssues(response: string): Issue[] {
+  try {
+    const jsonMatch = response.match(/\{[\s\S]*"issues"[\s\S]*\}/);
+    if (!jsonMatch) return [];
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed.issues)) return [];
+
+    return parsed.issues.map((issue: Record<string, unknown>, idx: number) => ({
+      id: typeof issue.id === 'number' ? issue.id : idx + 1,
+      description: String(issue.description ?? ''),
+      severity: ['high', 'medium', 'low'].includes(String(issue.severity)) ? issue.severity : 'medium',
+      region: issue.region ?? 'A1',
+      suggestedFix: issue.suggestedFix ? String(issue.suggestedFix) : undefined,
+    })) as Issue[];
+  } catch {
+    return [];
+  }
+}
+
+export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeConfig> = {
+  name: 'analyze',
+  description: 'Analyze image with VLM for visual issues',
+  inputTypes: ['image'],
+  outputTypes: ['analysis'],
+
+  execute: (input, config, ctx) =>
+    Effect.gen(function* () {
+      const { provider, model, prompt = DEFAULT_PROMPT, reasoning } = config;
+
+      // Validate reasoning is only used with supported providers
+      if (reasoning && !REASONING_PROVIDERS.includes(provider as (typeof REASONING_PROVIDERS)[number])) {
+        return yield* Effect.fail(
+          makeError(
+            `Provider '${provider}' does not support --reasoning. Supported: ${REASONING_PROVIDERS.join(', ')}`,
+          ),
+        );
+      }
+
+      ctx.logger.info(`Analyzing ${input.image.path} with ${provider}`);
+
+      // Get provider layer
+      console.log('[analyze] Resolving provider layer...');
+      const providerLayer = yield* resolveProviderLayer(provider).pipe(
+        Effect.mapError((e) => makeError(`Provider error: ${e.reason}`, e)),
+      );
+      console.log('[analyze] Provider layer resolved');
+
+      // Run analysis with provider
+      console.log('[analyze] Starting VLM call...');
+      const visionResult = yield* Effect.gen(function* () {
+        console.log('[analyze] Inside nested gen, getting VisionProvider...');
+        const visionProvider = yield* VisionProvider;
+        console.log('[analyze] Got VisionProvider, calling analyze...');
+        return yield* visionProvider.analyze([input.image.path], prompt, { model, reasoning });
+      }).pipe(
+        Effect.provide(providerLayer),
+        Effect.mapError((e) => makeError('Analysis failed', e)),
+      );
+      console.log('[analyze] VLM call complete');
+
+      const issues = parseIssues(visionResult.response);
+
+      const result: AnalysisResult = {
+        provider: visionResult.provider,
+        model: visionResult.model,
+        response: visionResult.response,
+        durationMs: visionResult.durationMs,
+        issues,
+      };
+
+      const outputPath = yield* Effect.tryPromise({
+        try: () => ctx.getArtifactPath('analysis'),
+        catch: (e) => makeError('Failed to get output path', e),
+      });
+
+      yield* Effect.tryPromise({
+        try: () => Bun.write(outputPath, JSON.stringify(result, null, 2)),
+        catch: (e) => makeError('Failed to save analysis', e),
+      });
+
+      const artifact: AnalysisArtifact = {
+        id: `analysis_${Date.now()}`,
+        type: 'analysis',
+        path: outputPath,
+        createdAt: new Date().toISOString(),
+        createdBy: 'analyze',
+        metadata: {
+          provider: result.provider,
+          model: result.model,
+          durationMs: result.durationMs,
+          issueCount: issues.length,
+        },
+      };
+
+      ctx.storeArtifact(artifact);
+      return { analysis: artifact, result };
+    }),
+};

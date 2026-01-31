@@ -1,0 +1,152 @@
+{
+  "url": "https://mpzinc.fr",
+  "timestamp": "2026-01-30T12:00:00.000Z",
+  "viewport": {
+    "width": 1920,
+    "height": 1080,
+    "deviceScaleFactor": 1,
+    "isMobile": false
+  },
+  "html": "<!DOCTYPE html><html>...</html>",
+  "elements": [
+    {
+      "tagName": "body",
+      "classes": ["gradient", "animate--hover-3d-lift"],
+      "boundingBox": { "x": 0, "y": 0, "width": 1920, "height": 8473 },
+      "computedStyles": {
+        "display": "grid",
+        "position": "static",
+        "width": "1920px",
+        "height": "8473px"
+      },
+      "attributes": { "class": "gradient animate--hover-3d-lift" }
+    },
+    {
+      "tagName": "header",
+      "classes": ["header", "header--middle-left", "page-width"],
+      "boundingBox": { "x": 270, "y": 0, "width": 1380, "height": 135 },
+      "computedStyles": {
+        "display": "grid",
+        "position": "static",
+        "width": "1380px",
+        "height": "135px"
+      },
+      "attributes": { "class": "header header--middle-left page-width" }
+    },
+    {
+      "tagName": "nav",
+      "classes": ["header__inline-menu"],
+      "boundingBox": { "x": 459, "y": 44, "width": 760, "height": 48 },
+      "computedStyles": {
+        "display": "block",
+        "position": "static",
+        "width": "760px",
+        "height": "48px"
+      },
+      "attributes": { "class": "header__inline-menu" }
+    },
+    {
+      "tagName": "main",
+      "id": "MainContent",
+      "classes": ["content-for-layout", "focus-none"],
+      "boundingBox": { "x": 0, "y": 136, "width": 1920, "height": 7590 },
+      "computedStyles": {
+        "display": "block",
+        "position": "static",
+        "width": "1920px",
+        "height": "7590px"
+      },
+      "attributes": {
+        "id": "MainContent",
+        "class": "content-for-layout focus-none",
+        "role": "main"
+      }
+    },
+    {
+      "tagName": "section",
+      "id": "shopify-section-header",
+      "classes": ["shopify-section", "section-header"],
+      "boundingBox": { "x": 0, "y": 0, "width": 1920, "height": 136 },
+      "computedStyles": {
+        "display": "block",
+        "position": "sticky",
+        "width": "1920px",
+        "height": "136px"
+      },
+      "attributes": {
+        "id": "shopify-section-header",
+        "class": "shopify-section section-header"
+      }
+    },
+    {
+      "tagName": "footer",
+      "classes": ["footer", "color-inverse", "gradient"],
+      "boundingBox": { "x": 0, "y": 7726, "width": 1920, "height": 747 },
+      "computedStyles": {
+        "display": "block",
+        "position": "static",
+        "width": "1920px",
+        "height": "747px"
+      },
+      "attributes": { "class": "footer color-inverse gradient" }
+    },
+    {
+      "tagName": "div",
+      "id": "CartDrawer",
+      "classes": ["cart-drawer"],
+      "boundingBox": { "x": 1460, "y": 0, "width": 460, "height": 1080 },
+      "computedStyles": {
+        "display": "block",
+        "position": "static",
+        "width": "460px",
+        "height": "1080px"
+      },
+      "attributes": { "id": "CartDrawer", "class": "cart-drawer" }
+    },
+    {
+      "tagName": "section",
+      "id": "shopify-section-actualites",
+      "classes": ["shopify-section"],
+      "boundingBox": { "x": 0, "y": 500, "width": 1920, "height": 400 },
+      "computedStyles": {
+        "display": "block",
+        "position": "static",
+        "width": "1920px",
+        "height": "400px"
+      },
+      "attributes": {
+        "id": "shopify-section-actualites",
+        "class": "shopify-section"
+      }
+    },
+    {
+      "tagName": "h2",
+      "classes": ["h1", "section-header__title"],
+      "boundingBox": { "x": 270, "y": 520, "width": 1380, "height": 60 },
+      "computedStyles": {
+        "display": "block",
+        "position": "static",
+        "width": "1380px",
+        "height": "60px",
+        "font-size": "48px"
+      },
+      "attributes": { "class": "h1 section-header__title" }
+    },
+    {
+      "tagName": "a",
+      "classes": ["footer__list-item", "link"],
+      "boundingBox": { "x": 100, "y": 7800, "width": 200, "height": 24 },
+      "computedStyles": {
+        "display": "inline",
+        "position": "static",
+        "width": "auto",
+        "height": "auto",
+        "font-size": "14px"
+      },
+      "attributes": {
+        "class": "footer__list-item link",
+        "href": "/pages/contact"
+      }
+    }
+  ]
+}
