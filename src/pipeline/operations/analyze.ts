@@ -3,7 +3,14 @@
  */
 
 import { Effect } from 'effect';
-import type { AnalysisArtifact, AnalysisResult, ImageArtifact, Issue } from '../../core/types.js';
+import {
+  type AnalysisArtifact,
+  type AnalysisResult,
+  GRID_CONFIG,
+  type ImageArtifact,
+  type Issue,
+  type ViewportConfig,
+} from '../../core/types.js';
 import { resolveProviderLayer } from '../../providers/index.js';
 import { VisionProvider } from '../../providers/service.js';
 import type { Operation, OperationError } from '../types.js';
@@ -27,8 +34,18 @@ export interface AnalyzeOutput {
   readonly result: AnalysisResult;
 }
 
-const DEFAULT_PROMPT = `Analyze this web page screenshot for visual and layout issues.
+/**
+ * Build the analysis prompt with optional viewport context.
+ * Includes viewport dimensions and grid scale to prevent VLMs from
+ * misinterpreting desktop screenshots as mobile viewports.
+ */
+function buildAnalysisPrompt(viewport?: ViewportConfig): string {
+  const viewportContext = viewport
+    ? `\nViewport: ${viewport.width}×${viewport.height}px (${viewport.isMobile ? 'mobile' : 'desktop'})
+Grid: Each cell (A1, B2, etc.) is ${GRID_CONFIG.cellSize}×${GRID_CONFIG.cellSize} pixels.\n`
+    : '';
 
+  return `Analyze this web page screenshot for visual and layout issues.${viewportContext}
 For each issue found, provide:
 1. A clear description of the problem
 2. The severity (high, medium, low)
@@ -47,6 +64,7 @@ Format your response as JSON:
     }
   ]
 }`;
+}
 
 function makeError(message: string, cause?: unknown): OperationError {
   return { _tag: 'OperationError', operation: 'analyze', message, cause };
@@ -80,7 +98,9 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
 
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
-      const { provider, model, prompt = DEFAULT_PROMPT, reasoning } = config;
+      const { provider, model, prompt, reasoning } = config;
+      const viewport = input.image.metadata.viewport;
+      const effectivePrompt = prompt ?? buildAnalysisPrompt(viewport);
 
       // Validate reasoning is only used with supported providers
       if (reasoning && !REASONING_PROVIDERS.includes(provider as (typeof REASONING_PROVIDERS)[number])) {
@@ -106,7 +126,7 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
         console.log('[analyze] Inside nested gen, getting VisionProvider...');
         const visionProvider = yield* VisionProvider;
         console.log('[analyze] Got VisionProvider, calling analyze...');
-        return yield* visionProvider.analyze([input.image.path], prompt, { model, reasoning });
+        return yield* visionProvider.analyze([input.image.path], effectivePrompt, { model, reasoning });
       }).pipe(
         Effect.provide(providerLayer),
         Effect.mapError((e) => makeError('Analysis failed', e)),
