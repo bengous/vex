@@ -19,7 +19,6 @@
  *   registerProvider("my-cli", MyCliProviderLayer);
  */
 
-import { BunContext } from '@effect/platform-bun';
 import { Effect, Layer } from 'effect';
 import { AnalysisFailed, VisionProvider, type VisionProviderService, type VisionQueryOptions } from './service.js';
 import { Subprocess, type SubprocessError, SubprocessLive } from './subprocess.js';
@@ -56,7 +55,7 @@ function mapSubprocessError(provider: string, err: SubprocessError): AnalysisFai
 
 /**
  * Create a Layer for a CLI provider.
- * Includes SubprocessLive and BunContext as dependencies.
+ * Includes SubprocessLive as a dependency.
  */
 export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<VisionProvider> {
   const { name, displayName, command, timeoutMs, modelAliases, knownModels, buildArgs } = config;
@@ -98,7 +97,5 @@ export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<V
     }),
   );
 
-  // Layer composition: VisionProvider requires Subprocess, which requires CommandExecutor
-  // BunContext.layer provides CommandExecutor (among other platform services)
-  return providerLayer.pipe(Layer.provide(SubprocessLive), Layer.provide(BunContext.layer));
+  return Layer.provide(providerLayer, SubprocessLive);
 }
