@@ -132,6 +132,40 @@ describe('issueFingerprint (via verifyChanges)', () => {
 
     expect(result.unchanged.length).toBe(1);
   });
+
+  test('fingerprint collision: different issues with same fingerprint are matched (known limitation)', async () => {
+    // Two semantically different issues can collide if they share:
+    // - Same severity
+    // - Same first 5 words (when sorted alphabetically)
+    // - Same rounded region (x/100, y/100)
+    //
+    // This is a known limitation of fuzzy matching. The test documents the behavior.
+    const issueA = createIssue({
+      id: 1,
+      description: 'Button text is too small',
+      severity: 'medium',
+      region: { x: 150, y: 250, width: 50, height: 50 }, // rounds to 2,3
+    });
+
+    const issueB = createIssue({
+      id: 2,
+      description: 'Text button is too small for mobile', // same first 5 words when sorted
+      severity: 'medium',
+      region: { x: 180, y: 280, width: 50, height: 50 }, // also rounds to 2,3
+    });
+
+    const baseline = createPipelineState([issueA]);
+    const current = createPipelineState([issueB]);
+
+    const result = await Effect.runPromise(verifyChanges(baseline, current));
+
+    // Both issues produce fingerprint: "medium:2,3:button is small text too"
+    // Despite being different issues, they match → counted as unchanged
+    expect(result.unchanged).toHaveLength(1);
+    expect(result.resolved).toHaveLength(0);
+    expect(result.introduced).toHaveLength(0);
+    expect(result.verdict).toBe('unchanged');
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
