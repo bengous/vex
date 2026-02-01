@@ -169,11 +169,20 @@ Human-in-the-loop controls based on confidence × severity × scope:
 - `sharp` - Image processing
 - `bun` - Runtime + shell commands (ripgrep)
 
+## Known Issues
+
+**Bun subprocess proc.exited hang:** In Effect.js contexts, `proc.exited` may never resolve even after process exits. Workaround in `providers/subprocess.ts`: read streams first, then `Promise.race` with 5s timeout fallback.
+
+**Codex MCP startup overhead:** User codex configs with MCPs add 30-60s per call. `codex-cli.ts` disables common MCPs via `-c mcp_servers.<name>.enabled=false`.
+
 ## Development
 
 ```bash
 bunx tsc --noEmit                    # Type check
 bunx biome check --write .           # Lint + format
+
+# Debug subprocess issues - logs are in providers/subprocess.ts
+# Look for [subprocess] prefixed console.log statements
 
 # Test CLI help
 bun vex/cli/index.ts --help
