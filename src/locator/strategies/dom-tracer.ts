@@ -48,7 +48,7 @@ function gridRefToCenter(gridRef: GridRef, imageWidth: number, imageHeight: numb
   };
 }
 
-function regionToCenter(region: Region, imageWidth = 1920, imageHeight = 1080): { x: number; y: number } {
+export function regionToCenter(region: Region, imageWidth = 1920, imageHeight = 1080): { x: number; y: number } {
   if (isGridRef(region)) {
     return gridRefToCenter(region, imageWidth, imageHeight);
   }
@@ -75,7 +75,7 @@ function boxArea(box: BoundingBox): number {
  * Find the smallest element containing the given point.
  * Prefers elements with id or class attributes for better selector building.
  */
-function findElementAtPosition(elements: readonly DOMElement[], x: number, y: number): DOMElement | null {
+export function findElementAtPosition(elements: readonly DOMElement[], x: number, y: number): DOMElement | null {
   let bestMatch: DOMElement | null = null;
   let bestArea = Number.POSITIVE_INFINITY;
 
@@ -97,7 +97,7 @@ function findElementAtPosition(elements: readonly DOMElement[], x: number, y: nu
 /**
  * Find all elements containing the given point, sorted by area (smallest first).
  */
-function findAllElementsAtPosition(elements: readonly DOMElement[], x: number, y: number): DOMElement[] {
+export function findAllElementsAtPosition(elements: readonly DOMElement[], x: number, y: number): DOMElement[] {
   return elements
     .filter((el) => pointInBox(x, y, el.boundingBox))
     .sort((a, b) => boxArea(a.boundingBox) - boxArea(b.boundingBox));
@@ -111,7 +111,7 @@ function findAllElementsAtPosition(elements: readonly DOMElement[], x: number, y
  * Build searchable CSS selectors from an element.
  * Returns selectors in order of specificity (most specific first).
  */
-function buildSelectors(element: DOMElement): string[] {
+export function buildSelectors(element: DOMElement): string[] {
   const selectors: string[] = [];
 
   // ID selector (highest specificity)
