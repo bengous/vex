@@ -270,6 +270,12 @@ function buildReasoning(selector: string, _match: GrepMatch, element: DOMElement
 // Strategy Implementation
 // ═══════════════════════════════════════════════════════════════════════════
 
+function getElementConfidence(hasId: boolean, hasUniqueClass: boolean): ElementMatch['confidence'] {
+  if (hasId) return 'high';
+  if (hasUniqueClass) return 'medium';
+  return 'low';
+}
+
 function createElementMatch(element: DOMElement, selectors: string[]): ElementMatch {
   const hasId = !!element.id;
   const hasUniqueClass = element.classes.some((c) => c.length > 5);
@@ -282,7 +288,7 @@ function createElementMatch(element: DOMElement, selectors: string[]): ElementMa
       boundingBox: element.boundingBox,
     },
     selectors,
-    confidence: hasId ? 'high' : hasUniqueClass ? 'medium' : 'low',
+    confidence: getElementConfidence(hasId, hasUniqueClass),
   };
 }
 
