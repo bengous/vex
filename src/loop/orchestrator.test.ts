@@ -90,6 +90,15 @@ function createLoopOptions(overrides: Partial<LoopOptions> = {}): LoopOptions {
   };
 }
 
+function createMockCallbacks(overrides: Partial<LoopCallbacks> = {}): LoopCallbacks {
+  return {
+    capture: mock(() => Effect.succeed({ state: createPipelineState(), issues: [] })),
+    applyFix: mock(() => Effect.succeed(createAppliedFix(createIssue(), createLocation()))),
+    promptHuman: mock(() => Effect.succeed({ action: 'skip' } as HumanResponse)),
+    ...overrides,
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // State Machine Transition Tests
 // ═══════════════════════════════════════════════════════════════════════════
@@ -104,11 +113,7 @@ describe('LoopOrchestrator', () => {
         });
       });
 
-      const callbacks: LoopCallbacks = {
-        capture: captureMock,
-        applyFix: mock(() => Effect.succeed(createAppliedFix(createIssue(), createLocation()))),
-        promptHuman: mock(() => Effect.succeed({ action: 'skip' } as HumanResponse)),
-      };
+      const callbacks = createMockCallbacks({ capture: captureMock });
 
       const options = createLoopOptions({ maxIterations: 5 });
       const orchestrator = new LoopOrchestrator(options, callbacks);
@@ -139,11 +144,7 @@ describe('LoopOrchestrator', () => {
         });
       });
 
-      const callbacks: LoopCallbacks = {
-        capture: captureMock,
-        applyFix: mock(() => Effect.succeed(createAppliedFix(persistentIssue, createLocation()))),
-        promptHuman: mock(() => Effect.succeed({ action: 'skip' } as HumanResponse)),
-      };
+      const callbacks = createMockCallbacks({ capture: captureMock });
 
       const options = createLoopOptions({ maxIterations: 3, interactive: false });
       const orchestrator = new LoopOrchestrator(options, callbacks);
@@ -181,11 +182,7 @@ describe('LoopOrchestrator', () => {
         },
       );
 
-      const callbacks: LoopCallbacks = {
-        capture: captureMock,
-        applyFix: mock(() => Effect.succeed(createAppliedFix(issue, createLocation()))),
-        promptHuman: promptMock,
-      };
+      const callbacks = createMockCallbacks({ capture: captureMock, promptHuman: promptMock });
 
       const options = createLoopOptions({ maxIterations: 1, interactive: true });
       const orchestrator = new LoopOrchestrator(options, callbacks);
@@ -219,11 +216,7 @@ describe('LoopOrchestrator', () => {
         },
       );
 
-      const callbacks: LoopCallbacks = {
-        capture: captureMock,
-        applyFix: applyFixMock,
-        promptHuman: mock(() => Effect.succeed({ action: 'skip' } as HumanResponse)),
-      };
+      const callbacks = createMockCallbacks({ capture: captureMock, applyFix: applyFixMock });
 
       const options = createLoopOptions({ maxIterations: 1, interactive: false });
       const orchestrator = new LoopOrchestrator(options, callbacks);
@@ -239,7 +232,9 @@ describe('LoopOrchestrator', () => {
   });
 
   describe('human review path', () => {
-    test('calls promptHuman for low-confidence issues in interactive mode', async () => {
+    test('completes flow for issues without locations in interactive mode', async () => {
+      // This test verifies the flow completes without error.
+      // Without DOM snapshot, issues have no locations → skip action → promptHuman not called.
       const issue = createIssue({ severity: 'medium' });
 
       const captureMock = mock((_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult, never> => {
@@ -249,33 +244,16 @@ describe('LoopOrchestrator', () => {
         });
       });
 
-      const promptMock = mock(
-        (
-          _issue: Issue,
-          _locations: readonly CodeLocation[],
-          _decision: GateDecision,
-        ): Effect.Effect<HumanResponse, never> => {
-          return Effect.succeed({ action: 'skip' });
-        },
-      );
+      const callbacks = createMockCallbacks({ capture: captureMock });
 
-      const callbacks: LoopCallbacks = {
-        capture: captureMock,
-        applyFix: mock(() => Effect.succeed(createAppliedFix(issue, createLocation()))),
-        promptHuman: promptMock,
-      };
-
-      // Force human review by setting low threshold
       const options = createLoopOptions({ maxIterations: 1, interactive: true });
       const orchestrator = new LoopOrchestrator(options, callbacks, {
-        humanReviewSeverity: 'low', // Review all severities
+        humanReviewSeverity: 'low',
       });
 
-      await Effect.runPromise(orchestrator.run());
+      const result = await Effect.runPromise(orchestrator.run());
 
-      // Without DOM snapshot, issues have no locations → skip action
-      // So promptHuman may not be called. The test verifies the flow works.
-      expect(promptMock.mock.calls.length).toBeGreaterThanOrEqual(0);
+      expect(result.status).toBe('completed-max-iterations');
     });
   });
 
@@ -301,12 +279,10 @@ describe('LoopOrchestrator', () => {
 
       const onIterationCompleteMock = mock(() => {});
 
-      const callbacks: LoopCallbacks = {
+      const callbacks = createMockCallbacks({
         capture: captureMock,
-        applyFix: mock(() => Effect.succeed(createAppliedFix(issue, createLocation()))),
-        promptHuman: mock(() => Effect.succeed({ action: 'skip' } as HumanResponse)),
         onIterationComplete: onIterationCompleteMock,
-      };
+      });
 
       const options = createLoopOptions({ maxIterations: 5, interactive: false });
       const orchestrator = new LoopOrchestrator(options, callbacks);
@@ -321,11 +297,7 @@ describe('LoopOrchestrator', () => {
 
   describe('error handling', () => {
     test('returns error when no viewport configured', async () => {
-      const callbacks: LoopCallbacks = {
-        capture: mock(() => Effect.succeed({ state: createPipelineState(), issues: [] })),
-        applyFix: mock(() => Effect.succeed(createAppliedFix(createIssue(), createLocation()))),
-        promptHuman: mock(() => Effect.succeed({ action: 'skip' } as HumanResponse)),
-      };
+      const callbacks = createMockCallbacks();
 
       const options = createLoopOptions({ viewports: [] }); // No viewports!
       const orchestrator = new LoopOrchestrator(options, callbacks);
@@ -354,11 +326,7 @@ describe('LoopOrchestrator', () => {
         });
       });
 
-      const callbacks: LoopCallbacks = {
-        capture: captureMock,
-        applyFix: mock(() => Effect.succeed(createAppliedFix(createIssue(), createLocation()))),
-        promptHuman: mock(() => Effect.succeed({ action: 'skip' } as HumanResponse)),
-      };
+      const callbacks = createMockCallbacks({ capture: captureMock });
 
       const options = createLoopOptions({ maxIterations: 5, interactive: false });
       const orchestrator = new LoopOrchestrator(options, callbacks);
@@ -382,11 +350,7 @@ describe('LoopOrchestrator', () => {
         });
       });
 
-      const callbacks: LoopCallbacks = {
-        capture: captureMock,
-        applyFix: mock(() => Effect.succeed(createAppliedFix(issue, createLocation()))),
-        promptHuman: mock(() => Effect.succeed({ action: 'skip' } as HumanResponse)),
-      };
+      const callbacks = createMockCallbacks({ capture: captureMock });
 
       const options = createLoopOptions({ maxIterations: 5, interactive: false });
       const orchestrator = new LoopOrchestrator(options, callbacks);
