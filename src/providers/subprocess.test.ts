@@ -1,5 +1,5 @@
-import { BunContext } from '@effect/platform-bun';
 import { describe, expect, it } from 'bun:test';
+import { BunContext } from '@effect/platform-bun';
 import { Effect, Exit, Layer } from 'effect';
 import { Subprocess, SubprocessLive } from './subprocess.js';
 

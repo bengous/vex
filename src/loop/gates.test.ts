@@ -177,14 +177,14 @@ describe('evaluateGates', () => {
     expect(results).toHaveLength(4);
 
     // First 2 should be auto-fix
-    expect(results[0]!.action).toBe('auto-fix');
-    expect(results[1]!.action).toBe('auto-fix');
+    expect(results[0]?.action).toBe('auto-fix');
+    expect(results[1]?.action).toBe('auto-fix');
 
     // 3rd and 4th should be demoted to human-review with limit reason
-    expect(results[2]!.action).toBe('human-review');
-    expect(results[2]!.reasoning).toContain('auto-fix limit reached');
-    expect(results[3]!.action).toBe('human-review');
-    expect(results[3]!.reasoning).toContain('auto-fix limit reached');
+    expect(results[2]?.action).toBe('human-review');
+    expect(results[2]?.reasoning).toContain('auto-fix limit reached');
+    expect(results[3]?.action).toBe('human-review');
+    expect(results[3]?.reasoning).toContain('auto-fix limit reached');
   });
 
   test('handles empty input', () => {
@@ -215,19 +215,19 @@ describe('filterByAction', () => {
   test('filters human-review correctly', () => {
     const filtered = filterByAction(decisions, 'human-review');
     expect(filtered).toHaveLength(1);
-    expect(filtered[0]!.issue.id).toBe(2);
+    expect(filtered[0]?.issue.id).toBe(2);
   });
 
   test('filters skip correctly', () => {
     const filtered = filterByAction(decisions, 'skip');
     expect(filtered).toHaveLength(1);
-    expect(filtered[0]!.issue.id).toBe(3);
+    expect(filtered[0]?.issue.id).toBe(3);
   });
 
   test('filters abort correctly', () => {
     const filtered = filterByAction(decisions, 'abort');
     expect(filtered).toHaveLength(1);
-    expect(filtered[0]!.issue.id).toBe(5);
+    expect(filtered[0]?.issue.id).toBe(5);
   });
 
   test('empty array returns empty', () => {
