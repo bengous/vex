@@ -310,15 +310,20 @@ describe('pixelsToCell', () => {
     expect(pixelsToCell(50000, 50000)).toBe('J99');
   });
 
-  test('negative coords treated as 0', () => {
-    // floor(-1/200) = -1, but clamped to 0 by Math.min
-    // Actually, no clamping to 0, just to max. Let's see actual behavior
-    // floor(-50/200) = -1 → col -1 → charCode(65-1) = '@' - this is a bug?
-    // Let's test what actually happens:
-    const result = pixelsToCell(-50, -50);
-    // The implementation doesn't clamp to 0, so this might produce invalid refs
-    // We're testing actual behavior, not ideal behavior
-    expect(typeof result).toBe('string');
+  test('negative coords produce invalid cell refs (undefined behavior)', () => {
+    // Implementation does NOT clamp negative inputs to 0.
+    // Math.floor(-50/200) = -1 → col -1 → charCode(65-1) = '@'
+    // This produces invalid cell refs like '@0' which fail isValidCellRef().
+    //
+    // This is documented undefined behavior - callers must ensure x >= 0, y >= 0.
+    // We test the actual output to prevent silent changes to this edge case.
+    expect(pixelsToCell(-50, -50)).toBe('@0');
+    expect(pixelsToCell(-200, 0)).toBe('@1');
+    expect(pixelsToCell(0, -200)).toBe('A0');
+
+    // Verify these are indeed invalid
+    expect(isValidCellRef('@0')).toBe(false);
+    expect(isValidCellRef('A0')).toBe(false);
   });
 
   test('round-trip: cellToPixels(pixelsToCell(x,y)) contains original point', () => {

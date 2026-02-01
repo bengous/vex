@@ -174,6 +174,7 @@ describe('evaluateGates', () => {
     const config: Partial<GateConfig> = { maxAutoFixesPerIteration: 2 };
 
     const results = evaluateGates(issuesWithLocations, config);
+    expect(results).toHaveLength(4);
 
     // First 2 should be auto-fix
     expect(results[0]!.action).toBe('auto-fix');
@@ -213,19 +214,19 @@ describe('filterByAction', () => {
 
   test('filters human-review correctly', () => {
     const filtered = filterByAction(decisions, 'human-review');
-    expect(filtered.length).toBe(1);
+    expect(filtered).toHaveLength(1);
     expect(filtered[0]!.issue.id).toBe(2);
   });
 
   test('filters skip correctly', () => {
     const filtered = filterByAction(decisions, 'skip');
-    expect(filtered.length).toBe(1);
+    expect(filtered).toHaveLength(1);
     expect(filtered[0]!.issue.id).toBe(3);
   });
 
   test('filters abort correctly', () => {
     const filtered = filterByAction(decisions, 'abort');
-    expect(filtered.length).toBe(1);
+    expect(filtered).toHaveLength(1);
     expect(filtered[0]!.issue.id).toBe(5);
   });
 
