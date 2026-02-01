@@ -30,11 +30,17 @@ const CONFIDENCE_ORDER: Record<CodeLocation['confidence'], number> = {
   low: 2,
 };
 
-function compareConfidence(a: CodeLocation['confidence'], b: CodeLocation['confidence']): number {
+/**
+ * Compare confidence levels for sorting (higher confidence = lower value = sorts first).
+ */
+export function compareConfidence(a: CodeLocation['confidence'], b: CodeLocation['confidence']): number {
   return CONFIDENCE_ORDER[a] - CONFIDENCE_ORDER[b];
 }
 
-function meetsMinConfidence(location: CodeLocation, minConfidence: CodeLocation['confidence']): boolean {
+/**
+ * Check if a location meets the minimum confidence threshold.
+ */
+export function meetsMinConfidence(location: CodeLocation, minConfidence: CodeLocation['confidence']): boolean {
   return CONFIDENCE_ORDER[location.confidence] <= CONFIDENCE_ORDER[minConfidence];
 }
 
@@ -42,11 +48,17 @@ function meetsMinConfidence(location: CodeLocation, minConfidence: CodeLocation[
 // Deduplication
 // ═══════════════════════════════════════════════════════════════════════════
 
-function locationKey(loc: CodeLocation): string {
+/**
+ * Generate a unique key for a code location (file:line).
+ */
+export function locationKey(loc: CodeLocation): string {
   return `${loc.file}:${loc.lineNumber ?? 0}`;
 }
 
-function dedupeLocations(locations: CodeLocation[]): CodeLocation[] {
+/**
+ * Remove duplicate locations, keeping the higher confidence version.
+ */
+export function dedupeLocations(locations: CodeLocation[]): CodeLocation[] {
   const seen = new Map<string, CodeLocation>();
 
   for (const loc of locations) {
