@@ -172,8 +172,7 @@ describe('dedupeLocations', () => {
     ];
 
     const deduped = dedupeLocations(locations);
-
-    expect(deduped.length).toBe(1);
+    expect(deduped).toHaveLength(1);
     expect(deduped[0]!.file).toBe('foo.liquid');
   });
 
@@ -185,8 +184,7 @@ describe('dedupeLocations', () => {
     ];
 
     const deduped = dedupeLocations(locations);
-
-    expect(deduped.length).toBe(1);
+    expect(deduped).toHaveLength(1);
     expect(deduped[0]!.confidence).toBe('high');
   });
 
@@ -198,8 +196,7 @@ describe('dedupeLocations', () => {
     ];
 
     const deduped = dedupeLocations(locations);
-
-    expect(deduped.length).toBe(3);
+    expect(deduped).toHaveLength(3);
     expect(deduped.map((l) => l.file)).toEqual(['first.liquid', 'second.liquid', 'third.liquid']);
   });
 
@@ -217,8 +214,7 @@ describe('dedupeLocations', () => {
     ];
 
     const deduped = dedupeLocations(locations);
-
-    expect(deduped.length).toBe(3);
+    expect(deduped).toHaveLength(3);
 
     const aLoc = deduped.find((l) => l.file === 'a.liquid');
     const bLoc = deduped.find((l) => l.file === 'b.liquid');
