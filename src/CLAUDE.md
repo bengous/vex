@@ -89,10 +89,11 @@ vex/
 │   ├── verify.ts   # Regression detection
 │   └── metrics.ts  # Iteration tracking
 │
-├── providers/      # VLM backends
-│   ├── ollama.ts   # Local Ollama
-│   ├── claude-cli.ts, codex-cli.ts, gemini-cli.ts
-│   └── registry.ts # Provider registration
+├── providers/      # VLM backends (directory-per-provider)
+│   ├── codex-cli/  # index.ts + config.toml (colocated via CODEX_HOME)
+│   ├── claude-cli/, gemini-cli/, ollama/
+│   ├── shared/     # cli-factory, subprocess, service, registry, introspection
+│   └── index.ts    # Re-exports shared, imports providers for registration
 │
 └── cli/            # @effect/cli based interface
     ├── commands/   # scan, analyze, locate, loop, verify, providers
@@ -177,7 +178,7 @@ Human-in-the-loop controls based on confidence × severity × scope:
 - Read `exitCode` AFTER streams complete (concurrent read hangs in Bun)
 - Don't capture `CommandExecutor` at layer construction - provide `BunContext.layer` where layer is composed
 
-**Codex MCP startup overhead:** User codex configs with MCPs add 30-60s per call. `codex-cli.ts` disables common MCPs via `-c mcp_servers.<name>.enabled=false`.
+**Codex MCP startup overhead:** User codex configs with MCPs add 30-60s per call. Solved via colocated `config.toml` in `providers/codex-cli/` with CODEX_HOME env var (set by `buildEnv` in CliProviderConfig).
 
 ## Development
 
