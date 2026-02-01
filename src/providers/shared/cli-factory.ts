@@ -42,6 +42,8 @@ export interface CliProviderConfig {
     imagePaths: readonly string[],
     options?: VisionQueryOptions,
   ) => readonly string[];
+  /** Build environment variables to pass to the subprocess */
+  readonly buildEnv?: () => Record<string, string>;
 }
 
 function mapSubprocessError(provider: string, err: SubprocessError): AnalysisFailed {
@@ -59,7 +61,7 @@ function mapSubprocessError(provider: string, err: SubprocessError): AnalysisFai
  * to satisfy the CommandExecutor requirement.
  */
 export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<VisionProvider> {
-  const { name, displayName, command, timeoutMs, modelAliases, knownModels, buildArgs } = config;
+  const { name, displayName, command, timeoutMs, modelAliases, knownModels, buildArgs, buildEnv } = config;
 
   const providerLayer = Layer.effect(
     VisionProvider,
@@ -75,8 +77,9 @@ export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<V
           const model = modelAliases?.[rawModel.toLowerCase()] ?? rawModel;
           const timeout = options?.timeoutMs ?? timeoutMs;
           const args = buildArgs(model, prompt, images, options);
+          const env = buildEnv?.();
 
-          return subprocess.exec(command, args, timeout).pipe(
+          return subprocess.exec(command, args, timeout, env).pipe(
             Effect.map((result) => ({
               response: result.stdout.trim(),
               durationMs: result.durationMs,

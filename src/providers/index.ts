@@ -9,7 +9,8 @@
  * @module vex/providers
  */
 
-export { getAllProviders, getProviderInfo, type ProviderInfo } from './introspection.js';
+// Re-export shared types and services
+export { getAllProviders, getProviderInfo, type ProviderInfo } from './shared/introspection.js';
 
 export {
   getAllProviderMetadata,
@@ -18,7 +19,7 @@ export {
   type ProviderMetadata,
   registerProvider,
   resolveProviderLayer,
-} from './registry.js';
+} from './shared/registry.js';
 
 export {
   AnalysisFailed,
@@ -28,10 +29,12 @@ export {
   type VisionProviderService,
   type VisionQueryOptions,
   type VisionResult,
-} from './service.js';
+} from './shared/service.js';
+
+export { Subprocess, SubprocessLive, SubprocessError, type SubprocessResult } from './shared/subprocess.js';
 
 // Import providers for self-registration (order matters: first registered = default)
-import './ollama.js';
-import './claude-cli.js';
-import './codex-cli.js';
-import './gemini-cli.js';
+import './ollama/index.js';
+import './claude-cli/index.js';
+import './codex-cli/index.js';
+import './gemini-cli/index.js';
