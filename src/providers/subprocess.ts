@@ -1,14 +1,12 @@
 /**
- * Subprocess execution service using @effect/platform Command.
- * Provides typed errors and proper timeout handling.
+ * Subprocess execution service.
+ * Abstracts Bun.spawn with timeout handling and proper cleanup.
  *
  * LLM Usage: When implementing CLI providers, use this instead of raw Bun.spawn.
  * The service handles timeout cleanup and provides typed errors.
  */
 
-import { Command } from '@effect/platform';
-import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { Context, Data, Duration, Effect, Layer, String as Str, Stream } from 'effect';
+import { Context, Data, Effect, Layer } from 'effect';
 
 export class SubprocessError extends Data.TaggedError('SubprocessError')<{
   readonly command: string;
@@ -44,96 +42,104 @@ export interface SubprocessService {
 
 export class Subprocess extends Context.Tag('Subprocess')<Subprocess, SubprocessService>() {}
 
-/** Collect stream output as a string */
-const runString = <E, R>(stream: Stream.Stream<Uint8Array, E, R>) =>
-  stream.pipe(Stream.decodeText(), Stream.runFold(Str.empty, Str.concat));
+/** Read stream to Blob then to text - works better with Bun.spawn */
+async function readStream(stream: ReadableStream<Uint8Array> | null): Promise<string> {
+  if (!stream) return '';
+  try {
+    const blob = await Bun.readableStreamToBlob(stream);
+    return await blob.text();
+  } catch {
+    return '';
+  }
+}
 
 /** Build a descriptive command string for error messages */
 const cmdLabel = (command: string, args: readonly string[]) =>
   args.length > 3 ? `${command} ${args.slice(0, 3).join(' ')}...` : `${command} ${args.join(' ')}`;
 
-/**
- * Live implementation using @effect/platform Command.
- * Requires CommandExecutor (provided by BunContext.layer at CLI entry).
- */
-export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = Layer.effect(
-  Subprocess,
-  Effect.gen(function* () {
-    // Capture CommandExecutor at layer construction time
-    const executor = yield* CommandExecutor;
+/** Live implementation using Bun.spawn wrapped in Effect */
+export const SubprocessLive = Layer.succeed(Subprocess, {
+  exec: (command, args, timeoutMs) =>
+    Effect.async<SubprocessResult, SubprocessError>((resume) => {
+      const label = cmdLabel(command, args);
+      const startMs = performance.now();
 
-    return {
-      exec: (command, args, timeoutMs) => {
-        const label = cmdLabel(command, args);
-        const cmd = Command.make(command, ...args);
+      const proc = Bun.spawn([command, ...args], {
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
 
-        const runProcess = Command.start(cmd).pipe(
-          Effect.flatMap((process) =>
-            Effect.all([process.exitCode, runString(process.stdout), runString(process.stderr)], { concurrency: 3 }),
-          ),
-          Effect.scoped,
-        );
+      // Set up timeout
+      const timeoutId = setTimeout(() => {
+        proc.kill();
+      }, timeoutMs);
 
-        return Effect.timed(runProcess).pipe(
-          Effect.timeoutFail({
-            duration: Duration.millis(timeoutMs),
-            onTimeout: () =>
-              new SubprocessError({
-                command: label,
-                exitCode: null,
-                stderr: '',
-                timedOut: true,
-              }),
-          }),
-          Effect.flatMap(([duration, [exitCode, stdout, stderr]]) => {
-            const durationMs = Math.round(Duration.toMillis(duration));
+      // Read streams first, then get exit code
+      // This works around a Bun issue where proc.exited can hang
+      Promise.all([readStream(proc.stdout), readStream(proc.stderr)])
+        .then(async ([stdout, stderr]) => {
+          // Wait for exit with a fallback timeout
+          const exitCode = await Promise.race([
+            proc.exited,
+            new Promise<number>((resolve) => setTimeout(() => resolve(0), 5000)),
+          ]);
 
-            if (exitCode !== 0) {
-              return Effect.fail(
+          clearTimeout(timeoutId);
+          const durationMs = Math.round(performance.now() - startMs);
+          const timedOut = proc.signalCode === 'SIGTERM' || proc.signalCode === 'SIGKILL';
+
+          if (timedOut) {
+            resume(
+              Effect.fail(
+                new SubprocessError({
+                  command: label,
+                  exitCode: null,
+                  stderr,
+                  timedOut: true,
+                }),
+              ),
+            );
+            return;
+          }
+
+          if (exitCode !== 0) {
+            resume(
+              Effect.fail(
                 new SubprocessError({
                   command: label,
                   exitCode,
                   stderr,
                   timedOut: false,
                 }),
-              );
-            }
+              ),
+            );
+            return;
+          }
 
-            return Effect.succeed({ stdout, stderr, exitCode, durationMs });
-          }),
-          Effect.catchTag('SystemError', (err) =>
+          resume(Effect.succeed({ stdout, stderr, exitCode, durationMs }));
+        })
+        .catch((err) => {
+          clearTimeout(timeoutId);
+          resume(
             Effect.fail(
               new SubprocessError({
                 command: label,
                 exitCode: null,
-                stderr: err.message,
+                stderr: err instanceof Error ? err.message : String(err),
                 timedOut: false,
               }),
             ),
-          ),
-          Effect.catchTag('BadArgument', (err) =>
-            Effect.fail(
-              new SubprocessError({
-                command: label,
-                exitCode: null,
-                stderr: err.message,
-                timedOut: false,
-              }),
-            ),
-          ),
-          // Satisfy CommandExecutor requirement with captured executor
-          Effect.provideService(CommandExecutor, executor),
-        );
-      },
+          );
+        });
+    }),
 
-      commandExists: (cmd) =>
-        Command.make('which', cmd).pipe(
-          Command.exitCode,
-          Effect.map((code) => code === 0),
-          Effect.catchAll(() => Effect.succeed(false)),
-          // Satisfy CommandExecutor requirement with captured executor
-          Effect.provideService(CommandExecutor, executor),
-        ),
-    } satisfies SubprocessService;
-  }),
-);
+  commandExists: (command) =>
+    Effect.promise(async () => {
+      try {
+        const proc = Bun.spawn(['which', command], { stdout: 'ignore', stderr: 'ignore' });
+        return (await proc.exited) === 0;
+      } catch {
+        return false;
+      }
+    }),
+});
