@@ -70,12 +70,16 @@ export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<V
         displayName,
 
         analyze: (images, prompt, options) => {
+          console.log(`[cli-factory] analyze called for provider: ${name}`);
           const rawModel = options?.model ?? '';
           const model = modelAliases?.[rawModel.toLowerCase()] ?? rawModel;
           const timeout = options?.timeoutMs ?? timeoutMs;
           const args = buildArgs(model, prompt, images, options);
+          console.log(`[cli-factory] Built args: ${command} ${args.slice(0, 3).join(' ')}...`);
+          console.log(`[cli-factory] Calling subprocess.exec...`);
 
           return subprocess.exec(command, args, timeout).pipe(
+            Effect.tap(() => console.log(`[cli-factory] subprocess.exec completed`)),
             Effect.map((result) => ({
               response: result.stdout.trim(),
               durationMs: result.durationMs,
