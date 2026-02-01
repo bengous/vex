@@ -188,13 +188,11 @@ export const loopCommand = Command.make(
   },
   (args) =>
     Effect.gen(function* () {
-      // Handle --list-devices
       if (args.listDevices) {
         listDevices();
         return;
       }
 
-      // Convert to LoopCliArgs format
       const cliArgs: LoopCliArgs = {
         url: args.url,
         preset: args.preset,
@@ -209,10 +207,8 @@ export const loopCommand = Command.make(
         project: args.project,
       };
 
-      // Resolve options with preset/defaults
       const resolved = yield* resolveLoopOptions(cliArgs);
 
-      // Get viewport for first device
       const deviceResult = lookupDevice(resolved.devices[0] as string);
       if (!deviceResult) {
         console.error(`Unknown device: ${resolved.devices[0]}`);
@@ -220,7 +216,6 @@ export const loopCommand = Command.make(
       }
       const viewport: ViewportConfig = deviceResult.preset.viewport;
 
-      // Create loop session directory
       const sessionId = `loop-${generateSessionId()}`;
       const sessionDir = join(resolved.outputDir, sessionId);
       yield* Effect.promise(() => mkdir(sessionDir, { recursive: true }));
@@ -239,7 +234,6 @@ export const loopCommand = Command.make(
         dryRun: true, // Phase 1: always dry-run
       };
 
-      // Print configuration
       console.log(`Starting improvement loop for ${loopOptions.url}`);
       console.log(`Max iterations: ${loopOptions.maxIterations}`);
       console.log(`Auto-fix threshold: ${loopOptions.autoFixThreshold}`);

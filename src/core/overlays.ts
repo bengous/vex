@@ -149,7 +149,6 @@ export function generateGridSvg(width: number, height: number, options: { showLa
   const lines: string[] = [];
   const labels: string[] = [];
 
-  // Vertical lines
   for (let col = 0; col <= grid.cols; col++) {
     const x = col * grid.cellSize;
     if (x <= width) {
@@ -161,7 +160,6 @@ export function generateGridSvg(width: number, height: number, options: { showLa
     }
   }
 
-  // Horizontal lines
   for (let row = 0; row <= grid.rows; row++) {
     const y = row * grid.cellSize;
     if (y <= height) {
@@ -173,7 +171,6 @@ export function generateGridSvg(width: number, height: number, options: { showLa
     }
   }
 
-  // Cell labels
   if (showLabels) {
     for (let row = 0; row < grid.rows; row++) {
       for (let col = 0; col < grid.cols; col++) {

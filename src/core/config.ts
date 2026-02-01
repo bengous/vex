@@ -84,7 +84,6 @@ function loadVexrcFile(projectRoot: string): Partial<VexConfig> | null {
 export function loadConfig(projectRoot?: string): VexConfig {
   const root = projectRoot ?? findProjectRoot();
 
-  // Priority 1: Environment variable
   const envOutputDir = process.env.VEX_OUTPUT_DIR;
   if (envOutputDir) {
     const outputDir = resolve(root, envOutputDir);
@@ -94,7 +93,6 @@ export function loadConfig(projectRoot?: string): VexConfig {
     };
   }
 
-  // Priority 2: .vexrc.json
   const vexrc = loadVexrcFile(root);
   if (vexrc?.outputDir) {
     const outputDir = resolve(root, vexrc.outputDir);
@@ -104,7 +102,6 @@ export function loadConfig(projectRoot?: string): VexConfig {
     };
   }
 
-  // No configuration found
   throw new VexConfigError(
     `vex output directory not configured.
 

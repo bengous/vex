@@ -44,7 +44,6 @@ export interface CliProviderConfig {
   ) => readonly string[];
 }
 
-/** Convert SubprocessError to AnalysisFailed */
 function mapSubprocessError(provider: string, err: SubprocessError): AnalysisFailed {
   return new AnalysisFailed({
     provider,

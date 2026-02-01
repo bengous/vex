@@ -19,7 +19,6 @@ import { Command } from '@effect/cli';
 import { BunContext, BunRuntime } from '@effect/platform-bun';
 import { Effect } from 'effect';
 
-// Commands (imported as migrated)
 import { analyzeCommand } from './commands/analyze.js';
 import { locateCommand } from './commands/locate.js';
 import { loopCommand } from './commands/loop.js';
@@ -52,5 +51,4 @@ const cli = Command.run(vexCommand, {
   version: VERSION,
 });
 
-// Run the CLI
 Effect.suspend(() => cli(process.argv)).pipe(Effect.provide(BunContext.layer), BunRuntime.runMain);
