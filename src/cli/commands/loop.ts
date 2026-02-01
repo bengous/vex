@@ -30,8 +30,8 @@ import {
   projectOption,
   providerOption,
 } from '../options.js';
-import { resolveLoopOptions } from '../resolve.js';
 import type { LoopCliArgs } from '../resolve.js';
+import { resolveLoopOptions } from '../resolve.js';
 // Import providers for self-registration
 import '../../providers/index.js';
 

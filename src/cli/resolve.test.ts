@@ -2,10 +2,10 @@
  * Tests for CLI override resolution logic.
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { Effect, Option } from 'effect';
-import { resolveScanOptions, resolveLoopOptions } from './resolve.js';
-import type { ScanCliArgs, LoopCliArgs } from './resolve.js';
+import type { LoopCliArgs, ScanCliArgs } from './resolve.js';
+import { resolveLoopOptions, resolveScanOptions } from './resolve.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Helpers

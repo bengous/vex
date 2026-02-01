@@ -25,56 +25,56 @@
  * ```
  */
 
-// Schema exports
-export {
-  // Primitives
-  Url,
-  DeviceId,
-  DeviceSpec,
-  ProviderName,
-  ReasoningLevel,
-  AutoFixThreshold,
-  PositiveInt,
-  // Providers
-  OllamaProvider,
-  CodexProvider,
-  ClaudeProvider,
-  GeminiProvider,
-  ProviderSpec,
-  // Presets
-  ScanPreset,
-  LoopPreset,
-  // Root config
-  VexConfig,
-  // Helper
-  defineConfig,
-} from './schema.js';
-
-// Type exports
-export type {
-  Url as UrlType,
-  DeviceId as DeviceIdType,
-  DeviceSpec as DeviceSpecType,
-  ProviderName as ProviderNameType,
-  ReasoningLevel as ReasoningLevelType,
-  AutoFixThreshold as AutoFixThresholdType,
-  PositiveInt as PositiveIntType,
-  OllamaProvider as OllamaProviderType,
-  CodexProvider as CodexProviderType,
-  ClaudeProvider as ClaudeProviderType,
-  GeminiProvider as GeminiProviderType,
-  ProviderSpec as ProviderSpecType,
-  ScanPreset as ScanPresetType,
-  LoopPreset as LoopPresetType,
-  VexConfig as VexConfigType,
-} from './schema.js';
 
 // Loader exports
 export {
   ConfigError,
+  findProjectRoot,
+  getLoopPreset,
+  getScanPreset,
   loadConfig,
   loadConfigOptional,
-  getScanPreset,
-  getLoopPreset,
-  findProjectRoot,
 } from './loader.js';
+
+// Type exports
+export type {
+  AutoFixThreshold as AutoFixThresholdType,
+  ClaudeProvider as ClaudeProviderType,
+  CodexProvider as CodexProviderType,
+  DeviceId as DeviceIdType,
+  DeviceSpec as DeviceSpecType,
+  GeminiProvider as GeminiProviderType,
+  LoopPreset as LoopPresetType,
+  OllamaProvider as OllamaProviderType,
+  PositiveInt as PositiveIntType,
+  ProviderName as ProviderNameType,
+  ProviderSpec as ProviderSpecType,
+  ReasoningLevel as ReasoningLevelType,
+  ScanPreset as ScanPresetType,
+  Url as UrlType,
+  VexConfig as VexConfigType,
+} from './schema.js';
+// Schema exports
+export {
+  AutoFixThreshold,
+  ClaudeProvider,
+  CodexProvider,
+  DeviceId,
+  DeviceSpec,
+  // Helper
+  defineConfig,
+  GeminiProvider,
+  LoopPreset,
+  // Providers
+  OllamaProvider,
+  PositiveInt,
+  ProviderName,
+  ProviderSpec,
+  ReasoningLevel,
+  // Presets
+  ScanPreset,
+  // Primitives
+  Url,
+  // Root config
+  VexConfig,
+} from './schema.js';

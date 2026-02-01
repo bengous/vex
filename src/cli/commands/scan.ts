@@ -23,8 +23,8 @@ import {
   providerOption,
   reasoningOption,
 } from '../options.js';
-import { resolveScanOptions } from '../resolve.js';
 import type { ScanCliArgs } from '../resolve.js';
+import { resolveScanOptions } from '../resolve.js';
 // Import providers for self-registration
 import '../../providers/index.js';
 
