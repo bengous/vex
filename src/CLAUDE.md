@@ -207,6 +207,22 @@ bun vex/cli/index.ts scan <url> --device iphone-15-pro --placeholder-media
 bun vex/cli/index.ts providers --json
 ```
 
+## E2E Test Setup
+
+The E2E test (`vex/e2e/pipeline.e2e.test.ts`) exercises the full pipeline with real VLM providers. It requires codex-cli authentication:
+
+```bash
+# Symlink your codex auth to the provider directory
+ln -sf ~/.codex/auth.json vex/providers/codex-cli/auth.json
+
+# Run E2E test
+bun test vex/e2e/
+```
+
+**Why symlink?** The codex-cli provider uses `CODEX_HOME` override to disable MCPs (faster execution). This loses access to `~/.codex/auth.json`, so we symlink it.
+
+**TODO:** Find a cleaner auth strategy that doesn't require manual symlink setup.
+
 ## Testing Patterns
 
 **Fixture factories with spread overrides:**
