@@ -1,0 +1,6 @@
+# Codex runtime files (created when CODEX_HOME points here)
+auth.json
+models_cache.json
+sessions/
+skills/
+tmp/
