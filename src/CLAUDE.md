@@ -199,6 +199,10 @@ bun vex/cli/index.ts scan <url> --device iphone-15-pro --placeholder-media
 bun vex/cli/index.ts providers --json
 ```
 
+## Learning Resources
+
+- **[docs/EFFECT-PATTERNS.md](docs/EFFECT-PATTERNS.md)** - Comprehensive guide to Effect.js patterns used in this codebase with ASCII diagrams and real examples
+
 ## Consolidation Note
 
 vex consolidates functionality from:
