@@ -11,8 +11,7 @@ import {
   type Issue,
   type ViewportConfig,
 } from '../../core/types.js';
-import { resolveProviderLayer } from '../../providers/index.js';
-import { VisionProvider } from '../../providers/service.js';
+import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
 import type { Operation, OperationError } from '../types.js';
 
 export interface AnalyzeConfig {

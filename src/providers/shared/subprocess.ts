@@ -31,11 +31,13 @@ export interface SubprocessService {
   /**
    * Execute a command with timeout.
    * Returns stdout/stderr on success, SubprocessError on failure.
+   * @param env - Optional environment variables to merge with process.env
    */
   readonly exec: (
     command: string,
     args: readonly string[],
     timeoutMs: number,
+    env?: Record<string, string>,
   ) => Effect.Effect<SubprocessResult, SubprocessError>;
 
   /**
@@ -80,9 +82,14 @@ export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = L
     const executor = yield* CommandExecutor;
 
     return {
-      exec: (command, args, timeoutMs) => {
+      exec: (command, args, timeoutMs, env) => {
         const label = cmdLabel(command, args);
-        const cmd = Command.make(command, ...args);
+        let cmd = Command.make(command, ...args);
+
+        // Merge provided env vars with process.env
+        if (env && Object.keys(env).length > 0) {
+          cmd = Command.env(cmd, env);
+        }
 
         const runProcess = Effect.scoped(
           Effect.gen(function* () {
