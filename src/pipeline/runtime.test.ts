@@ -10,8 +10,8 @@ import { mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Effect, Exit } from 'effect';
-import type { PipelineDefinition } from './types.js';
 import { runPipeline } from './runtime.js';
+import type { PipelineDefinition } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Fixtures
