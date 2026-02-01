@@ -3,8 +3,8 @@
  * Shells out to the Google `gemini` command for vision analysis.
  */
 
-import { CLI_DEFAULT_TIMEOUT_MS, type CliProviderConfig, createCliProviderLayer } from './cli-factory.js';
-import { registerProvider } from './registry.js';
+import { CLI_DEFAULT_TIMEOUT_MS, type CliProviderConfig, createCliProviderLayer } from '../shared/cli-factory.js';
+import { registerProvider } from '../shared/registry.js';
 
 const config: CliProviderConfig = {
   name: 'gemini-cli',
