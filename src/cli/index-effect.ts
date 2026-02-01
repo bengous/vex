@@ -20,12 +20,12 @@ import { BunContext, BunRuntime } from '@effect/platform-bun';
 import { Effect } from 'effect';
 
 // Commands (imported as migrated)
-import { scanCommand } from './commands/scan.js';
+import { analyzeCommand } from './commands/analyze.js';
+import { locateCommand } from './commands/locate.js';
 import { loopCommand } from './commands/loop.js';
-// import { providersCommand } from './commands/providers.js';
-// import { analyzeCommand } from './commands/analyze.js';
-// import { locateCommand } from './commands/locate.js';
-// import { verifyCommand } from './commands/verify.js';
+import { providersCommand } from './commands/providers.js';
+import { scanCommand } from './commands/scan.js';
+import { verifyCommand } from './commands/verify.js';
 
 const VERSION = '0.1.0';
 
@@ -41,7 +41,7 @@ const vexCommand = Command.make('vex', {}, () =>
   }),
 ).pipe(
   Command.withDescription('Visual extraction and analysis tool'),
-  Command.withSubcommands([scanCommand, loopCommand]),
+  Command.withSubcommands([analyzeCommand, locateCommand, loopCommand, providersCommand, scanCommand, verifyCommand]),
 );
 
 /**
