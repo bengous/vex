@@ -6,8 +6,6 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import type { GridConfig } from './types.js';
-import { GRID_CONFIG } from './types.js';
 import {
   calculateGrid,
   cellCenter,
@@ -17,6 +15,8 @@ import {
   parseCellRef,
   pixelsToCell,
 } from './overlays.js';
+import type { GridConfig } from './types.js';
+import { GRID_CONFIG } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // calculateGrid Tests

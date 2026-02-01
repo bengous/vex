@@ -7,7 +7,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import type { CodeLocation } from '../core/types.js';
-import { compareConfidence, dedupeLocations, toFileLineKey, meetsMinConfidence, StrategyResolver } from './resolver.js';
+import { compareConfidence, dedupeLocations, meetsMinConfidence, StrategyResolver, toFileLineKey } from './resolver.js';
 import type { LocatorStrategy } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -72,9 +72,9 @@ describe('compareConfidence', () => {
 
     locations.sort((a, b) => compareConfidence(a.confidence, b.confidence));
 
-    expect(locations[0]!.confidence).toBe('high');
-    expect(locations[1]!.confidence).toBe('medium');
-    expect(locations[2]!.confidence).toBe('low');
+    expect(locations[0]?.confidence).toBe('high');
+    expect(locations[1]?.confidence).toBe('medium');
+    expect(locations[2]?.confidence).toBe('low');
   });
 });
 
@@ -173,7 +173,7 @@ describe('dedupeLocations', () => {
 
     const deduped = dedupeLocations(locations);
     expect(deduped).toHaveLength(1);
-    expect(deduped[0]!.file).toBe('foo.liquid');
+    expect(deduped[0]?.file).toBe('foo.liquid');
   });
 
   test('keeps higher confidence when duplicate', () => {
@@ -185,7 +185,7 @@ describe('dedupeLocations', () => {
 
     const deduped = dedupeLocations(locations);
     expect(deduped).toHaveLength(1);
-    expect(deduped[0]!.confidence).toBe('high');
+    expect(deduped[0]?.confidence).toBe('high');
   });
 
   test('preserves order of first occurrence', () => {
@@ -219,8 +219,8 @@ describe('dedupeLocations', () => {
     const aLoc = deduped.find((l) => l.file === 'a.liquid');
     const bLoc = deduped.find((l) => l.file === 'b.liquid');
 
-    expect(aLoc!.confidence).toBe('high');
-    expect(bLoc!.confidence).toBe('medium');
+    expect(aLoc?.confidence).toBe('high');
+    expect(bLoc?.confidence).toBe('medium');
   });
 });
 

@@ -9,8 +9,8 @@ import { describe, expect, test } from 'bun:test';
 import { Effect } from 'effect';
 import type { Issue } from '../core/types.js';
 import type { PipelineDefinition, PipelineState } from '../pipeline/types.js';
-import { isImproved, isResolved, verifyChanges } from './verify.js';
 import type { VerificationVerdict } from './types.js';
+import { isImproved, isResolved, verifyChanges } from './verify.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Fixtures
