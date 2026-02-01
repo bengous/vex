@@ -171,7 +171,11 @@ Human-in-the-loop controls based on confidence × severity × scope:
 
 ## Known Issues
 
-**Bun subprocess proc.exited hang:** In Effect.js contexts, `proc.exited` may never resolve even after process exits. Workaround in `providers/subprocess.ts`: read streams first, then `Promise.race` with 5s timeout fallback.
+**@effect/platform subprocess constraints:** `providers/subprocess.ts` uses `@effect/platform` Command module. Critical patterns:
+
+- Drain stdout/stderr in parallel (sequential can deadlock if buffer fills)
+- Read `exitCode` AFTER streams complete (concurrent read hangs in Bun)
+- Don't capture `CommandExecutor` at layer construction - provide `BunContext.layer` where layer is composed
 
 **Codex MCP startup overhead:** User codex configs with MCPs add 30-60s per call. `codex-cli.ts` disables common MCPs via `-c mcp_servers.<name>.enabled=false`.
 
