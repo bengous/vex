@@ -19,6 +19,7 @@
  *   registerProvider("my-cli", MyCliProviderLayer);
  */
 
+import { BunContext } from '@effect/platform-bun';
 import { Effect, Layer } from 'effect';
 import { AnalysisFailed, VisionProvider, type VisionProviderService, type VisionQueryOptions } from './service.js';
 import { Subprocess, type SubprocessError, SubprocessLive } from './subprocess.js';
@@ -55,7 +56,7 @@ function mapSubprocessError(provider: string, err: SubprocessError): AnalysisFai
 
 /**
  * Create a Layer for a CLI provider.
- * Includes SubprocessLive as a dependency.
+ * Includes SubprocessLive and BunContext as dependencies.
  */
 export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<VisionProvider> {
   const { name, displayName, command, timeoutMs, modelAliases, knownModels, buildArgs } = config;
@@ -70,16 +71,12 @@ export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<V
         displayName,
 
         analyze: (images, prompt, options) => {
-          console.log(`[cli-factory] analyze called for provider: ${name}`);
           const rawModel = options?.model ?? '';
           const model = modelAliases?.[rawModel.toLowerCase()] ?? rawModel;
           const timeout = options?.timeoutMs ?? timeoutMs;
           const args = buildArgs(model, prompt, images, options);
-          console.log(`[cli-factory] Built args: ${command} ${args.slice(0, 3).join(' ')}...`);
-          console.log(`[cli-factory] Calling subprocess.exec...`);
 
           return subprocess.exec(command, args, timeout).pipe(
-            Effect.tap(() => console.log(`[cli-factory] subprocess.exec completed`)),
             Effect.map((result) => ({
               response: result.stdout.trim(),
               durationMs: result.durationMs,
@@ -101,5 +98,7 @@ export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<V
     }),
   );
 
-  return Layer.provide(providerLayer, SubprocessLive);
+  // Layer composition: VisionProvider requires Subprocess, which requires CommandExecutor
+  // BunContext.layer provides CommandExecutor (among other platform services)
+  return providerLayer.pipe(Layer.provide(SubprocessLive), Layer.provide(BunContext.layer));
 }
