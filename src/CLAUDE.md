@@ -5,25 +5,68 @@ Visual analysis tool for web layouts with VLM-powered issue detection and iterat
 ## Usage
 
 ```bash
-# CLI commands
+# CLI commands (use --help for full options)
 bun vex/cli/index.ts scan <url>           # Capture and analyze URL
 bun vex/cli/index.ts analyze <image>      # Analyze existing screenshot
 bun vex/cli/index.ts locate <session>     # Find code for issues
 bun vex/cli/index.ts loop <url>           # Iterative improvement (--dry-run for safe mode)
 bun vex/cli/index.ts verify <session>     # Compare iterations
+bun vex/cli/index.ts providers            # List available VLM providers
 
-# Example: dry-run loop (no code changes)
-bun vex/cli/index.ts loop https://example.com \
-  --project /path/to/repo --max-iterations 2 --dry-run
+# With presets (from vex.config.ts)
+bun vex/cli/index.ts scan <url> --preset quick
+bun vex/cli/index.ts loop <url> --preset safe --project .
+
+# Direct options (override preset or use without config)
+bun vex/cli/index.ts scan <url> --device iphone-15-pro --provider codex-cli --reasoning low
+bun vex/cli/index.ts loop <url> --project . --max-iterations 3 --dry-run
 
 # API usage (primary interface)
 import { runPipeline, presets } from './vex/index.js';
 ```
 
+## Configuration
+
+Create `vex.config.ts` from the example:
+
+```bash
+cp vex.config.example.ts vex.config.ts
+```
+
+```typescript
+// vex.config.ts
+import { defineConfig } from './vex/config/index.js';
+
+export default defineConfig({
+  outputDir: 'vex-output',
+  scanPresets: {
+    quick: {
+      devices: 'desktop-1920',
+      provider: { name: 'codex-cli', model: 'gpt-5.2', reasoning: 'low' },
+    },
+  },
+  loopPresets: {
+    safe: {
+      devices: 'desktop-1920',
+      maxIterations: 3,
+      autoFix: 'none',
+      dryRun: true,
+    },
+  },
+});
+```
+
+**CLI override rule:** CLI flag > preset value > default
+
 ## Architecture
 
 ```
 vex/
+├── config/         # Configuration and schema
+│   ├── schema.ts   # Effect Schema definitions (DeviceId, ProviderSpec, presets)
+│   ├── loader.ts   # Load vex.config.ts with validation
+│   └── index.ts    # Public exports, defineConfig()
+│
 ├── core/           # Layer 0: Pure functions
 │   ├── types.ts    # Unified types (Artifact, Issue, DOMSnapshot, etc.)
 │   ├── capture.ts  # Playwright screenshot + DOM capture
@@ -51,16 +94,28 @@ vex/
 │   ├── claude-cli.ts, codex-cli.ts, gemini-cli.ts
 │   └── registry.ts # Provider registration
 │
-└── cli/            # Command-line interface
-    └── commands/   # scan, analyze, locate, loop, verify
+└── cli/            # @effect/cli based interface
+    ├── commands/   # scan, analyze, locate, loop, verify, providers
+    ├── options.ts  # Shared CLI options with schema validation
+    ├── resolve.ts  # Merge CLI args + preset + defaults
+    └── index.ts    # Entry point (run with bun)
 ```
 
 ## Key Patterns
 
 **Options flow (CLI → Core):**
-CLI (parseArgs) → ScanOptions → preset function → PipelineNode.config → Operation → Core
 
-When adding CLI flags: update all 4 layers (cli/commands/_.ts → pipeline/presets.ts → pipeline/operations/_.ts → core/\*.ts)
+```
+CLI (@effect/cli) → resolve.ts (merge preset) → ResolvedOptions → pipeline → core
+```
+
+When adding CLI flags:
+
+1. Add option in `cli/options.ts` with schema validation
+2. Add to command in `cli/commands/*.ts`
+3. Add to preset schema in `config/schema.ts`
+4. Add merge logic in `cli/resolve.ts`
+5. Pass through pipeline and core layers
 
 **Effect.ts for error handling:**
 
@@ -107,7 +162,9 @@ Human-in-the-loop controls based on confidence × severity × scope:
 
 ## Dependencies
 
-- `effect` - Typed error handling
+- `effect` - Typed error handling, Effect Schema validation
+- `@effect/cli` - CLI parsing with schema validation
+- `@effect/platform-bun` - Bun runtime integration
 - `playwright` - Browser automation
 - `sharp` - Image processing
 - `bun` - Runtime + shell commands (ripgrep)
@@ -115,13 +172,22 @@ Human-in-the-loop controls based on confidence × severity × scope:
 ## Development
 
 ```bash
-cd vex
 bunx tsc --noEmit                    # Type check
 bunx biome check --write .           # Lint + format
 
-# Test with VLM providers
+# Test CLI help
+bun vex/cli/index.ts --help
+bun vex/cli/index.ts scan --help
+
+# Test with preset
+bun vex/cli/index.ts scan <url> --preset quick
+
+# Test with direct options
 bun vex/cli/index.ts scan <url> --provider codex-cli --model gpt-5.2 --reasoning low
-bun vex/cli/index.ts scan <url> --placeholder-media  # Replace images with X-boxes
+bun vex/cli/index.ts scan <url> --device iphone-15-pro --placeholder-media
+
+# List available providers
+bun vex/cli/index.ts providers --json
 ```
 
 ## Consolidation Note
