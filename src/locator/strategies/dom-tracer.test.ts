@@ -485,11 +485,15 @@ describe('domTracerStrategy', () => {
       const result = await Effect.runPromise(domTracerStrategy.locate(issue, ctx));
 
       // Verify high confidence results come first
-      const confidenceOrder = { high: 0, medium: 1, low: 2 };
+      const confidenceOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
       for (let i = 1; i < result.length; i++) {
-        const prev = result[i - 1]!;
-        const curr = result[i]!;
-        expect(confidenceOrder[prev.confidence]).toBeLessThanOrEqual(confidenceOrder[curr.confidence]);
+        const prev = result[i - 1];
+        const curr = result[i];
+        if (prev && curr) {
+          const prevOrder = confidenceOrder[prev.confidence] ?? 2;
+          const currOrder = confidenceOrder[curr.confidence] ?? 2;
+          expect(prevOrder).toBeLessThanOrEqual(currOrder);
+        }
       }
     });
   });
