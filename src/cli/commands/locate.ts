@@ -3,69 +3,31 @@
  *
  * Usage: vex locate <session> [options]
  *
- * Options:
- *   --project <dir>     Project root for code search (default: cwd)
- *   --patterns <glob>   File patterns to search (comma-separated)
- *   --json              Output results as JSON
+ * Migrated to @effect/cli with Effect Schema validation.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseArgs } from 'node:util';
-import { Effect } from 'effect';
+import { Args, Command } from '@effect/cli';
+import { Effect, Option } from 'effect';
 import { loadDOMSnapshot } from '../../core/dom-snapshot-loader.js';
 import type { Issue } from '../../core/types.js';
 import { createResolverWithStrategies, domTracerStrategy } from '../../locator/index.js';
 import type { LocatorContext } from '../../locator/types.js';
+import { jsonOption, patternsOption, projectOption } from '../options.js';
 
-interface LocateOptions {
-  sessionDir: string;
-  projectRoot: string;
-  filePatterns: string[];
-  json: boolean;
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// Session Directory Argument
+// ═══════════════════════════════════════════════════════════════════════════
 
-function parseOptions(args: string[]): LocateOptions {
-  const { values, positionals } = parseArgs({
-    args,
-    options: {
-      project: { type: 'string', short: 'p' },
-      patterns: { type: 'string' },
-      json: { type: 'boolean', short: 'j' },
-      help: { type: 'boolean', short: 'h' },
-    },
-    allowPositionals: true,
-  });
+/**
+ * Session directory positional argument.
+ */
+const sessionArg = Args.directory({ name: 'session' });
 
-  if (values.help) {
-    console.log(`
-Usage: vex locate <session> [options]
-
-Options:
-  --project, -p <dir>    Project root for code search (default: cwd)
-  --patterns <globs>     File patterns to search (comma-separated)
-  --json, -j             Output results as JSON
-  --help, -h             Show this help
-`);
-    process.exit(0);
-  }
-
-  const sessionDir = positionals[0];
-  if (!sessionDir) {
-    throw new Error('Session directory is required. Usage: vex locate <session>');
-  }
-
-  if (!existsSync(sessionDir)) {
-    throw new Error(`Session not found: ${sessionDir}`);
-  }
-
-  return {
-    sessionDir,
-    projectRoot: values.project ?? process.cwd(),
-    filePatterns: values.patterns ? values.patterns.split(',') : ['*.liquid', '*.css', '*.scss'],
-    json: values.json ?? false,
-  };
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════════════════════════
 
 function loadSessionIssues(sessionDir: string): Issue[] {
   const statePath = join(sessionDir, 'state.json');
@@ -92,50 +54,71 @@ function loadSessionIssues(sessionDir: string): Issue[] {
   return [];
 }
 
-export async function locateCommand(args: string[]): Promise<void> {
-  const options = parseOptions(args);
+// ═══════════════════════════════════════════════════════════════════════════
+// Locate Command
+// ═══════════════════════════════════════════════════════════════════════════
 
-  console.log(`Loading session from ${options.sessionDir}`);
-  console.log(`Searching in ${options.projectRoot}`);
+/**
+ * Locate command implementation.
+ */
+export const locateCommand = Command.make(
+  'locate',
+  {
+    session: sessionArg,
+    project: projectOption,
+    patterns: patternsOption,
+    json: jsonOption,
+  },
+  (args) =>
+    Effect.gen(function* () {
+      const sessionDir = args.session;
+      const projectRoot = args.project;
+      const patternsStr = Option.getOrUndefined(args.patterns);
+      const filePatterns = patternsStr ? patternsStr.split(',') : ['*.liquid', '*.css', '*.scss'];
+      const jsonOutput = args.json;
 
-  const issues = loadSessionIssues(options.sessionDir);
-  console.log(`Found ${issues.length} issues to locate`);
+      console.log(`Loading session from ${sessionDir}`);
+      console.log(`Searching in ${projectRoot}`);
 
-  if (issues.length === 0) {
-    console.log('No issues to locate');
-    return;
-  }
+      const issues = loadSessionIssues(sessionDir);
+      console.log(`Found ${issues.length} issues to locate`);
 
-  // Load DOM snapshot from session
-  const domResult = await loadDOMSnapshot(options.sessionDir);
-  if (domResult.error) {
-    console.warn(`DOM: ${domResult.error}`);
-  }
-
-  const resolver = createResolverWithStrategies([domTracerStrategy]);
-  const ctx: LocatorContext = {
-    projectRoot: options.projectRoot,
-    filePatterns: options.filePatterns,
-    domSnapshot: domResult.snapshot ?? undefined,
-  };
-
-  const result = await Effect.runPromise(resolver.locateAll(issues, ctx));
-
-  if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
-  } else {
-    console.log(`\nLocated ${result.summary.issuesWithLocations}/${result.summary.issuesProcessed} issues`);
-    console.log(`Total locations: ${result.summary.totalLocations}`);
-    console.log(
-      `By confidence: high=${result.summary.byConfidence.high}, medium=${result.summary.byConfidence.medium}, low=${result.summary.byConfidence.low}`,
-    );
-
-    for (const r of result.results) {
-      console.log(`\n[Issue ${r.issue.id}] ${r.issue.description}`);
-      for (const loc of r.locations) {
-        console.log(`  ${loc.file}:${loc.lineNumber ?? 0} (${loc.confidence})`);
-        console.log(`    ${loc.reasoning}`);
+      if (issues.length === 0) {
+        console.log('No issues to locate');
+        return;
       }
-    }
-  }
-}
+
+      // Load DOM snapshot from session
+      const domResult = yield* Effect.promise(() => loadDOMSnapshot(sessionDir));
+      if (domResult.error) {
+        console.warn(`DOM: ${domResult.error}`);
+      }
+
+      const resolver = createResolverWithStrategies([domTracerStrategy]);
+      const ctx: LocatorContext = {
+        projectRoot,
+        filePatterns,
+        domSnapshot: domResult.snapshot ?? undefined,
+      };
+
+      const result = yield* resolver.locateAll(issues, ctx);
+
+      if (jsonOutput) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(`\nLocated ${result.summary.issuesWithLocations}/${result.summary.issuesProcessed} issues`);
+        console.log(`Total locations: ${result.summary.totalLocations}`);
+        console.log(
+          `By confidence: high=${result.summary.byConfidence.high}, medium=${result.summary.byConfidence.medium}, low=${result.summary.byConfidence.low}`,
+        );
+
+        for (const r of result.results) {
+          console.log(`\n[Issue ${r.issue.id}] ${r.issue.description}`);
+          for (const loc of r.locations) {
+            console.log(`  ${loc.file}:${loc.lineNumber ?? 0} (${loc.confidence})`);
+            console.log(`    ${loc.reasoning}`);
+          }
+        }
+      }
+    }),
+).pipe(Command.withDescription('Find code locations for issues in a session'));
