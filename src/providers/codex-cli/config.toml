@@ -1,0 +1,8 @@
+# Minimal codex config for vex VLM calls
+# Disables MCPs and web search for faster execution
+
+[mcp_servers]
+# Empty - no MCP servers
+
+[features]
+web_search = "disabled"

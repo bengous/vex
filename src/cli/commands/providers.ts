@@ -8,7 +8,7 @@
 
 import { Command } from '@effect/cli';
 import { Effect } from 'effect';
-import { getAllProviders, type ProviderInfo } from '../../providers/introspection.js';
+import { getAllProviders, type ProviderInfo } from '../../providers/index.js';
 import { jsonOption } from '../options.js';
 // Import providers for self-registration
 import '../../providers/index.js';

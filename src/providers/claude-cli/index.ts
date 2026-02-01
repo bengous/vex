@@ -3,8 +3,8 @@
  * Shells out to the `claude` command for vision analysis.
  */
 
-import { CLI_DEFAULT_TIMEOUT_MS, type CliProviderConfig, createCliProviderLayer } from './cli-factory.js';
-import { registerProvider } from './registry.js';
+import { CLI_DEFAULT_TIMEOUT_MS, type CliProviderConfig, createCliProviderLayer } from '../shared/cli-factory.js';
+import { registerProvider } from '../shared/registry.js';
 
 /** Focused system prompt for image analysis */
 const SYSTEM_PROMPT = `You are an image analysis assistant. Your only task is to analyze images using the Read tool and provide structured analysis.

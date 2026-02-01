@@ -6,8 +6,8 @@
  */
 
 import { Effect, Layer } from 'effect';
-import { registerProvider } from './registry.js';
-import { AnalysisFailed, VisionProvider, type VisionProviderService } from './service.js';
+import { registerProvider } from '../shared/registry.js';
+import { AnalysisFailed, VisionProvider, type VisionProviderService } from '../shared/service.js';
 
 const OLLAMA_URL = process.env.OLLAMA_URL ?? 'http://localhost:11434';
 const TIMEOUT_MS = 180_000;
