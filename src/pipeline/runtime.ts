@@ -83,7 +83,6 @@ function createContext(state: PipelineState, viewport?: ViewportConfig): Pipelin
     artifacts.set(id, artifact);
   }
 
-  // Also map semantic names from node outputs
   const semanticNames = new Map<string, Artifact>();
 
   // Non-artifact data channel (e.g., AnalysisResult, ToolCall[])
@@ -92,7 +91,6 @@ function createContext(state: PipelineState, viewport?: ViewportConfig): Pipelin
     dataMap.set(key, value);
   }
 
-  // Cache for created viewport directories
   const createdDirs = new Set<string>();
 
   const getViewportDir = async (): Promise<string> => {
@@ -165,7 +163,6 @@ function executeNode(
       } as OperationError);
     }
 
-    // Mark node as running
     let currentState = updateNodeState(state, nodeId, {
       status: 'running',
       startedAt: new Date().toISOString(),
@@ -190,10 +187,8 @@ function executeNode(
       }
     }
 
-    // Execute operation
     const result = yield* operation.execute(inputs, node.config, ctx);
 
-    // Collect output artifacts and data, map semantic names
     const outputArtifacts: string[] = [];
     const ctxWithMapping = ctx as PipelineContext & {
       _mapSemanticName: (name: string, artifact: Artifact) => void;
@@ -224,7 +219,6 @@ function executeNode(
       }
     }
 
-    // Mark node as completed
     currentState = updateNodeState(currentState, nodeId, {
       status: 'completed',
       completedAt: new Date().toISOString(),
@@ -247,18 +241,15 @@ export function runPipeline(
   _inputs?: Record<string, unknown>,
 ): Effect.Effect<PipelineState, PipelineError> {
   return Effect.gen(function* () {
-    // Validate definition
     if (definition.nodes.length === 0) {
       return yield* Effect.fail(makeError('validation', 'Pipeline has no nodes'));
     }
 
-    // Create session
     const sessionDir = yield* Effect.tryPromise({
       try: () => createSessionDir(baseDir),
       catch: () => makeError('execution', 'Failed to create session directory', undefined),
     });
 
-    // Initialize state
     let state = initializePipelineState(definition, sessionDir);
     const viewport = extractViewport(definition);
     const ctx = createContext(state, viewport);
@@ -282,14 +273,12 @@ export function runPipeline(
         state = result.state;
       }
 
-      // Save state after each batch
       yield* Effect.tryPromise({
         try: () => savePipelineState(state),
         catch: () => makeError('persistence', 'Failed to save state'),
       });
     }
 
-    // Finalize
     state = {
       ...state,
       completedAt: new Date().toISOString(),

@@ -7,7 +7,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import type { CodeLocation } from '../core/types.js';
-import { compareConfidence, dedupeLocations, locationKey, meetsMinConfidence, StrategyResolver } from './resolver.js';
+import { compareConfidence, dedupeLocations, toFileLineKey, meetsMinConfidence, StrategyResolver } from './resolver.js';
 import type { LocatorStrategy } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -122,40 +122,40 @@ describe('meetsMinConfidence', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// locationKey Tests
+// toFileLineKey Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('locationKey', () => {
+describe('toFileLineKey', () => {
   test('consistent key for same file:line', () => {
     const loc1 = createLocation({ file: 'foo.liquid', lineNumber: 42 });
     const loc2 = createLocation({ file: 'foo.liquid', lineNumber: 42 });
 
-    expect(locationKey(loc1)).toBe(locationKey(loc2));
-    expect(locationKey(loc1)).toBe('foo.liquid:42');
+    expect(toFileLineKey(loc1)).toBe(toFileLineKey(loc2));
+    expect(toFileLineKey(loc1)).toBe('foo.liquid:42');
   });
 
   test('different files → different keys', () => {
     const loc1 = createLocation({ file: 'foo.liquid', lineNumber: 42 });
     const loc2 = createLocation({ file: 'bar.liquid', lineNumber: 42 });
 
-    expect(locationKey(loc1)).not.toBe(locationKey(loc2));
+    expect(toFileLineKey(loc1)).not.toBe(toFileLineKey(loc2));
   });
 
   test('different lines → different keys', () => {
     const loc1 = createLocation({ file: 'foo.liquid', lineNumber: 42 });
     const loc2 = createLocation({ file: 'foo.liquid', lineNumber: 43 });
 
-    expect(locationKey(loc1)).not.toBe(locationKey(loc2));
+    expect(toFileLineKey(loc1)).not.toBe(toFileLineKey(loc2));
   });
 
   test('handles missing lineNumber → :0', () => {
     const loc = createLocation({ file: 'foo.liquid', lineNumber: undefined });
-    expect(locationKey(loc)).toBe('foo.liquid:0');
+    expect(toFileLineKey(loc)).toBe('foo.liquid:0');
   });
 
   test('handles paths with colons', () => {
     const loc = createLocation({ file: 'C:\\Users\\foo.liquid', lineNumber: 10 });
-    expect(locationKey(loc)).toBe('C:\\Users\\foo.liquid:10');
+    expect(toFileLineKey(loc)).toBe('C:\\Users\\foo.liquid:10');
   });
 });
 

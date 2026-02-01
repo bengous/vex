@@ -96,7 +96,6 @@ export function evaluateGate(
 ): GateDecision {
   const opts = { ...DEFAULT_GATE_CONFIG, ...config };
 
-  // No locations - skip
   if (locations.length === 0) {
     return {
       action: 'skip',
@@ -105,7 +104,6 @@ export function evaluateGate(
     };
   }
 
-  // Pick best location
   const bestLocation = locations[0]; // Already sorted by confidence
   if (!bestLocation) {
     return {
@@ -119,7 +117,6 @@ export function evaluateGate(
   const confidence = bestLocation.confidence;
   const severity = issue.severity;
 
-  // Decision matrix implementation
   let action: GateAction;
 
   // Multi-file always requires review (unless explicitly allowed)
@@ -169,7 +166,6 @@ export function evaluateGates(
   for (const { issue, locations } of issuesWithLocations) {
     let decision = evaluateGate(issue, locations, opts);
 
-    // Enforce max auto-fixes per iteration
     if (decision.action === 'auto-fix') {
       if (autoFixCount >= opts.maxAutoFixesPerIteration) {
         decision = {

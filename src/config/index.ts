@@ -25,8 +25,6 @@
  * ```
  */
 
-
-// Loader exports
 export {
   ConfigError,
   findProjectRoot,
@@ -36,7 +34,6 @@ export {
   loadConfigOptional,
 } from './loader.js';
 
-// Type exports
 export type {
   AutoFixThreshold as AutoFixThresholdType,
   ClaudeProvider as ClaudeProviderType,
@@ -54,27 +51,22 @@ export type {
   Url as UrlType,
   VexConfig as VexConfigType,
 } from './schema.js';
-// Schema exports
+
 export {
   AutoFixThreshold,
   ClaudeProvider,
   CodexProvider,
+  defineConfig,
   DeviceId,
   DeviceSpec,
-  // Helper
-  defineConfig,
   GeminiProvider,
   LoopPreset,
-  // Providers
   OllamaProvider,
   PositiveInt,
   ProviderName,
   ProviderSpec,
   ReasoningLevel,
-  // Presets
   ScanPreset,
-  // Primitives
   Url,
-  // Root config
   VexConfig,
 } from './schema.js';

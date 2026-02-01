@@ -60,13 +60,11 @@ export const scanCommand = Command.make(
   },
   (args) =>
     Effect.gen(function* () {
-      // Handle --list-devices
       if (args.listDevices) {
         listDevices();
         return;
       }
 
-      // Convert to ScanCliArgs format
       const cliArgs: ScanCliArgs = {
         url: args.url,
         preset: args.preset,
@@ -79,13 +77,10 @@ export const scanCommand = Command.make(
         output: args.output,
       };
 
-      // Resolve options with preset/defaults
       const resolved = yield* resolveScanOptions(cliArgs);
 
-      // Run pipeline for each URL and device
       for (const url of resolved.urls) {
         for (const deviceId of resolved.devices) {
-          // Get viewport config
           const deviceResult = lookupDevice(deviceId);
           if (!deviceResult) {
             console.error(`Unknown device: ${deviceId}`);
@@ -106,7 +101,6 @@ export const scanCommand = Command.make(
           }
           console.log('');
 
-          // Build pipeline
           const pipeline = resolved.full
             ? fullAnnotation(
                 url,
@@ -125,20 +119,17 @@ export const scanCommand = Command.make(
                 resolved.placeholderMedia,
               );
 
-          // Run pipeline
           const result = yield* runPipeline(pipeline, resolved.outputDir);
 
           console.log(`\nSession: ${result.sessionDir}`);
           console.log(`Status: ${result.status}`);
 
-          // Display artifacts
           const artifacts = Object.values(result.artifacts);
           console.log(`\nArtifacts (${artifacts.length}):`);
           for (const artifact of artifacts) {
             console.log(`  - ${artifact.type}: ${artifact.path}`);
           }
 
-          // Find and display analysis results
           const analysisArtifact = artifacts.find((a) => a.type === 'analysis');
           if (analysisArtifact) {
             const analysisContent = yield* Effect.promise(() => Bun.file(analysisArtifact.path).text());

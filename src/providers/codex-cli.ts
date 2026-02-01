@@ -38,7 +38,6 @@ const config: CliProviderConfig = {
     if (options?.reasoning) {
       args.push('-c', `model_reasoning_effort=${options.reasoning}`);
     }
-    // Disable MCPs for faster startup (vision analysis doesn't need them)
     for (const mcp of MCPS_TO_DISABLE) {
       args.push('-c', `mcp_servers.${mcp}.enabled=false`);
     }

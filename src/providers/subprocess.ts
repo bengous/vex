@@ -47,8 +47,7 @@ export interface SubprocessService {
 
 export class Subprocess extends Context.Tag('Subprocess')<Subprocess, SubprocessService>() {}
 
-/** Collect stream to string */
-const streamToString = <E, R>(stream: Stream.Stream<Uint8Array, E, R>) =>
+const collectStreamAsUtf8 = <E, R>(stream: Stream.Stream<Uint8Array, E, R>) =>
   stream.pipe(
     Stream.runCollect,
     Effect.map((chunks) => {
@@ -65,7 +64,6 @@ const streamToString = <E, R>(stream: Stream.Stream<Uint8Array, E, R>) =>
     }),
   );
 
-/** Build a descriptive command string for error messages */
 const cmdLabel = (command: string, args: readonly string[]) =>
   args.length > 3 ? `${command} ${args.slice(0, 3).join(' ')}...` : `${command} ${args.join(' ')}`;
 
@@ -79,7 +77,6 @@ const cmdLabel = (command: string, args: readonly string[]) =>
 export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = Layer.effect(
   Subprocess,
   Effect.gen(function* () {
-    // Access CommandExecutor - resolved when layer is BUILT at runtime
     const executor = yield* CommandExecutor;
 
     return {
@@ -87,7 +84,6 @@ export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = L
         const label = cmdLabel(command, args);
         const cmd = Command.make(command, ...args);
 
-        // Process execution wrapped in Effect.scoped for lifecycle management
         const runProcess = Effect.scoped(
           Effect.gen(function* () {
             const startMs = performance.now();
@@ -96,7 +92,7 @@ export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = L
             // CRITICAL: Drain stdout and stderr IN PARALLEL
             // Sequential reading can deadlock if stderr buffer fills
             const [stdout, stderr] = yield* Effect.all(
-              [streamToString(process.stdout), streamToString(process.stderr)],
+              [collectStreamAsUtf8(process.stdout), collectStreamAsUtf8(process.stderr)],
               { concurrency: 2 },
             );
 
@@ -111,7 +107,6 @@ export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = L
 
         return runProcess.pipe(
           Effect.timeout(Duration.millis(timeoutMs)),
-          // Map platform errors to SubprocessError first
           Effect.catchTags({
             TimeoutException: () =>
               Effect.fail(
@@ -141,7 +136,6 @@ export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = L
                 }),
               ),
           }),
-          // Check exit code and produce final result
           Effect.flatMap((result) => {
             const code = result.exitCode as number;
             if (code !== 0) {

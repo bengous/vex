@@ -202,7 +202,6 @@ export async function applyPlaceholderMedia(page: Page, options: PlaceholderMedi
         return false;
       }
 
-      // Replace media elements
       document.querySelectorAll('img').forEach((img) => {
         if (shouldPreserve(img)) return;
         const rect = img.getBoundingClientRect();

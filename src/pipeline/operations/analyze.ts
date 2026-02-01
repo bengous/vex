@@ -113,25 +113,17 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
 
       ctx.logger.info(`Analyzing ${input.image.path} with ${provider}`);
 
-      // Get provider layer
-      console.log('[analyze] Resolving provider layer...');
       const providerLayer = yield* resolveProviderLayer(provider).pipe(
         Effect.mapError((e) => makeError(`Provider error: ${e.reason}`, e)),
       );
-      console.log('[analyze] Provider layer resolved');
 
-      // Run analysis with provider
-      console.log('[analyze] Starting VLM call...');
       const visionResult = yield* Effect.gen(function* () {
-        console.log('[analyze] Inside nested gen, getting VisionProvider...');
         const visionProvider = yield* VisionProvider;
-        console.log('[analyze] Got VisionProvider, calling analyze...');
         return yield* visionProvider.analyze([input.image.path], effectivePrompt, { model, reasoning });
       }).pipe(
         Effect.provide(providerLayer),
         Effect.mapError((e) => makeError('Analysis failed', e)),
       );
-      console.log('[analyze] VLM call complete');
 
       const issues = parseIssues(visionResult.response);
 

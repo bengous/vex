@@ -85,13 +85,10 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
  * Playwright's `devices` registry is the source of truth for specs.
  */
 export const PLAYWRIGHT_DEVICE_ALIASES: Record<string, { name: string; category: 'phone' | 'tablet' }> = {
-  // iPhones
   'iphone-15-pro-max': { name: 'iPhone 15 Pro Max', category: 'phone' },
   'iphone-15-pro': { name: 'iPhone 15 Pro', category: 'phone' },
   'iphone-se': { name: 'iPhone SE', category: 'phone' },
-  // Android phones
   'pixel-7': { name: 'Pixel 7', category: 'phone' },
-  // Tablets
   'ipad-pro-11': { name: 'iPad Pro 11', category: 'tablet' },
 };
 
@@ -138,13 +135,11 @@ export type DeviceId = (typeof ALL_DEVICE_IDS)[number];
  * @returns Device preset and metadata, or undefined if not found.
  */
 export function lookupDevice(id: string): DeviceLookupResult | undefined {
-  // Check desktop presets first
   const desktop = DESKTOP_PRESETS[id];
   if (desktop) {
     return { preset: desktop, source: 'desktop' };
   }
 
-  // Check Playwright device aliases
   const alias = PLAYWRIGHT_DEVICE_ALIASES[id];
   if (alias) {
     const playwrightDevice = devices[alias.name];
@@ -167,7 +162,6 @@ export function lookupDevice(id: string): DeviceLookupResult | undefined {
     }
   }
 
-  // Check custom mobile presets
   const custom = CUSTOM_MOBILE_PRESETS[id];
   if (custom) {
     return { preset: custom, source: 'custom' };
