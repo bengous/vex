@@ -6,8 +6,8 @@
  */
 
 import { Effect, Option } from 'effect';
-import { ConfigError, loadConfigOptional, getScanPreset, getLoopPreset } from '../config/loader.js';
-import type { VexConfig, ScanPreset, LoopPreset, ProviderSpec, DeviceSpec } from '../config/schema.js';
+import { ConfigError, getLoopPreset, getScanPreset, loadConfigOptional } from '../config/loader.js';
+import type { DeviceSpec, LoopPreset, ProviderSpec, ScanPreset, VexConfig } from '../config/schema.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Resolved Options Types
