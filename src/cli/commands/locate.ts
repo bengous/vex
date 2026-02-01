@@ -37,7 +37,6 @@ function loadSessionIssues(sessionDir: string): Issue[] {
 
   const state = JSON.parse(readFileSync(statePath, 'utf-8'));
 
-  // First check state.issues
   if (state.issues && state.issues.length > 0) {
     return state.issues;
   }

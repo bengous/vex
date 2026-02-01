@@ -115,12 +115,10 @@ export class LoopOrchestrator {
         const currentState = captureResult.state;
         const issues = captureResult.issues;
 
-        // Track initial issues
         if (iteration === 0) {
           initialIssueCount = issues.length;
         }
 
-        // Check if resolved
         if (issues.length === 0) {
           status = 'completed-resolved';
           const iterationState = this.createIterationState(iteration, iterationStartedAt, currentState, issues, []);
@@ -169,7 +167,6 @@ export class LoopOrchestrator {
         // 4. FIX
         const fixesApplied: AppliedFix[] = [];
 
-        // Auto-fix high confidence issues
         for (const decision of autoFixes) {
           if (decision.location) {
             const fix = yield* this.callbacks.applyFix(decision.issue, decision.location, decision);
@@ -177,7 +174,6 @@ export class LoopOrchestrator {
           }
         }
 
-        // Human review if interactive mode
         if (this.options.interactive && humanReviews.length > 0) {
           for (const decision of humanReviews) {
             const locations = issuesWithLocations.find((i) => i.issue.id === decision.issue.id)?.locations ?? [];
@@ -215,7 +211,6 @@ export class LoopOrchestrator {
             Effect.mapError((e) => makeError('verify', e.message, e)),
           );
 
-          // Check for regression
           if (verification.verdict === 'regressed') {
             console.warn(`Regression detected: ${verification.introduced.length} new issues`);
           }
@@ -238,7 +233,6 @@ export class LoopOrchestrator {
           }
         }
 
-        // Record iteration
         const iterationState = this.createIterationState(
           iteration,
           iterationStartedAt,
@@ -253,12 +247,10 @@ export class LoopOrchestrator {
         baseline = currentState;
       }
 
-      // Final status if we exhausted iterations
       if (status === 'running') {
         status = 'completed-max-iterations';
       }
 
-      // Extract final state
       const finalIssues = iterationHistory[iterationHistory.length - 1]?.issuesFound ?? [];
 
       return {

@@ -146,7 +146,6 @@ export function getReadyNodes(state: PipelineState): string[] {
     const nodeState = state.nodes[node.id];
     if (!nodeState || nodeState.status !== 'pending') continue;
 
-    // Check if all input edges are satisfied
     const inputEdges = state.definition.edges.filter((e) => e.to === node.id);
     const allInputsReady = inputEdges.every((edge) => {
       const sourceNode = state.nodes[edge.from];

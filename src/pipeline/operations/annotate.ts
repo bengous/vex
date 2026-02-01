@@ -131,12 +131,10 @@ export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, Annotat
 
       const prompt = ANNOTATION_PROMPT.replace('{{ISSUES}}', formatIssuesForPrompt(issues));
 
-      // Get provider layer
       const providerLayer = yield* resolveProviderLayer(provider).pipe(
         Effect.mapError((e) => makeError(`Provider error: ${e.reason}`, e)),
       );
 
-      // Run annotation generation with provider
       const visionResult = yield* Effect.gen(function* () {
         const visionProvider = yield* VisionProvider;
         return yield* visionProvider.analyze([], prompt, { model });

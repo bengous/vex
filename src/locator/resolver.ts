@@ -48,10 +48,7 @@ export function meetsMinConfidence(location: CodeLocation, minConfidence: CodeLo
 // Deduplication
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Generate a unique key for a code location (file:line).
- */
-export function locationKey(loc: CodeLocation): string {
+export function toFileLineKey(loc: CodeLocation): string {
   return `${loc.file}:${loc.lineNumber ?? 0}`;
 }
 
@@ -62,10 +59,9 @@ export function dedupeLocations(locations: CodeLocation[]): CodeLocation[] {
   const seen = new Map<string, CodeLocation>();
 
   for (const loc of locations) {
-    const key = locationKey(loc);
+    const key = toFileLineKey(loc);
     const existing = seen.get(key);
 
-    // Keep higher confidence version
     if (!existing || compareConfidence(loc.confidence, existing.confidence) < 0) {
       seen.set(key, loc);
     }
@@ -90,9 +86,6 @@ export class StrategyResolver {
     this.strategies.sort((a, b) => b.priority - a.priority);
   }
 
-  /**
-   * Get registered strategy names.
-   */
   getStrategyNames(): string[] {
     return this.strategies.map((s) => s.name);
   }
@@ -112,11 +105,9 @@ export class StrategyResolver {
       const allLocations: CodeLocation[] = [];
       const strategiesUsed: string[] = [];
 
-      // Filter strategies if specific ones requested
       const applicableStrategies =
         opts.strategies.length > 0 ? this.strategies.filter((s) => opts.strategies.includes(s.name)) : this.strategies;
 
-      // Run strategies in priority order
       for (const strategy of applicableStrategies) {
         if (!strategy.canHandle(issue, ctx)) {
           continue;
@@ -141,14 +132,11 @@ export class StrategyResolver {
         }
       }
 
-      // Filter by minimum confidence
       const filtered = allLocations.filter((loc) => meetsMinConfidence(loc, opts.minConfidence));
 
-      // Dedupe and sort by confidence
       const deduped = dedupeLocations(filtered);
       deduped.sort((a, b) => compareConfidence(a.confidence, b.confidence));
 
-      // Limit results
       const limited = deduped.slice(0, opts.maxLocationsPerIssue);
 
       return {
@@ -177,7 +165,6 @@ export class StrategyResolver {
         results.push(result);
       }
 
-      // Build summary
       const byConfidence: Record<CodeLocation['confidence'], number> = {
         high: 0,
         medium: 0,

@@ -26,7 +26,6 @@ export async function loadDOMSnapshot(sessionDir: string, viewport?: ViewportCon
   if (viewport) {
     viewportDir = join(sessionDir, getViewportDirName(viewport));
   } else {
-    // Auto-detect first viewport directory
     const found = await findFirstViewportDir(sessionDir);
     if (!found) {
       return {
@@ -75,8 +74,6 @@ async function findFirstViewportDir(sessionDir: string): Promise<string | null> 
         return join(sessionDir, entry.name);
       }
     }
-  } catch {
-    // Directory doesn't exist or not readable
-  }
+  } catch {}
   return null;
 }

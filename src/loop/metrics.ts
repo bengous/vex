@@ -94,19 +94,15 @@ export function calculateLoopMetrics(
     };
   }
 
-  // Calculate iteration metrics
   const iterationMetrics = iterations.map(metricsFromState);
 
-  // Total duration
   const totalDurationMs = iterationMetrics.reduce((sum, m) => sum + m.totalDurationMs, 0);
 
-  // Resolution rate
   const initialCount = initialIssues.length;
   const finalCount = finalIssues.length;
   const resolvedCount = Math.max(0, initialCount - finalCount);
   const issueResolutionRate = initialCount > 0 ? resolvedCount / initialCount : finalCount === 0 ? 1 : 0;
 
-  // By severity
   const bySeverity: Record<Severity, SeveritySnapshot> = {
     high: { initial: 0, final: 0 },
     medium: { initial: 0, final: 0 },

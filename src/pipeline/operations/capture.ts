@@ -40,13 +40,11 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
 
       ctx.logger.info(`Capturing ${url} at ${viewport.width}x${viewport.height}`);
 
-      // Get artifact paths using new viewport-aware helpers
       const screenshotPath = yield* Effect.tryPromise({
         try: () => ctx.getArtifactPath('screenshot'),
         catch: (e) => makeError('Failed to get screenshot path', e),
       });
 
-      // Ensure the viewport directory exists
       yield* Effect.tryPromise({
         try: () => mkdir(dirname(screenshotPath), { recursive: true }),
         catch: (e) => makeError('Failed to create viewport directory', e),
@@ -81,13 +79,11 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
           catch: (e) => makeError('Failed to capture with DOM', e),
         });
 
-        // Save DOM snapshot
         yield* Effect.tryPromise({
           try: () => Bun.write(domPath, JSON.stringify(result.domSnapshot, null, 2)),
           catch: (e) => makeError('Failed to save DOM snapshot', e),
         });
 
-        // Update artifact path to use the new location
         const artifact: ImageArtifact = {
           ...result.artifact,
           path: screenshotPath,
@@ -95,7 +91,6 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
 
         ctx.storeArtifact(artifact);
 
-        // Create and store DOM snapshot artifact
         const domArtifact: DOMSnapshotArtifact = {
           id: `dom-snapshot_${Date.now()}`,
           type: 'dom-snapshot',
@@ -137,7 +132,6 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
         catch: (e) => makeError('Failed to capture screenshot', e),
       });
 
-      // Update artifact path to use the new location
       const artifact: ImageArtifact = {
         ...result.artifact,
         path: screenshotPath,

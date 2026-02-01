@@ -120,7 +120,6 @@ function buildSelectors(element: DOMElement): string[] {
     selectors.push(`id="${element.id}"`);
   }
 
-  // Class selectors
   for (const cls of element.classes) {
     if (cls.length > 2 && !cls.startsWith('js-') && !cls.match(/^\d/)) {
       selectors.push(`.${cls}`);
@@ -132,7 +131,6 @@ function buildSelectors(element: DOMElement): string[] {
     }
   }
 
-  // Tag + class combinations
   if (element.classes.length > 0) {
     const mainClass = element.classes.find((c) => c.length > 3 && !c.startsWith('js-'));
     if (mainClass) {
@@ -148,7 +146,6 @@ function buildSelectors(element: DOMElement): string[] {
     }
   }
 
-  // Section/semantic elements with classes
   const semanticTags = ['section', 'header', 'footer', 'main', 'nav', 'aside', 'article'];
   if (semanticTags.includes(element.tagName) && element.classes.length > 0) {
     selectors.push(`<${element.tagName} class=`);
@@ -336,7 +333,6 @@ export const domTracerStrategy: LocatorStrategy = {
         // 4. Build CodeLocation results
         for (const [selector, matches] of grepResults) {
           for (const match of matches) {
-            // Skip duplicates
             const key = `${match.file}:${match.line}`;
             if (seenFiles.has(key)) continue;
             seenFiles.add(key);

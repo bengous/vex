@@ -35,7 +35,6 @@ function loadIterationState(sessionDir: string, iteration: number | 'latest'): P
 
   const state = JSON.parse(readFileSync(statePath, 'utf-8'));
 
-  // If session has iteration history, use that
   if (state.iterationHistory && Array.isArray(state.iterationHistory)) {
     const idx = iteration === 'latest' ? state.iterationHistory.length - 1 : iteration;
     const iterState = state.iterationHistory[idx];
@@ -68,13 +67,11 @@ export const verifyCommand = Command.make(
     Effect.gen(function* () {
       const sessionDir = args.session;
 
-      // Validate session exists
       if (!existsSync(sessionDir)) {
         console.error(`Session not found: ${sessionDir}`);
         return;
       }
 
-      // Determine iteration indices
       const baselineIteration = Option.getOrElse(args.baseline, () => 0);
       const currentIteration: number | 'latest' = Option.getOrElse(args.current, () => 'latest' as const);
 
@@ -82,11 +79,9 @@ export const verifyCommand = Command.make(
       console.log(`Baseline: iteration ${baselineIteration}`);
       console.log(`Current: iteration ${currentIteration}`);
 
-      // Load iteration states
       const baseline = loadIterationState(sessionDir, baselineIteration);
       const current = loadIterationState(sessionDir, currentIteration);
 
-      // Run verification
       const result = yield* verifyChanges(baseline, current);
 
       if (args.json) {

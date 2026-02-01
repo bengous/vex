@@ -103,7 +103,6 @@ export const analyzeCommand = Command.make(
         console.log('');
       }
 
-      // Get provider layer and run analysis
       const providerLayer = yield* resolveProviderLayer(providerName);
 
       const result = yield* Effect.gen(function* () {

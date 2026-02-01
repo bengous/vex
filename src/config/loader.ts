@@ -75,7 +75,6 @@ function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError>
       );
     }
 
-    // Validate with schema
     const decoded = yield* S.decodeUnknown(VexConfig)(raw).pipe(
       Effect.mapError((parseError) => {
         const formatted = formatParseError(parseError);
@@ -116,7 +115,6 @@ function loadJsonConfig(configPath: string): Effect.Effect<VexConfig, ConfigErro
         }),
     });
 
-    // Validate with schema
     const decoded = yield* S.decodeUnknown(VexConfig)(raw).pipe(
       Effect.mapError((parseError) => {
         const formatted = formatParseError(parseError);
@@ -158,13 +156,11 @@ export function loadConfig(projectRoot?: string): Effect.Effect<VexConfig, Confi
   return Effect.gen(function* () {
     const root = projectRoot ?? findProjectRoot();
 
-    // Try vex.config.ts first
     const tsConfigPath = join(root, 'vex.config.ts');
     if (existsSync(tsConfigPath)) {
       return yield* loadTsConfig(tsConfigPath);
     }
 
-    // Fallback to .vexrc.json
     const jsonConfigPath = join(root, '.vexrc.json');
     if (existsSync(jsonConfigPath)) {
       return yield* loadJsonConfig(jsonConfigPath);
