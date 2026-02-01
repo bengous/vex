@@ -27,18 +27,15 @@ export { getOutputDir, loadConfig, type VexConfig, VexConfigError } from './conf
 export { type LoadDOMSnapshotResult, loadDOMSnapshot, loadDOMSnapshotFromPath } from './dom-snapshot-loader.js';
 // Overlays
 export {
-  // Fold lines
   addFoldLines,
   addFoldOverlay,
   addGridOverlay,
-  // Grid math
   calculateGrid,
   cellCenter,
   cellRangeToPixels,
   cellToPixels,
   type FoldLineOptions,
   generateAnnotationSvg,
-  // Grid overlay
   generateGridSvg,
   isValidCellRef,
   parseCellRef,
@@ -47,7 +44,6 @@ export {
   renderAnnotationsToFile,
   renderArrowSvg,
   renderLabelSvg,
-  // Annotations
   renderRectangleSvg,
   renderToolCallSvg,
   saveAnnotationSvg,
@@ -57,25 +53,19 @@ export type {
   AddLabelParams,
   AnalysisArtifact,
   AnalysisResult,
-  // Annotations
   AnnotationStyle,
   Artifact,
-  // Artifact naming
   ArtifactName,
-  // Artifacts
   ArtifactType,
-  // Geometry
   BoundingBox,
   CodeLocation,
   DiffReportArtifact,
-  // DOM
   DOMElement,
   DOMSnapshot,
   DOMSnapshotArtifact,
   DrawArrowParams,
   DrawRectangleParams,
   FoldConfig,
-  // Grid
   GridConfig,
   GridMetadata,
   GridRef,
@@ -85,14 +75,11 @@ export type {
   LabelPosition,
   Point,
   Region,
-  // Session
   SessionState,
-  // Issues
   Severity,
   StyleConfig,
   ToolCall,
   ToolName,
-  // Viewport & Capture
   ViewportConfig,
   ViewportPreset,
 } from './types.js';

@@ -116,7 +116,6 @@ export function verifyChanges(
   const introduced: Issue[] = [];
   const unchanged: Issue[] = [];
 
-  // Find resolved and unchanged issues
   for (const baseIssue of baselineIssues) {
     const match = findSimilarIssue(baseIssue, currentIssues);
     if (match) {
@@ -126,7 +125,6 @@ export function verifyChanges(
     }
   }
 
-  // Find introduced issues
   for (const curIssue of currentIssues) {
     const match = findSimilarIssue(curIssue, baselineIssues);
     if (!match) {

@@ -38,7 +38,6 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
 
       ctx.logger.info(`Comparing ${input.baseImage.path} with ${input.compareImage.path}`);
 
-      // Load both images
       const [baseBuffer, compareBuffer] = yield* Effect.all([
         Effect.tryPromise({
           try: () => sharp(input.baseImage.path).raw().toBuffer({ resolveWithObject: true }),
@@ -50,11 +49,9 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
         }),
       ]);
 
-      // Calculate pixel difference
       const basePixels = baseBuffer.data;
       const comparePixels = compareBuffer.data;
 
-      // Handle size mismatch
       if (basePixels.length !== comparePixels.length) {
         ctx.logger.warn('Images have different sizes, using smaller size for comparison');
       }
@@ -77,7 +74,6 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
 
       ctx.logger.info(`Pixel difference: ${pixelDiffPercent.toFixed(2)}%`);
 
-      // Create diff report
       const reportPath = yield* Effect.tryPromise({
         try: () => ctx.getArtifactPath('diffReport'),
         catch: (e) => makeError('Failed to get output path', e),

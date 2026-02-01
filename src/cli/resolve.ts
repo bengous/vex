@@ -132,18 +132,15 @@ function resolveOutputDir(
   cliOutput: Option.Option<string>,
   config: VexConfig | undefined,
 ): Effect.Effect<string, ConfigError> {
-  // CLI flag takes priority
   if (Option.isSome(cliOutput)) {
     return Effect.succeed(cliOutput.value);
   }
 
-  // Environment variable
   const envDir = process.env.VEX_OUTPUT_DIR;
   if (envDir) {
     return Effect.succeed(envDir);
   }
 
-  // Config file
   if (config?.outputDir) {
     return Effect.succeed(config.outputDir);
   }
@@ -169,10 +166,8 @@ export function resolveScanOptions(
   projectRoot?: string,
 ): Effect.Effect<ResolvedScanOptions, ConfigError> {
   return Effect.gen(function* () {
-    // Load config (optional - may not exist)
     const config = yield* loadConfigOptional(projectRoot);
 
-    // Get preset if specified
     let preset: ScanPreset | undefined;
     if (Option.isSome(cliArgs.preset)) {
       if (!config) {
@@ -187,7 +182,6 @@ Create a config file or remove the --preset flag.`,
       preset = yield* getScanPreset(config, cliArgs.preset.value);
     }
 
-    // Resolve URL(s)
     let urls: readonly string[];
     if (Option.isSome(cliArgs.url)) {
       urls = [cliArgs.url.value];
@@ -225,7 +219,6 @@ Either provide a URL argument or add 'urls' field to the preset.`,
     const full = cliArgs.full || preset?.full || DEFAULTS.full;
     const placeholderMedia = cliArgs.placeholderMedia || preset?.placeholderMedia || DEFAULTS.placeholderMedia;
 
-    // Resolve output directory
     const outputDir = yield* resolveOutputDir(cliArgs.output, config);
 
     return {
@@ -253,10 +246,8 @@ export function resolveLoopOptions(
   projectRoot?: string,
 ): Effect.Effect<ResolvedLoopOptions, ConfigError> {
   return Effect.gen(function* () {
-    // Load config (optional - may not exist)
     const config = yield* loadConfigOptional(projectRoot);
 
-    // Get preset if specified
     let preset: LoopPreset | undefined;
     if (Option.isSome(cliArgs.preset)) {
       if (!config) {
@@ -271,7 +262,6 @@ Create a config file or remove the --preset flag.`,
       preset = yield* getLoopPreset(config, cliArgs.preset.value);
     }
 
-    // Resolve URL(s)
     let urls: readonly string[];
     if (Option.isSome(cliArgs.url)) {
       urls = [cliArgs.url.value];
@@ -313,11 +303,9 @@ Either provide a URL argument or add 'urls' field to the preset.`,
       | 'medium'
       | 'none';
 
-    // Resolve boolean flags
     const dryRun = cliArgs.dryRun || preset?.dryRun || DEFAULTS.dryRun;
     const placeholderMedia = cliArgs.placeholderMedia || preset?.placeholderMedia || DEFAULTS.placeholderMedia;
 
-    // Resolve output directory
     const outputDir = yield* resolveOutputDir(cliArgs.output, config);
 
     // Project is required and CLI-only
