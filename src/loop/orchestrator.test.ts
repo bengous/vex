@@ -9,7 +9,7 @@ import { describe, expect, mock, test } from 'bun:test';
 import { Effect } from 'effect';
 import type { CodeLocation, Issue, ViewportConfig } from '../core/types.js';
 import type { PipelineDefinition, PipelineState } from '../pipeline/types.js';
-import { LoopOrchestrator, type LoopCallbacks, type LoopCaptureResult } from './orchestrator.js';
+import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from './orchestrator.js';
 import type { AppliedFix, GateDecision, HumanResponse, LoopOptions } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
