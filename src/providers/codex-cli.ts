@@ -17,6 +17,13 @@
 import { CLI_DEFAULT_TIMEOUT_MS, type CliProviderConfig, createCliProviderLayer } from './cli-factory.js';
 import { registerProvider } from './registry.js';
 
+/**
+ * MCP servers commonly configured that are not needed for vision analysis.
+ * Only includes servers that typically use stdio transport.
+ * Servers not in the user's config will be silently ignored.
+ */
+const MCPS_TO_DISABLE = ['context7', 'mcp_docker', 'next-devtools', 'bun'] as const;
+
 const config: CliProviderConfig = {
   name: 'codex-cli',
   displayName: 'Codex CLI',
@@ -30,6 +37,10 @@ const config: CliProviderConfig = {
     }
     if (options?.reasoning) {
       args.push('-c', `model_reasoning_effort=${options.reasoning}`);
+    }
+    // Disable MCPs for faster startup (vision analysis doesn't need them)
+    for (const mcp of MCPS_TO_DISABLE) {
+      args.push('-c', `mcp_servers.${mcp}.enabled=false`);
     }
     return args;
   },
