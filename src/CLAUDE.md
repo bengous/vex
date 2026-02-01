@@ -185,6 +185,9 @@ Human-in-the-loop controls based on confidence × severity × scope:
 ```bash
 bunx tsc --noEmit                    # Type check
 bunx biome check --write .           # Lint + format
+bun test                             # Run all tests
+bun test vex/                        # Run vex tests only
+bun test --watch                     # Watch mode
 
 # Debug subprocess issues - logs are in providers/subprocess.ts
 # Look for [subprocess] prefixed console.log statements
@@ -203,6 +206,62 @@ bun vex/cli/index.ts scan <url> --device iphone-15-pro --placeholder-media
 # List available providers
 bun vex/cli/index.ts providers --json
 ```
+
+## Testing Patterns
+
+**Fixture factories with spread overrides:**
+
+```typescript
+function createIssue(overrides: Partial<Issue> = {}): Issue {
+  return { id: 1, description: 'Test', severity: 'medium', ...overrides };
+}
+// Usage: createIssue({ severity: 'high' })
+```
+
+**Mock callback factories:**
+
+```typescript
+const createMockCallbacks = (): LoopCallbacks => ({
+  onIterationStart: mock(() => Effect.void),
+  onIterationComplete: mock(() => Effect.void),
+});
+```
+
+**Parameterized tests with test.each:**
+
+```typescript
+type MatrixCase = [Confidence, Severity, boolean, GateAction];
+const cases: MatrixCase[] = [['high', 'low', true, 'auto-fix'], ...];
+test.each(cases)('conf=%s, sev=%s → %s', (conf, sev, single, expected) => { ... });
+```
+
+**Effect error path testing:**
+
+```typescript
+const exit = await Effect.runPromiseExit(program);
+expect(Exit.isFailure(exit)).toBe(true);
+if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
+  expect(exit.cause.error._tag).toBe('MyError');
+}
+```
+
+**Temp fixtures for grep integration tests:**
+
+```typescript
+const tempDir = mkdtempSync(join(tmpdir(), 'test-'));
+writeFileSync(join(tempDir, 'test.liquid'), '<div class="hero">');
+// Cleanup in afterEach or afterAll
+```
+
+**Section separators for readability:**
+
+```typescript
+// ═══════════════════════════════════════════════════════════════════════════
+// Test Fixtures
+// ═══════════════════════════════════════════════════════════════════════════
+```
+
+**Export pure functions for unit testing:** When a module has complex internal logic, export helpers for direct testing (see `dom-tracer.ts`).
 
 ## Learning Resources
 
