@@ -3,67 +3,29 @@
  *
  * Usage: vex verify <session> [options]
  *
- * Options:
- *   --baseline <n>    Baseline iteration number (default: 0)
- *   --current <n>     Current iteration number (default: latest)
- *   --json            Output results as JSON
+ * Migrated to @effect/cli with Effect Schema validation.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseArgs } from 'node:util';
-import { Effect } from 'effect';
+import { Args, Command } from '@effect/cli';
+import { Effect, Option } from 'effect';
 import { verifyChanges } from '../../loop/verify.js';
 import type { PipelineState } from '../../pipeline/types.js';
+import { baselineOption, currentOption, jsonOption } from '../options.js';
 
-interface VerifyOptions {
-  sessionDir: string;
-  baselineIteration: number;
-  currentIteration: number | 'latest';
-  json: boolean;
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// Session Argument
+// ═══════════════════════════════════════════════════════════════════════════
 
-function parseOptions(args: string[]): VerifyOptions {
-  const { values, positionals } = parseArgs({
-    args,
-    options: {
-      baseline: { type: 'string', short: 'b' },
-      current: { type: 'string', short: 'c' },
-      json: { type: 'boolean', short: 'j' },
-      help: { type: 'boolean', short: 'h' },
-    },
-    allowPositionals: true,
-  });
+/**
+ * Session directory positional argument.
+ */
+const sessionArg = Args.directory({ name: 'session' });
 
-  if (values.help) {
-    console.log(`
-Usage: vex verify <session> [options]
-
-Options:
-  --baseline, -b <n>   Baseline iteration number (default: 0)
-  --current, -c <n>    Current iteration number (default: latest)
-  --json, -j           Output results as JSON
-  --help, -h           Show this help
-`);
-    process.exit(0);
-  }
-
-  const sessionDir = positionals[0];
-  if (!sessionDir) {
-    throw new Error('Session directory is required. Usage: vex verify <session>');
-  }
-
-  if (!existsSync(sessionDir)) {
-    throw new Error(`Session not found: ${sessionDir}`);
-  }
-
-  return {
-    sessionDir,
-    baselineIteration: values.baseline ? Number.parseInt(values.baseline, 10) : 0,
-    currentIteration: values.current ? Number.parseInt(values.current, 10) : 'latest',
-    json: values.json ?? false,
-  };
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// Helper Functions
+// ═══════════════════════════════════════════════════════════════════════════
 
 function loadIterationState(sessionDir: string, iteration: number | 'latest'): PipelineState {
   const statePath = join(sessionDir, 'state.json');
@@ -87,37 +49,66 @@ function loadIterationState(sessionDir: string, iteration: number | 'latest'): P
   return state as PipelineState;
 }
 
-export async function verifyCommand(args: string[]): Promise<void> {
-  const options = parseOptions(args);
+// ═══════════════════════════════════════════════════════════════════════════
+// Verify Command
+// ═══════════════════════════════════════════════════════════════════════════
 
-  console.log(`Verifying session ${options.sessionDir}`);
-  console.log(`Baseline: iteration ${options.baselineIteration}`);
-  console.log(`Current: iteration ${options.currentIteration}`);
+/**
+ * Verify command implementation.
+ */
+export const verifyCommand = Command.make(
+  'verify',
+  {
+    session: sessionArg,
+    baseline: baselineOption,
+    current: currentOption,
+    json: jsonOption,
+  },
+  (args) =>
+    Effect.gen(function* () {
+      const sessionDir = args.session;
 
-  const baseline = loadIterationState(options.sessionDir, options.baselineIteration);
-  const current = loadIterationState(options.sessionDir, options.currentIteration);
+      // Validate session exists
+      if (!existsSync(sessionDir)) {
+        console.error(`Session not found: ${sessionDir}`);
+        return;
+      }
 
-  const result = await Effect.runPromise(verifyChanges(baseline, current));
+      // Determine iteration indices
+      const baselineIteration = Option.getOrElse(args.baseline, () => 0);
+      const currentIteration: number | 'latest' = Option.getOrElse(args.current, () => 'latest' as const);
 
-  if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
-  } else {
-    console.log(`\nVerdict: ${result.verdict.toUpperCase()}`);
-    console.log(`\nResolved: ${result.resolved.length}`);
-    for (const issue of result.resolved) {
-      console.log(`  - [${issue.severity}] ${issue.description}`);
-    }
+      console.log(`Verifying session ${sessionDir}`);
+      console.log(`Baseline: iteration ${baselineIteration}`);
+      console.log(`Current: iteration ${currentIteration}`);
 
-    console.log(`\nIntroduced: ${result.introduced.length}`);
-    for (const issue of result.introduced) {
-      console.log(`  - [${issue.severity}] ${issue.description}`);
-    }
+      // Load iteration states
+      const baseline = loadIterationState(sessionDir, baselineIteration);
+      const current = loadIterationState(sessionDir, currentIteration);
 
-    console.log(`\nUnchanged: ${result.unchanged.length}`);
+      // Run verification
+      const result = yield* verifyChanges(baseline, current);
 
-    console.log('\nMetrics:');
-    console.log(`  Baseline issues: ${result.metrics.baselineIssueCount}`);
-    console.log(`  Current issues: ${result.metrics.currentIssueCount}`);
-    console.log(`  Improvement: ${result.metrics.improvementPercent}%`);
-  }
-}
+      if (args.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(`\nVerdict: ${result.verdict.toUpperCase()}`);
+        console.log(`\nResolved: ${result.resolved.length}`);
+        for (const issue of result.resolved) {
+          console.log(`  - [${issue.severity}] ${issue.description}`);
+        }
+
+        console.log(`\nIntroduced: ${result.introduced.length}`);
+        for (const issue of result.introduced) {
+          console.log(`  - [${issue.severity}] ${issue.description}`);
+        }
+
+        console.log(`\nUnchanged: ${result.unchanged.length}`);
+
+        console.log('\nMetrics:');
+        console.log(`  Baseline issues: ${result.metrics.baselineIssueCount}`);
+        console.log(`  Current issues: ${result.metrics.currentIssueCount}`);
+        console.log(`  Improvement: ${result.metrics.improvementPercent}%`);
+      }
+    }),
+).pipe(Command.withDescription('Compare iterations in a session and show verification'));

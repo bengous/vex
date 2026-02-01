@@ -3,48 +3,19 @@
  *
  * Usage: vex providers [options]
  *
- * Options:
- *   --json, -j   Output as JSON
- *   --help, -h   Show help
+ * Migrated to @effect/cli with Effect Schema validation.
  */
 
-import { parseArgs } from 'node:util';
+import { Command } from '@effect/cli';
 import { Effect } from 'effect';
 import { getAllProviders, type ProviderInfo } from '../../providers/introspection.js';
+import { jsonOption } from '../options.js';
 // Import providers for self-registration
 import '../../providers/index.js';
 
-interface ProvidersOptions {
-  json: boolean;
-}
-
-function parseOptions(args: string[]): ProvidersOptions {
-  const { values } = parseArgs({
-    args,
-    options: {
-      json: { type: 'boolean', short: 'j' },
-      help: { type: 'boolean', short: 'h' },
-    },
-    allowPositionals: true,
-  });
-
-  if (values.help) {
-    console.log(`
-Usage: vex providers [options]
-
-List all registered VLM providers with their models and aliases.
-
-Options:
-  --json, -j   Output results as JSON
-  --help, -h   Show this help
-`);
-    process.exit(0);
-  }
-
-  return {
-    json: values.json ?? false,
-  };
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// Formatting
+// ═══════════════════════════════════════════════════════════════════════════
 
 function formatProvider(info: ProviderInfo): string {
   const lines: string[] = [];
@@ -71,24 +42,36 @@ function formatProvider(info: ProviderInfo): string {
   return lines.join('\n');
 }
 
-export async function providersCommand(args: string[]): Promise<void> {
-  const options = parseOptions(args);
+// ═══════════════════════════════════════════════════════════════════════════
+// Providers Command
+// ═══════════════════════════════════════════════════════════════════════════
 
-  const providers = await Effect.runPromise(getAllProviders());
+/**
+ * Providers command implementation.
+ */
+export const providersCommand = Command.make(
+  'providers',
+  {
+    json: jsonOption,
+  },
+  (args) =>
+    Effect.gen(function* () {
+      const providers = yield* getAllProviders();
 
-  if (options.json) {
-    console.log(JSON.stringify(providers, null, 2));
-    return;
-  }
+      if (args.json) {
+        console.log(JSON.stringify(providers, null, 2));
+        return;
+      }
 
-  console.log('\nVEX Providers');
-  console.log('=============\n');
+      console.log('\nVEX Providers');
+      console.log('=============\n');
 
-  for (const provider of providers) {
-    console.log(formatProvider(provider));
-    console.log('');
-  }
+      for (const provider of providers) {
+        console.log(formatProvider(provider));
+        console.log('');
+      }
 
-  const available = providers.filter((p) => p.available).length;
-  console.log(`Total: ${providers.length} providers (${available} available)`);
-}
+      const available = providers.filter((p) => p.available).length;
+      console.log(`Total: ${providers.length} providers (${available} available)`);
+    }),
+).pipe(Command.withDescription('List registered VLM providers and models'));
