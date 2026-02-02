@@ -5,7 +5,7 @@
 import { Effect } from 'effect';
 import sharp from 'sharp';
 import type { DiffReportArtifact, ImageArtifact } from '../../core/types.js';
-import type { Operation, OperationError } from '../types.js';
+import { type Operation, OperationError } from '../types.js';
 
 export interface DiffConfig {
   readonly threshold?: number;
@@ -20,10 +20,6 @@ export interface DiffOutput {
   readonly report: DiffReportArtifact;
   readonly diffImage?: ImageArtifact;
   readonly pixelDiffPercent: number;
-}
-
-function makeError(message: string, cause?: unknown): OperationError {
-  return { _tag: 'OperationError', operation: 'diff', message, cause };
 }
 
 export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
@@ -41,11 +37,11 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
       const [baseBuffer, compareBuffer] = yield* Effect.all([
         Effect.tryPromise({
           try: () => sharp(input.baseImage.path).raw().toBuffer({ resolveWithObject: true }),
-          catch: (e) => makeError('Failed to read base image', e),
+          catch: (e) => new OperationError({ operation: 'diff', detail: 'Failed to read base image', cause: e }),
         }),
         Effect.tryPromise({
           try: () => sharp(input.compareImage.path).raw().toBuffer({ resolveWithObject: true }),
-          catch: (e) => makeError('Failed to read compare image', e),
+          catch: (e) => new OperationError({ operation: 'diff', detail: 'Failed to read compare image', cause: e }),
         }),
       ]);
 
@@ -76,7 +72,11 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
 
       const reportPath = yield* ctx
         .getArtifactPath('diffReport')
-        .pipe(Effect.mapError((e) => makeError('Failed to get output path', e)));
+        .pipe(
+          Effect.mapError(
+            (e) => new OperationError({ operation: 'diff', detail: 'Failed to get output path', cause: e }),
+          ),
+        );
 
       const reportData = {
         baseImage: input.baseImage.path,
@@ -89,7 +89,7 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
 
       yield* Effect.tryPromise({
         try: () => Bun.write(reportPath, JSON.stringify(reportData, null, 2)),
-        catch: (e) => makeError('Failed to save diff report', e),
+        catch: (e) => new OperationError({ operation: 'diff', detail: 'Failed to save diff report', cause: e }),
       });
 
       const artifact: DiffReportArtifact = {
