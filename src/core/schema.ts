@@ -87,29 +87,6 @@ export const IssueArray = S.mutable(S.Array(Issue));
 export type IssueArray = typeof IssueArray.Type;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Simple Issue Type (for scripts/vision-audit)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Issue type with string regions for natural language descriptions
- * (e.g., "upper-center", "top-left"). Used by scripts/vision-audit
- * which receives freeform region descriptions from VLMs.
- */
-export const SimpleIssue = S.mutable(
-  S.Struct({
-    id: S.Number,
-    description: S.String,
-    severity: Severity,
-    region: S.String,
-    suggestedFix: S.optional(S.String),
-  }),
-);
-export type SimpleIssue = typeof SimpleIssue.Type;
-
-export const SimpleIssueArray = S.mutable(S.Array(SimpleIssue));
-export type SimpleIssueArray = typeof SimpleIssueArray.Type;
-
-// ═══════════════════════════════════════════════════════════════════════════
 // LLM Response Wrapper
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -121,12 +98,3 @@ export const AnalysisResponse = S.Struct({
   issues: IssueArray,
 });
 export type AnalysisResponse = typeof AnalysisResponse.Type;
-
-/**
- * Analysis response with clarification support (for scripts).
- */
-export const SimpleAnalysisResponse = S.Struct({
-  issues: SimpleIssueArray,
-  clarificationNeeded: S.optional(S.String),
-});
-export type SimpleAnalysisResponse = typeof SimpleAnalysisResponse.Type;
