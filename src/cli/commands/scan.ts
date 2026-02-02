@@ -13,7 +13,6 @@ import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { AnalysisResult, ViewportConfig } from '../../core/types.js';
 import { fullAnnotation, runPipeline, simpleAnalysis } from '../../pipeline/index.js';
 import {
-  allowUnknownModelOption,
   deviceOption,
   fullOption,
   listDevicesOption,
@@ -56,7 +55,6 @@ export const scanCommand = Command.make(
     model: modelOption,
     reasoning: reasoningOption,
     providerProfile: providerProfileOption,
-    allowUnknownModel: allowUnknownModelOption,
     full: fullOption,
     placeholderMedia: placeholderMediaOption,
     output: outputOption,
@@ -77,7 +75,6 @@ export const scanCommand = Command.make(
         model: args.model,
         reasoning: args.reasoning,
         providerProfile: args.providerProfile,
-        allowUnknownModel: args.allowUnknownModel,
         full: args.full,
         placeholderMedia: args.placeholderMedia,
         output: args.output,

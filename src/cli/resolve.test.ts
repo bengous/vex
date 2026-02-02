@@ -19,7 +19,6 @@ const emptyScanArgs: ScanCliArgs = {
   model: Option.none(),
   reasoning: Option.none(),
   providerProfile: Option.none(),
-  allowUnknownModel: false,
   full: false,
   placeholderMedia: false,
   output: Option.none(),
@@ -32,7 +31,6 @@ const emptyLoopArgs: LoopCliArgs = {
   provider: Option.none(),
   model: Option.none(),
   providerProfile: Option.none(),
-  allowUnknownModel: false,
   maxIterations: Option.none(),
   autoFix: Option.none(),
   dryRun: false,
@@ -177,7 +175,7 @@ describe('resolveLoopOptions', () => {
       url: Option.some('https://example.com'),
       device: Option.some('ipad-pro-11'),
       provider: Option.some('gemini-cli'),
-      model: Option.some('gemini-2.5-pro'),
+      model: Option.some('gemini-2.5-flash'),
       maxIterations: Option.some(10),
       autoFix: Option.some('medium'),
       dryRun: true,
@@ -189,7 +187,7 @@ describe('resolveLoopOptions', () => {
     expect(result.urls).toEqual(['https://example.com']);
     expect(result.devices).toEqual(['ipad-pro-11']);
     expect(result.provider).toBe('gemini-cli');
-    expect(result.model).toBe('gemini-2.5-pro');
+    expect(result.model).toBe('gemini-2.5-flash');
     expect(result.maxIterations).toBe(10);
     expect(result.autoFix).toBe('medium');
     expect(result.dryRun).toBe(true);
