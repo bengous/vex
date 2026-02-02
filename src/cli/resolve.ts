@@ -61,7 +61,6 @@ export interface ScanCliArgs {
   readonly model: Option.Option<string>;
   readonly reasoning: Option.Option<string>;
   readonly providerProfile: Option.Option<string>;
-  readonly allowUnknownModel: boolean;
   readonly full: boolean;
   readonly placeholderMedia: boolean;
   readonly output: Option.Option<string>;
@@ -77,7 +76,6 @@ export interface LoopCliArgs {
   readonly provider: Option.Option<string>;
   readonly model: Option.Option<string>;
   readonly providerProfile: Option.Option<string>;
-  readonly allowUnknownModel: boolean;
   readonly maxIterations: Option.Option<number>;
   readonly autoFix: Option.Option<string>;
   readonly dryRun: boolean;
@@ -274,17 +272,15 @@ Expected: ${expectedPrefix ?? 'unknown'}:${profileName}`,
       profile = profileName;
     }
 
-    // Validate model against knownModels (unless escaped)
-    if (model && !cliArgs.allowUnknownModel) {
+    // Validate model against knownModels
+    if (model) {
       const providerMeta = getProviderMetadata(provider);
       if (providerMeta?.knownModels && !providerMeta.knownModels.includes(model)) {
         return yield* Effect.fail(
           new ConfigError({
             kind: 'invalid_schema',
             message: `Model '${model}' not in known models for '${provider}'.
-Known: ${providerMeta.knownModels.join(', ')}
-
-Use --allow-unknown-model to bypass.`,
+Known: ${providerMeta.knownModels.join(', ')}`,
           }),
         );
       }
@@ -391,17 +387,15 @@ Expected: ${expectedPrefix ?? 'unknown'}:${profileName}`,
       profile = profileName;
     }
 
-    // Validate model against knownModels (unless escaped)
-    if (model && !cliArgs.allowUnknownModel) {
+    // Validate model against knownModels
+    if (model) {
       const providerMeta = getProviderMetadata(provider);
       if (providerMeta?.knownModels && !providerMeta.knownModels.includes(model)) {
         return yield* Effect.fail(
           new ConfigError({
             kind: 'invalid_schema',
             message: `Model '${model}' not in known models for '${provider}'.
-Known: ${providerMeta.knownModels.join(', ')}
-
-Use --allow-unknown-model to bypass.`,
+Known: ${providerMeta.knownModels.join(', ')}`,
           }),
         );
       }
