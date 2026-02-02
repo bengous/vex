@@ -12,7 +12,8 @@ import { Args, Command } from '@effect/cli';
 import { Effect, Option } from 'effect';
 import { loadDOMSnapshot } from '../../core/dom-snapshot-loader.js';
 import type { Issue } from '../../core/types.js';
-import { createResolverWithStrategies, domTracerStrategy } from '../../locator/index.js';
+import { createResolverWithStrategies } from '../../locator/resolver.js';
+import { domTracerStrategy } from '../../locator/strategies/dom-tracer.js';
 import type { LocatorContext } from '../../locator/types.js';
 import { jsonOption, patternsOption, projectOption } from '../options.js';
 
