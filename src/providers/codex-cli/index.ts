@@ -14,13 +14,19 @@
  * Reasoning levels: low, medium, high, xhigh (varies by model)
  * Set via: CODEX_REASONING env var or -c model_reasoning_effort=<level>
  *
- * @see https://developers.openai.com/codex/models/
+ * LLM: Before modifying Codex CLI integration, fetch official docs:
+ * - https://developers.openai.com/codex/models/ (available models, capabilities)
+ * - https://developers.openai.com/codex/cli/reference/ (CLI flags and options)
+ * - https://developers.openai.com/codex/config-reference/ (config.toml format)
  */
 
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CLI_DEFAULT_TIMEOUT_MS, type CliProviderConfig, createCliProviderLayer } from '../shared/cli-factory.js';
 import { registerProvider } from '../shared/registry.js';
+
+// Re-export environment types for cross-module access
+export { CodexEnv, type CodexEnvService, makeCodexEnvResource } from './environment.js';
 
 /** Directory containing this file and the colocated config.toml */
 const __dirname = dirname(fileURLToPath(import.meta.url));

@@ -10,12 +10,14 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
+import { loadCodexProfile, loadConfigOptional } from '../../config/loader.js';
 import { Url } from '../../config/schema.js';
 import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { CodeLocation, Issue, ViewportConfig } from '../../core/types.js';
 import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from '../../loop/orchestrator.js';
 import type { AppliedFix, GateDecision, HumanResponse, LoopError, LoopOptions, LoopResult } from '../../loop/types.js';
 import { generateSessionId, runPipeline, simpleAnalysis } from '../../pipeline/index.js';
+import { CodexEnv, makeCodexEnvResource } from '../../providers/codex-cli/index.js';
 import {
   autoFixOption,
   deviceOption,
@@ -266,7 +268,9 @@ export const loopCommand = Command.make(
 
       const orchestrator = new LoopOrchestrator(loopOptions, callbacks);
 
-      const result = yield* orchestrator.run().pipe(
+      // Run orchestrator with scoped environment when profile is active
+      const needsScopedEnv = resolved.provider === 'codex-cli' && resolved.profile !== 'minimal';
+      const runOrchestrator = orchestrator.run().pipe(
         Effect.catchAll((err) => {
           if (typeof err === 'object' && err !== null && '_tag' in err && err._tag === 'LoopError') {
             const e = err as LoopError;
@@ -277,6 +281,18 @@ export const loopCommand = Command.make(
           return Effect.fail(err);
         }),
       );
+
+      const result = needsScopedEnv
+        ? yield* Effect.scoped(
+            Effect.gen(function* () {
+              const config = yield* loadConfigOptional();
+              const profile = yield* loadCodexProfile(resolved.profile, config);
+              const envLayer = yield* makeCodexEnvResource(profile);
+              const codexEnv = yield* CodexEnv.pipe(Effect.provide(envLayer));
+              return yield* runOrchestrator.pipe(Effect.provideService(CodexEnv, codexEnv));
+            }),
+          )
+        : yield* runOrchestrator;
 
       yield* Effect.promise(() => saveIterationHistory(sessionDir, result, loopOptions));
       printLoopSummary(result);
