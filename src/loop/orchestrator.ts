@@ -10,6 +10,7 @@
  * 6. REPEAT - Until resolved, max iterations, or aborted
  */
 
+import type { FileSystem } from '@effect/platform';
 import { Effect } from 'effect';
 import { loadDOMSnapshotFromPath } from '../core/dom-snapshot-loader.js';
 import type { CodeLocation, DOMSnapshot, Issue, ViewportConfig } from '../core/types.js';
@@ -59,7 +60,10 @@ export interface LocateResult {
  */
 export interface LoopCallbacks {
   /** Capture screenshot and analyze for issues */
-  capture: (url: string, viewport: ViewportConfig) => Effect.Effect<LoopCaptureResult, LoopError>;
+  capture: (
+    url: string,
+    viewport: ViewportConfig,
+  ) => Effect.Effect<LoopCaptureResult, LoopError, FileSystem.FileSystem>;
 
   /** Apply a fix to the codebase */
   applyFix: (issue: Issue, location: CodeLocation, decision: GateDecision) => Effect.Effect<AppliedFix, LoopError>;
@@ -94,7 +98,7 @@ export class LoopOrchestrator {
   /**
    * Run the main feedback loop.
    */
-  run(): Effect.Effect<LoopResult, LoopError> {
+  run(): Effect.Effect<LoopResult, LoopError, FileSystem.FileSystem> {
     return Effect.gen(this, function* () {
       const startedAt = new Date().toISOString();
       const iterationHistory: IterationState[] = [];
@@ -295,7 +299,7 @@ export function runLoop(
   options: LoopOptions,
   callbacks: LoopCallbacks,
   gateConfig?: Partial<GateConfig>,
-): Effect.Effect<LoopResult, LoopError> {
+): Effect.Effect<LoopResult, LoopError, FileSystem.FileSystem> {
   const orchestrator = new LoopOrchestrator(options, callbacks, gateConfig);
   return orchestrator.run();
 }

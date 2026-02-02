@@ -134,10 +134,9 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
         issues,
       };
 
-      const outputPath = yield* Effect.tryPromise({
-        try: () => ctx.getArtifactPath('analysis'),
-        catch: (e) => makeError('Failed to get output path', e),
-      });
+      const outputPath = yield* ctx
+        .getArtifactPath('analysis')
+        .pipe(Effect.mapError((e) => makeError('Failed to get output path', e)));
 
       yield* Effect.tryPromise({
         try: () => Bun.write(outputPath, JSON.stringify(result, null, 2)),
