@@ -11,7 +11,8 @@ import {
   type ImageArtifact,
   type ViewportConfig,
 } from '../../core/types.js';
-import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
+import { resolveProviderLayer } from '../../providers/shared/registry.js';
+import { VisionProvider } from '../../providers/shared/service.js';
 import { type Operation, OperationError } from '../types.js';
 
 export interface AnalyzeConfig {
