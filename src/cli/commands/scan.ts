@@ -8,10 +8,12 @@
 
 import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
+import { loadCodexProfile, loadConfigOptional } from '../../config/loader.js';
 import { Url } from '../../config/schema.js';
 import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { AnalysisResult, ViewportConfig } from '../../core/types.js';
 import { fullAnnotation, runPipeline, simpleAnalysis } from '../../pipeline/index.js';
+import { CodexEnv, makeCodexEnvResource } from '../../providers/codex-cli/index.js';
 import {
   deviceOption,
   fullOption,
@@ -122,7 +124,21 @@ export const scanCommand = Command.make(
                 resolved.placeholderMedia,
               );
 
-          const result = yield* runPipeline(pipeline, resolved.outputDir);
+          // Run pipeline with scoped environment when profile is active
+          const needsScopedEnv = resolved.provider === 'codex-cli' && resolved.profile !== 'minimal';
+          const result = needsScopedEnv
+            ? yield* Effect.scoped(
+                Effect.gen(function* () {
+                  const config = yield* loadConfigOptional();
+                  const profile = yield* loadCodexProfile(resolved.profile, config);
+                  const envLayer = yield* makeCodexEnvResource(profile);
+                  const codexEnv = yield* CodexEnv.pipe(Effect.provide(envLayer));
+                  return yield* runPipeline(pipeline, resolved.outputDir).pipe(
+                    Effect.provideService(CodexEnv, codexEnv),
+                  );
+                }),
+              )
+            : yield* runPipeline(pipeline, resolved.outputDir);
 
           console.log(`\nSession: ${result.sessionDir}`);
           console.log(`Status: ${result.status}`);
