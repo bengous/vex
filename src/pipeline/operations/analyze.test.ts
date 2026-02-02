@@ -10,8 +10,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
 import sharp from 'sharp';
-import { registerProvider } from '../../providers/index.js';
-import { createMockAnalysisError, createMockVisionProviderLayer, createMockVisionResult, expectOperationFailure, runEffectExit } from '../../testing/index.js';
+import { registerProvider, unregisterProvider } from '../../providers/index.js';
+import {
+  createMockAnalysisError,
+  createMockVisionProviderLayer,
+  createMockVisionResult,
+  expectOperationFailure,
+  runEffectExit,
+} from '../../testing/index.js';
 import {
   createCapturingLogger,
   createMockContext,
@@ -26,6 +32,7 @@ import { analyzeOperation } from './analyze.js';
 describe('analyzeOperation', () => {
   let testDir: string;
   let testImagePath: string;
+  const registeredProviders: string[] = [];
 
   beforeAll(async () => {
     testDir = join(tmpdir(), `analyze-test-${Date.now()}`);
@@ -47,11 +54,22 @@ describe('analyzeOperation', () => {
 
   afterAll(async () => {
     await rm(testDir, { recursive: true });
+    // Clean up registered mock providers
+    for (const name of registeredProviders) {
+      unregisterProvider(name);
+    }
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Test Fixtures
   // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Register a mock provider and track for cleanup */
+  function registerMockProvider(name: string, options: Parameters<typeof createMockVisionProviderLayer>[0]) {
+    registerProvider(name, () => createMockVisionProviderLayer(options));
+    registeredProviders.push(name);
+    return name;
+  }
 
   function createIssuesResponse(issues: object[] = []): string {
     return JSON.stringify({ issues });
@@ -78,7 +96,7 @@ describe('analyzeOperation', () => {
         provider: providerName,
         response: createIssuesResponse([]),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
@@ -99,7 +117,7 @@ describe('analyzeOperation', () => {
         provider: providerName,
         response: createIssuesResponse(issues),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
@@ -120,7 +138,7 @@ describe('analyzeOperation', () => {
         provider: providerName,
         response: createIssuesResponse([]),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
@@ -141,7 +159,7 @@ describe('analyzeOperation', () => {
         provider: providerName,
         response: createIssuesResponse([]),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const logger = createCapturingLogger();
       const ctx = createMockContext({ sessionDir: testDir, logger });
@@ -161,7 +179,7 @@ describe('analyzeOperation', () => {
         durationMs: 250,
         response: createIssuesResponse([]),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
@@ -199,7 +217,7 @@ describe('analyzeOperation', () => {
         kind: 'execution',
         message: 'Model overloaded',
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockError }));
+      registerMockProvider(providerName, { analyzeResponse: mockError });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
@@ -216,7 +234,7 @@ describe('analyzeOperation', () => {
         provider: providerName,
         response: createIssuesResponse([]),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
@@ -242,7 +260,7 @@ describe('analyzeOperation', () => {
         provider: providerName,
         response: createIssuesResponse([]),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const viewport = { width: 375, height: 812, deviceScaleFactor: 3, isMobile: true };
       const ctx = createMockContext({ sessionDir: testDir });
