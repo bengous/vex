@@ -35,8 +35,6 @@ import {
 } from '../options.js';
 import type { LoopCliArgs, ResolvedPlaceholderMedia } from '../resolve.js';
 import { resolveLoopOptions } from '../resolve.js';
-// Import providers for self-registration
-import '../../providers/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // URL Argument

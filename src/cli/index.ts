@@ -19,6 +19,9 @@ import { Command } from '@effect/cli';
 import { BunContext, BunRuntime } from '@effect/platform-bun';
 import { Effect } from 'effect';
 
+// Initialize providers once at CLI entry
+import '../providers/init.js';
+
 import { analyzeCommand } from './commands/analyze.js';
 import { locateCommand } from './commands/locate.js';
 import { loopCommand } from './commands/loop.js';
