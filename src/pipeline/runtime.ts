@@ -30,6 +30,8 @@ import {
   updateNodeState,
 } from './state.js';
 import {
+  type DataKey,
+  type DataValue,
   type Logger,
   type Operation,
   OperationError,
@@ -38,6 +40,15 @@ import {
   type PipelineError,
   type PipelineState,
 } from './types.js';
+
+/**
+ * Internal extension of PipelineContext with methods for artifact/data mapping.
+ * Used by the runtime to wire operation outputs to edges.
+ */
+interface InternalPipelineContext extends PipelineContext {
+  _mapSemanticName: (name: string, artifact: Artifact) => void;
+  _mapData: (name: string, value: unknown) => void;
+}
 
 // Operation registry - use any to avoid complex generic constraints
 // biome-ignore lint/suspicious/noExplicitAny: Operations have varying signatures
@@ -67,7 +78,7 @@ function extractViewport(definition: PipelineDefinition): ViewportConfig | undef
   return config.viewport;
 }
 
-function createLogger(_sessionDir: string): Logger {
+function createLogger(): Logger {
   return {
     debug: (msg) => console.debug(`[DEBUG] ${msg}`),
     info: (msg) => console.info(`[INFO] ${msg}`),
@@ -83,7 +94,7 @@ function createContext(
   state: PipelineState,
   viewport: ViewportConfig | undefined,
   fs: FileSystem.FileSystem,
-): PipelineContext {
+): InternalPipelineContext {
   const artifacts = new Map<string, Artifact>();
   for (const [id, artifact] of Object.entries(state.artifacts)) {
     artifacts.set(id, artifact);
@@ -122,29 +133,25 @@ function createContext(
   return {
     sessionDir: state.sessionDir,
     artifacts,
-    logger: createLogger(state.sessionDir),
+    logger: createLogger(),
     viewport,
     storeArtifact: (artifact) => {
       artifacts.set(artifact.id, artifact);
       return artifact.id;
     },
     getArtifact: (id) => artifacts.get(id) ?? semanticNames.get(id),
-    // Typed getData for known keys (cast needed since implementation uses string)
-    getData: (key) => dataMap.get(key),
+    // Typed getData for known keys (implementation uses Map<string, unknown>)
+    getData: <K extends DataKey>(key: K) => dataMap.get(key) as DataValue<K> | undefined,
     // Raw getData for dynamic node:field keys used in edge routing
     getDataRaw: (key) => dataMap.get(key),
     getViewportDir,
     getArtifactPath,
-    // Internal methods for mapping semantic names
     _mapSemanticName: (name: string, artifact: Artifact) => {
       semanticNames.set(name, artifact);
     },
     _mapData: (name: string, value: unknown) => {
       dataMap.set(name, value);
     },
-  } as PipelineContext & {
-    _mapSemanticName: (name: string, artifact: Artifact) => void;
-    _mapData: (name: string, value: unknown) => void;
   };
 }
 
@@ -154,7 +161,7 @@ function createContext(
 function executeNode(
   state: PipelineState,
   nodeId: string,
-  ctx: PipelineContext,
+  ctx: InternalPipelineContext,
 ): Effect.Effect<{ artifacts: Artifact[]; state: PipelineState }, OperationError> {
   return Effect.gen(function* () {
     const node = state.definition.nodes.find((n) => n.id === nodeId);
@@ -197,10 +204,6 @@ function executeNode(
     const result = yield* operation.execute(inputs, node.config, ctx);
 
     const outputArtifacts: string[] = [];
-    const ctxWithMapping = ctx as PipelineContext & {
-      _mapSemanticName: (name: string, artifact: Artifact) => void;
-      _mapData: (name: string, value: unknown) => void;
-    };
     const resultObj = result as Record<string, unknown>;
     for (const [key, value] of Object.entries(resultObj)) {
       if (value && typeof value === 'object' && 'id' in value && 'type' in value) {
@@ -208,12 +211,12 @@ function executeNode(
         const artifact = value as Artifact;
         currentState = storeArtifact(currentState, artifact);
         outputArtifacts.push(artifact.id);
-        ctxWithMapping._mapSemanticName(`${nodeId}:${key}`, artifact);
+        ctx._mapSemanticName(`${nodeId}:${key}`, artifact);
       } else if (value !== undefined) {
         // Non-artifact data - store in data channel
         const dataKey = `${nodeId}:${key}`;
         currentState = storeData(currentState, dataKey, value);
-        ctxWithMapping._mapData(dataKey, value);
+        ctx._mapData(dataKey, value);
       }
     }
 
