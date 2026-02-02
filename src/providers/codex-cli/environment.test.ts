@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 import { Effect } from 'effect';
-import { CodexEnv, makeCodexEnvResource } from './environment.js';
+import { makeCodexEnvResource } from './environment.js';
 import { BUILTIN_PROFILES } from './schema.js';
 
 describe('makeCodexEnvResource', () => {
@@ -15,8 +15,7 @@ describe('makeCodexEnvResource', () => {
 
     const program = Effect.scoped(
       Effect.gen(function* () {
-        const envLayer = yield* makeCodexEnvResource(BUILTIN_PROFILES.fast);
-        const service = yield* Effect.provide(CodexEnv, envLayer);
+        const service = yield* makeCodexEnvResource(BUILTIN_PROFILES.fast);
         capturedPath = service.codexHome;
 
         // Verify during scope
@@ -40,8 +39,7 @@ describe('makeCodexEnvResource', () => {
 
     const program = Effect.scoped(
       Effect.gen(function* () {
-        const envLayer = yield* makeCodexEnvResource(BUILTIN_PROFILES.minimal);
-        const service = yield* Effect.provide(CodexEnv, envLayer);
+        const service = yield* makeCodexEnvResource(BUILTIN_PROFILES.minimal);
         capturedPath = service.codexHome;
       }),
     );
@@ -55,9 +53,7 @@ describe('makeCodexEnvResource', () => {
   test('service exposes profile', async () => {
     const program = Effect.scoped(
       Effect.gen(function* () {
-        const envLayer = yield* makeCodexEnvResource(BUILTIN_PROFILES.safe);
-        const service = yield* Effect.provide(CodexEnv, envLayer);
-
+        const service = yield* makeCodexEnvResource(BUILTIN_PROFILES.safe);
         expect(service.profile).toEqual(BUILTIN_PROFILES.safe);
       }),
     );
@@ -70,8 +66,7 @@ describe('makeCodexEnvResource', () => {
 
     const program = Effect.scoped(
       Effect.gen(function* () {
-        const envLayer = yield* makeCodexEnvResource(BUILTIN_PROFILES.fast);
-        const service = yield* Effect.provide(CodexEnv, envLayer);
+        const service = yield* makeCodexEnvResource(BUILTIN_PROFILES.fast);
         capturedPath = service.codexHome;
 
         // Throw after capturing path
