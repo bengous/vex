@@ -3,6 +3,7 @@
  */
 
 import { Effect } from 'effect';
+import { analyzeWithRetry } from '../../core/analysis.js';
 import {
   type AnalysisArtifact,
   type AnalysisResult,
@@ -10,7 +11,6 @@ import {
   type ImageArtifact,
   type ViewportConfig,
 } from '../../core/types.js';
-import { buildRetryPrompt, parseIssuesFromResponse, parseIssuesStrict } from '../../core/validation.js';
 import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
 import { type Operation, OperationError } from '../types.js';
 
@@ -95,35 +95,24 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
         ),
       );
 
-      // Helper: call VLM and parse strictly (fails on validation issues)
-      const analyzeStrict = (analysisPrompt: string) =>
+      // Create analyze callback pre-composed with provider layer
+      const analyze = (analysisPrompt: string) =>
         Effect.gen(function* () {
           const visionProvider = yield* VisionProvider;
-          const r = yield* visionProvider.analyze([input.image.path], analysisPrompt, { model, reasoning });
-          const issues = yield* parseIssuesStrict(r.response);
-          return { ...r, issues };
+          return yield* visionProvider.analyze([input.image.path], analysisPrompt, { model, reasoning });
         }).pipe(Effect.provide(providerLayer));
 
-      // Helper: call VLM with partial recovery (fallback, never fails)
-      const analyzeWithRecovery = (analysisPrompt: string) =>
-        Effect.gen(function* () {
-          const visionProvider = yield* VisionProvider;
-          const r = yield* visionProvider.analyze([input.image.path], analysisPrompt, { model, reasoning });
-          const issues = yield* parseIssuesFromResponse(r.response, ctx.logger);
-          return { ...r, issues };
-        }).pipe(Effect.provide(providerLayer));
-
-      // Try strict validation first, retry with schema reminder on failure
-      const visionResult = yield* analyzeStrict(effectivePrompt).pipe(
-        Effect.catchTag('ValidationRetryNeeded', (err) => {
-          ctx.logger.warn(`Validation failed (${err.reason}), retrying with schema reminder`);
-          const retryPrompt = buildRetryPrompt(effectivePrompt, err);
-          return analyzeWithRecovery(retryPrompt);
-        }),
+      // Use shared retry logic from core/analysis.ts
+      const visionResult = yield* analyzeWithRetry({
+        analyze,
+        prompt: effectivePrompt,
+        logger: ctx.logger,
+      }).pipe(
         Effect.mapError((e) => new OperationError({ operation: 'analyze', detail: 'Analysis failed', cause: e })),
       );
 
-      const issues = visionResult.issues;
+      // Spread to convert readonly array to mutable (AnalysisResult requires mutable)
+      const issues = [...visionResult.issues];
 
       const result: AnalysisResult = {
         provider: visionResult.provider,
