@@ -5,7 +5,8 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
@@ -30,8 +31,7 @@ describe('diffOperation', () => {
   let smallImagePath: string;
 
   beforeAll(async () => {
-    testDir = join(tmpdir(), `diff-test-${Date.now()}`);
-    await mkdir(testDir, { recursive: true });
+    testDir = mkdtempSync(join(tmpdir(), 'diff-test-'));
 
     // Create test images
     const imageOptions = { width: 100, height: 100, channels: 4 as const };

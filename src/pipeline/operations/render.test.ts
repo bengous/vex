@@ -5,7 +5,8 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
@@ -28,8 +29,7 @@ describe('renderOperation', () => {
   let testImagePath: string;
 
   beforeAll(async () => {
-    testDir = join(tmpdir(), `render-test-${Date.now()}`);
-    await mkdir(testDir, { recursive: true });
+    testDir = mkdtempSync(join(tmpdir(), 'render-test-'));
 
     // Create a simple test image (400x400 white square)
     testImagePath = join(testDir, 'test-input.png');
