@@ -5,7 +5,7 @@
 import { Effect } from 'effect';
 import type { AnalysisResult, AnnotationsArtifact, Issue, ToolCall } from '../../core/types.js';
 import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
-import type { Operation, OperationError, PipelineContext } from '../types.js';
+import { type Operation, OperationError, type PipelineContext } from '../types.js';
 
 export interface AnnotateConfig {
   readonly provider: string;
@@ -42,10 +42,6 @@ Generate a JSON array of tool calls:
   {"tool": "draw_rectangle", "params": {"start": "A1", "end": "B2", "style": "error", "label": "Issue description"}},
   ...
 ]`;
-
-function makeError(message: string, cause?: unknown): OperationError {
-  return { _tag: 'OperationError', operation: 'annotate', message, cause };
-}
 
 function formatIssuesForPrompt(issues: readonly Issue[]): string {
   return issues
@@ -84,11 +80,15 @@ function createAnnotationsArtifact(toolCalls: readonly ToolCall[], issueCount: n
   return Effect.gen(function* () {
     const outputPath = yield* ctx
       .getArtifactPath('annotations')
-      .pipe(Effect.mapError((e) => makeError('Failed to get annotations path', e)));
+      .pipe(
+        Effect.mapError(
+          (e) => new OperationError({ operation: 'annotate', detail: 'Failed to get annotations path', cause: e }),
+        ),
+      );
 
     yield* Effect.tryPromise({
       try: () => Bun.write(outputPath, JSON.stringify(toolCalls, null, 2)),
-      catch: (e) => makeError('Failed to save annotations', e),
+      catch: (e) => new OperationError({ operation: 'annotate', detail: 'Failed to save annotations', cause: e }),
     });
 
     const artifact: AnnotationsArtifact = {
@@ -130,7 +130,9 @@ export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, Annotat
       const prompt = ANNOTATION_PROMPT.replace('{{ISSUES}}', formatIssuesForPrompt(issues));
 
       const providerLayer = yield* resolveProviderLayer(provider).pipe(
-        Effect.mapError((e) => makeError(`Provider error: ${e.reason}`, e)),
+        Effect.mapError(
+          (e) => new OperationError({ operation: 'annotate', detail: `Provider error: ${e.reason}`, cause: e }),
+        ),
       );
 
       const visionResult = yield* Effect.gen(function* () {
@@ -138,7 +140,9 @@ export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, Annotat
         return yield* visionProvider.analyze([], prompt, { model });
       }).pipe(
         Effect.provide(providerLayer),
-        Effect.mapError((e) => makeError('Annotation generation failed', e)),
+        Effect.mapError(
+          (e) => new OperationError({ operation: 'annotate', detail: 'Annotation generation failed', cause: e }),
+        ),
       );
 
       const toolCalls = parseToolCalls(visionResult.response);
