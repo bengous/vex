@@ -140,6 +140,8 @@ interface MyError {
 
 **Optional service injection:** Use `Effect.serviceOption(Tag)` when a service may or may not be provided. Returns `Option<Service>` - gracefully handles absence without requiring the service in the type signature.
 
+**Effect TaggedError messages:** `Data.TaggedError` provides "An error has occurred" by default. Add `override get message(): string` getter for useful CLI error output. See `ProfileNotFoundError` in `providers/shared/errors.ts` for example.
+
 **Artifact system:** All operations produce typed artifacts (image, analysis, dom-snapshot) stored in session directories.
 
 ## DOM Tracer Algorithm
