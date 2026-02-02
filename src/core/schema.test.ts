@@ -17,9 +17,6 @@ import {
   IssueArray,
   Region,
   Severity,
-  SimpleAnalysisResponse,
-  SimpleIssue,
-  SimpleIssueArray,
 } from './schema.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -566,98 +563,6 @@ describe('IssueArray', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SimpleIssue Tests
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('SimpleIssue', () => {
-  const validSimpleIssue = {
-    id: 1,
-    description: 'Hero text is hard to read',
-    severity: 'high',
-    region: 'upper-center', // Freeform string, not GridRef
-  };
-
-  test('accepts valid simple issue with freeform region', () => {
-    const result = decode(SimpleIssue)(validSimpleIssue);
-
-    expect(isSuccess(result)).toBe(true);
-    if (isSuccess(result)) {
-      expect(result.right.region).toBe('upper-center');
-    }
-  });
-
-  test('accepts any string as region', () => {
-    const regions = ['top-left', 'center', 'bottom', 'navigation bar', 'hero section'];
-    for (const region of regions) {
-      const result = decode(SimpleIssue)({ ...validSimpleIssue, region });
-      expect(isSuccess(result)).toBe(true);
-    }
-  });
-
-  test('accepts issue with suggestedFix', () => {
-    const input = { ...validSimpleIssue, suggestedFix: 'Add contrast to text' };
-    const result = decode(SimpleIssue)(input);
-
-    expect(isSuccess(result)).toBe(true);
-    if (isSuccess(result)) {
-      expect(result.right.suggestedFix).toBe('Add contrast to text');
-    }
-  });
-
-  test('rejects invalid severity', () => {
-    const input = { ...validSimpleIssue, severity: 'urgent' };
-    const result = decode(SimpleIssue)(input);
-    expect(isFailure(result)).toBe(true);
-  });
-
-  test('rejects missing id', () => {
-    const { id: _, ...withoutId } = validSimpleIssue;
-    const result = decode(SimpleIssue)(withoutId);
-    expect(isFailure(result)).toBe(true);
-  });
-
-  test('rejects string id', () => {
-    const input = { ...validSimpleIssue, id: 'one' };
-    const result = decode(SimpleIssue)(input);
-    expect(isFailure(result)).toBe(true);
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SimpleIssueArray Tests
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('SimpleIssueArray', () => {
-  const validSimpleIssue = {
-    id: 1,
-    description: 'Test',
-    severity: 'medium',
-    region: 'top',
-  };
-
-  test('accepts empty array', () => {
-    const result = decode(SimpleIssueArray)([]);
-    expect(isSuccess(result)).toBe(true);
-  });
-
-  test('accepts array with valid issues', () => {
-    const issues = [validSimpleIssue, { ...validSimpleIssue, id: 2, region: 'bottom' }];
-    const result = decode(SimpleIssueArray)(issues);
-
-    expect(isSuccess(result)).toBe(true);
-    if (isSuccess(result)) {
-      expect(result.right).toHaveLength(2);
-    }
-  });
-
-  test('rejects if any issue is invalid', () => {
-    const issues = [validSimpleIssue, { ...validSimpleIssue, id: 2, severity: 'critical' }];
-    const result = decode(SimpleIssueArray)(issues);
-    expect(isFailure(result)).toBe(true);
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
 // AnalysisResponse Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -682,47 +587,6 @@ describe('AnalysisResponse', () => {
 
   test('rejects issues: null', () => {
     const result = decode(AnalysisResponse)({ issues: null });
-    expect(isFailure(result)).toBe(true);
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SimpleAnalysisResponse Tests
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('SimpleAnalysisResponse', () => {
-  test('accepts response with empty issues', () => {
-    const result = decode(SimpleAnalysisResponse)({ issues: [] });
-    expect(isSuccess(result)).toBe(true);
-  });
-
-  test('accepts response with clarificationNeeded', () => {
-    const input = {
-      issues: [],
-      clarificationNeeded: 'What specific screen are you referring to?',
-    };
-    const result = decode(SimpleAnalysisResponse)(input);
-
-    expect(isSuccess(result)).toBe(true);
-    if (isSuccess(result)) {
-      expect(result.right.clarificationNeeded).toBe('What specific screen are you referring to?');
-    }
-  });
-
-  test('accepts response without clarificationNeeded', () => {
-    const input = {
-      issues: [{ id: 1, description: 'Test', severity: 'medium', region: 'center' }],
-    };
-    const result = decode(SimpleAnalysisResponse)(input);
-
-    expect(isSuccess(result)).toBe(true);
-    if (isSuccess(result)) {
-      expect(result.right.clarificationNeeded).toBeUndefined();
-    }
-  });
-
-  test('rejects missing issues field', () => {
-    const result = decode(SimpleAnalysisResponse)({ clarificationNeeded: 'question' });
     expect(isFailure(result)).toBe(true);
   });
 });
