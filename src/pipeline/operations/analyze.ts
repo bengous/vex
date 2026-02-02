@@ -10,7 +10,7 @@ import {
   type ImageArtifact,
   type ViewportConfig,
 } from '../../core/types.js';
-import { parseIssuesFromResponse } from '../../core/validation.js';
+import { buildRetryPrompt, parseIssuesFromResponse, parseIssuesStrict } from '../../core/validation.js';
 import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
 import type { Operation, OperationError } from '../types.js';
 
@@ -96,16 +96,35 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
         Effect.mapError((e) => makeError(`Provider error: ${e.reason}`, e)),
       );
 
-      const visionResult = yield* Effect.gen(function* () {
-        const visionProvider = yield* VisionProvider;
-        return yield* visionProvider.analyze([input.image.path], effectivePrompt, { model, reasoning });
-      }).pipe(
-        Effect.provide(providerLayer),
+      // Helper: call VLM and parse strictly (fails on validation issues)
+      const analyzeStrict = (analysisPrompt: string) =>
+        Effect.gen(function* () {
+          const visionProvider = yield* VisionProvider;
+          const r = yield* visionProvider.analyze([input.image.path], analysisPrompt, { model, reasoning });
+          const issues = yield* parseIssuesStrict(r.response);
+          return { ...r, issues };
+        }).pipe(Effect.provide(providerLayer));
+
+      // Helper: call VLM with partial recovery (fallback, never fails)
+      const analyzeWithRecovery = (analysisPrompt: string) =>
+        Effect.gen(function* () {
+          const visionProvider = yield* VisionProvider;
+          const r = yield* visionProvider.analyze([input.image.path], analysisPrompt, { model, reasoning });
+          const issues = yield* parseIssuesFromResponse(r.response, ctx.logger);
+          return { ...r, issues };
+        }).pipe(Effect.provide(providerLayer));
+
+      // Try strict validation first, retry with schema reminder on failure
+      const visionResult = yield* analyzeStrict(effectivePrompt).pipe(
+        Effect.catchTag('ValidationRetryNeeded', (err) => {
+          ctx.logger.warn(`Validation failed (${err.reason}), retrying with schema reminder`);
+          const retryPrompt = buildRetryPrompt(effectivePrompt, err);
+          return analyzeWithRecovery(retryPrompt);
+        }),
         Effect.mapError((e) => makeError('Analysis failed', e)),
       );
 
-      // Parse and validate issues with partial recovery (logs warnings for invalid issues)
-      const issues = yield* parseIssuesFromResponse(visionResult.response, ctx.logger);
+      const issues = visionResult.issues;
 
       const result: AnalysisResult = {
         provider: visionResult.provider,
