@@ -324,7 +324,7 @@ expect(error.detail).toContain('expected message');
 
 **Mock provider cleanup:** Call `unregisterProvider(name)` in `afterAll` to prevent registry pollution. See `analyze.test.ts` for pattern.
 
-**Temp fixtures for grep integration tests:**
+**Temp fixtures for grep integration tests:** Use `mkdtempSync` for unique directories - guarantees uniqueness via OS-level random suffix, avoiding `Date.now()` collision risk in parallel tests.
 
 ```typescript
 const tempDir = mkdtempSync(join(tmpdir(), 'test-'));

@@ -21,7 +21,8 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { existsSync } from 'node:fs';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Effect, Exit } from 'effect';
@@ -135,8 +136,7 @@ describe('VEX Pipeline E2E', () => {
   const testUrl = `file://${resolve(import.meta.dir, 'fixtures/test-page.html')}`;
 
   beforeAll(async () => {
-    outputDir = join(tmpdir(), `vex-e2e-${Date.now()}`);
-    await mkdir(outputDir, { recursive: true });
+    outputDir = mkdtempSync(join(tmpdir(), 'vex-e2e-'));
     provider = await findAvailableProvider();
   });
 
