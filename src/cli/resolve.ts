@@ -8,7 +8,14 @@
 import type { FileSystem } from '@effect/platform';
 import { Effect, Option } from 'effect';
 import { ConfigError, getLoopPreset, getScanPreset, loadCodexProfile, loadConfigOptional } from '../config/loader.js';
-import type { DeviceSpec, LoopPreset, ProviderSpec, ScanPreset, VexConfig } from '../config/schema.js';
+import type {
+  DeviceSpec,
+  LoopPreset,
+  PlaceholderMediaSpec,
+  ProviderSpec,
+  ScanPreset,
+  VexConfig,
+} from '../config/schema.js';
 import { BUILTIN_PROFILES } from '../providers/codex-cli/schema.js';
 import { ProfileNotFoundError } from '../providers/shared/errors.js';
 import { getProviderMetadata } from '../providers/shared/registry.js';
@@ -16,6 +23,24 @@ import { getProviderMetadata } from '../providers/shared/registry.js';
 // ═══════════════════════════════════════════════════════════════════════════
 // Resolved Options Types
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fully resolved placeholder media options.
+ *
+ * Type hierarchy:
+ * - PlaceholderMediaSpec (schema) = boolean | PlaceholderMediaConfig
+ * - PlaceholderMediaConfig (schema) = { svgMinSize?, preserve? }
+ * - ResolvedPlaceholderMedia (CLI) = { enabled: true, svgMinSize, preserve } | undefined
+ * - PlaceholderMediaOptions (core) = { enabled: boolean, svgMinSize, preserve }
+ *
+ * ResolvedPlaceholderMedia is a subtype of core PlaceholderMediaOptions,
+ * allowing direct pass-through to capture operations.
+ */
+export interface ResolvedPlaceholderMedia {
+  readonly enabled: true;
+  readonly svgMinSize: number;
+  readonly preserve: readonly string[];
+}
 
 /**
  * Fully resolved scan options ready for pipeline execution.
@@ -28,7 +53,7 @@ export interface ResolvedScanOptions {
   readonly reasoning: string | undefined;
   readonly profile: string;
   readonly full: boolean;
-  readonly placeholderMedia: boolean;
+  readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly outputDir: string;
 }
 
@@ -44,7 +69,7 @@ export interface ResolvedLoopOptions {
   readonly maxIterations: number;
   readonly autoFix: 'high' | 'medium' | 'none';
   readonly dryRun: boolean;
-  readonly placeholderMedia: boolean;
+  readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly outputDir: string;
   readonly projectRoot: string;
 }
@@ -96,11 +121,49 @@ const DEFAULTS = {
   provider: 'ollama',
   profile: 'minimal',
   full: false,
-  placeholderMedia: false,
   maxIterations: 5,
   autoFix: 'high' as const,
   dryRun: false,
+  placeholderMedia: {
+    svgMinSize: 100,
+    preserve: [] as readonly string[],
+  },
 };
+
+/**
+ * Normalize placeholder media spec to resolved format.
+ *
+ * - false / undefined → undefined (disabled)
+ * - true → defaults
+ * - object → merge with defaults
+ */
+function normalizePlaceholderMedia(
+  cliEnabled: boolean,
+  presetSpec: PlaceholderMediaSpec | undefined,
+): ResolvedPlaceholderMedia | undefined {
+  // CLI flag takes precedence
+  if (cliEnabled) {
+    // CLI is just a boolean, use defaults
+    return { enabled: true, ...DEFAULTS.placeholderMedia };
+  }
+
+  // Preset not set
+  if (presetSpec === undefined || presetSpec === false) {
+    return undefined;
+  }
+
+  // Preset is true (use defaults)
+  if (presetSpec === true) {
+    return { enabled: true, ...DEFAULTS.placeholderMedia };
+  }
+
+  // Preset is object, merge with defaults
+  return {
+    enabled: true,
+    svgMinSize: presetSpec.svgMinSize ?? DEFAULTS.placeholderMedia.svgMinSize,
+    preserve: presetSpec.preserve ?? DEFAULTS.placeholderMedia.preserve,
+  };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Profile Resolution
@@ -305,7 +368,7 @@ Known: ${providerMeta.knownModels.join(', ')}`,
 
     // Resolve boolean flags: CLI true overrides preset, otherwise use preset or default
     const full = cliArgs.full || preset?.full || DEFAULTS.full;
-    const placeholderMedia = cliArgs.placeholderMedia || preset?.placeholderMedia || DEFAULTS.placeholderMedia;
+    const placeholderMedia = normalizePlaceholderMedia(cliArgs.placeholderMedia, preset?.placeholderMedia);
 
     const outputDir = yield* resolveOutputDir(cliArgs.output, config);
 
@@ -444,7 +507,7 @@ Known: ${providerMeta.knownModels.join(', ')}`,
       | 'none';
 
     const dryRun = cliArgs.dryRun || preset?.dryRun || DEFAULTS.dryRun;
-    const placeholderMedia = cliArgs.placeholderMedia || preset?.placeholderMedia || DEFAULTS.placeholderMedia;
+    const placeholderMedia = normalizePlaceholderMedia(cliArgs.placeholderMedia, preset?.placeholderMedia);
 
     const outputDir = yield* resolveOutputDir(cliArgs.output, config);
 
