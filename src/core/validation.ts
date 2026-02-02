@@ -230,6 +230,47 @@ export function parseIssuesFromResponse(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Retry Prompt Builder
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ERROR_MESSAGES: Record<ValidationRetryNeeded['reason'], string> = {
+  no_json: 'Your response did not contain valid JSON with an "issues" array.',
+  json_parse_error: 'Your response contained malformed JSON that could not be parsed.',
+  schema_validation_error: 'Some issues in your response did not match the required schema.',
+};
+
+const ISSUE_SCHEMA_EXAMPLE = `{
+  "issues": [
+    {
+      "id": 1,
+      "description": "Brief description of the visual issue",
+      "severity": "high" | "medium" | "low",
+      "region": "A1" | {"x": number, "y": number, "width": number, "height": number},
+      "suggestedFix": "Optional fix suggestion"
+    }
+  ]
+}`;
+
+/**
+ * Build a retry prompt that reminds the LLM of the expected JSON schema.
+ * Includes the original prompt plus error context and schema specification.
+ */
+export function buildRetryPrompt(originalPrompt: string, error: ValidationRetryNeeded): string {
+  const errorMessage = ERROR_MESSAGES[error.reason];
+  const detailLine = error.details ? `\nDetails: ${error.details}` : '';
+
+  return `${originalPrompt}
+
+IMPORTANT: Your previous response could not be parsed. ${errorMessage}${detailLine}
+
+Please ensure your response contains valid JSON matching this exact schema:
+
+${ISSUE_SCHEMA_EXAMPLE}
+
+Return ONLY the JSON object, no markdown code blocks or additional text.`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Internal Helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
