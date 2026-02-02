@@ -29,14 +29,14 @@ import {
   storeData,
   updateNodeState,
 } from './state.js';
-import type {
-  Logger,
-  Operation,
+import {
+  type Logger,
+  type Operation,
   OperationError,
-  PipelineContext,
-  PipelineDefinition,
-  PipelineError,
-  PipelineState,
+  type PipelineContext,
+  type PipelineDefinition,
+  type PipelineError,
+  type PipelineState,
 } from './types.js';
 
 // Operation registry - use any to avoid complex generic constraints
@@ -156,20 +156,14 @@ function executeNode(
   return Effect.gen(function* () {
     const node = state.definition.nodes.find((n) => n.id === nodeId);
     if (!node) {
-      return yield* Effect.fail({
-        _tag: 'OperationError',
-        operation: nodeId,
-        message: `Node not found: ${nodeId}`,
-      } as OperationError);
+      return yield* Effect.fail(new OperationError({ operation: nodeId, detail: `Node not found: ${nodeId}` }));
     }
 
     const operation = OPERATIONS[node.operation];
     if (!operation) {
-      return yield* Effect.fail({
-        _tag: 'OperationError',
-        operation: node.operation,
-        message: `Unknown operation: ${node.operation}`,
-      } as OperationError);
+      return yield* Effect.fail(
+        new OperationError({ operation: node.operation, detail: `Unknown operation: ${node.operation}` }),
+      );
     }
 
     let currentState = updateNodeState(state, nodeId, {

@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import { addFoldOverlay } from '../../core/overlays.js';
 import type { FoldConfig, ImageArtifact } from '../../core/types.js';
 import { DEFAULT_FOLD_CONFIG } from '../../core/types.js';
-import type { Operation, OperationError } from '../types.js';
+import { type Operation, OperationError } from '../types.js';
 
 export interface OverlayFoldsConfig {
   readonly foldConfig?: FoldConfig;
@@ -20,10 +20,6 @@ export interface OverlayFoldsInput {
 
 export interface OverlayFoldsOutput {
   readonly image: ImageArtifact;
-}
-
-function makeError(message: string, cause?: unknown): OperationError {
-  return { _tag: 'OperationError', operation: 'overlay-folds', message, cause };
 }
 
 export const overlayFoldsOperation: Operation<OverlayFoldsInput, OverlayFoldsOutput, OverlayFoldsConfig> = {
@@ -41,21 +37,25 @@ export const overlayFoldsOperation: Operation<OverlayFoldsInput, OverlayFoldsOut
 
       const imageBuffer = yield* Effect.tryPromise({
         try: () => sharp(input.image.path).toBuffer(),
-        catch: (e) => makeError('Failed to read image', e),
+        catch: (e) => new OperationError({ operation: 'overlay-folds', detail: 'Failed to read image', cause: e }),
       });
 
       const foldBuffer = yield* Effect.tryPromise({
         try: () => addFoldOverlay(imageBuffer, viewportHeight, foldConfig),
-        catch: (e) => makeError('Failed to add fold lines', e),
+        catch: (e) => new OperationError({ operation: 'overlay-folds', detail: 'Failed to add fold lines', cause: e }),
       });
 
       const outputPath = yield* ctx
         .getArtifactPath('withFolds')
-        .pipe(Effect.mapError((e) => makeError('Failed to get output path', e)));
+        .pipe(
+          Effect.mapError(
+            (e) => new OperationError({ operation: 'overlay-folds', detail: 'Failed to get output path', cause: e }),
+          ),
+        );
 
       yield* Effect.tryPromise({
         try: () => sharp(foldBuffer).toFile(outputPath),
-        catch: (e) => makeError('Failed to save fold image', e),
+        catch: (e) => new OperationError({ operation: 'overlay-folds', detail: 'Failed to save fold image', cause: e }),
       });
 
       const artifact: ImageArtifact = {

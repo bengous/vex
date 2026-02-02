@@ -7,7 +7,7 @@ import { Effect } from 'effect';
 import { chromium } from 'playwright';
 import { captureScreenshot, captureWithDOM, type PlaceholderMediaOptions } from '../../core/capture.js';
 import type { DOMSnapshotArtifact, ImageArtifact, ViewportConfig } from '../../core/types.js';
-import type { Operation, OperationError } from '../types.js';
+import { type Operation, OperationError } from '../types.js';
 
 export interface CaptureConfig {
   readonly url: string;
@@ -21,10 +21,6 @@ export interface CaptureOutput {
   readonly image: ImageArtifact;
   /** DOM snapshot artifact, present when withDOM: true */
   readonly domSnapshot?: DOMSnapshotArtifact;
-}
-
-function makeError(message: string, cause?: unknown): OperationError {
-  return { _tag: 'OperationError', operation: 'capture', message, cause };
 }
 
 export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
@@ -42,17 +38,25 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
       // getArtifactPath creates the viewport directory if needed
       const screenshotPath = yield* ctx
         .getArtifactPath('screenshot')
-        .pipe(Effect.mapError((e) => makeError('Failed to get screenshot path', e)));
+        .pipe(
+          Effect.mapError(
+            (e) => new OperationError({ operation: 'capture', detail: 'Failed to get screenshot path', cause: e }),
+          ),
+        );
 
       const browser = yield* Effect.tryPromise({
         try: () => chromium.launch(),
-        catch: (e) => makeError('Failed to launch browser', e),
+        catch: (e) => new OperationError({ operation: 'capture', detail: 'Failed to launch browser', cause: e }),
       });
 
       if (withDOM) {
         const domPath = yield* ctx
           .getArtifactPath('dom')
-          .pipe(Effect.mapError((e) => makeError('Failed to get DOM path', e)));
+          .pipe(
+            Effect.mapError(
+              (e) => new OperationError({ operation: 'capture', detail: 'Failed to get DOM path', cause: e }),
+            ),
+          );
 
         const result = yield* Effect.tryPromise({
           try: () =>
@@ -63,12 +67,12 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
               filename: '01-screenshot.png',
               placeholderMedia,
             }),
-          catch: (e) => makeError('Failed to capture with DOM', e),
+          catch: (e) => new OperationError({ operation: 'capture', detail: 'Failed to capture with DOM', cause: e }),
         });
 
         yield* Effect.tryPromise({
           try: () => Bun.write(domPath, JSON.stringify(result.domSnapshot, null, 2)),
-          catch: (e) => makeError('Failed to save DOM snapshot', e),
+          catch: (e) => new OperationError({ operation: 'capture', detail: 'Failed to save DOM snapshot', cause: e }),
         });
 
         const artifact: ImageArtifact = {
@@ -95,7 +99,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
 
         yield* Effect.tryPromise({
           try: () => browser.close(),
-          catch: () => makeError('Failed to close browser'),
+          catch: () => new OperationError({ operation: 'capture', detail: 'Failed to close browser' }),
         });
 
         return { image: artifact, domSnapshot: domArtifact };
@@ -110,7 +114,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
             filename: '01-screenshot.png',
             placeholderMedia,
           }),
-        catch: (e) => makeError('Failed to capture screenshot', e),
+        catch: (e) => new OperationError({ operation: 'capture', detail: 'Failed to capture screenshot', cause: e }),
       });
 
       const artifact: ImageArtifact = {
@@ -122,7 +126,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
 
       yield* Effect.tryPromise({
         try: () => browser.close(),
-        catch: () => makeError('Failed to close browser'),
+        catch: () => new OperationError({ operation: 'capture', detail: 'Failed to close browser' }),
       });
 
       return { image: artifact };

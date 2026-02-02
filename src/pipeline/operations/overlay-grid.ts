@@ -6,7 +6,7 @@ import { Effect } from 'effect';
 import sharp from 'sharp';
 import { addGridOverlay } from '../../core/overlays.js';
 import type { ImageArtifact } from '../../core/types.js';
-import type { Operation, OperationError } from '../types.js';
+import { type Operation, OperationError } from '../types.js';
 
 export interface OverlayGridConfig {
   readonly showLabels?: boolean;
@@ -18,10 +18,6 @@ export interface OverlayGridInput {
 
 export interface OverlayGridOutput {
   readonly image: ImageArtifact;
-}
-
-function makeError(message: string, cause?: unknown): OperationError {
-  return { _tag: 'OperationError', operation: 'overlay-grid', message, cause };
 }
 
 export const overlayGridOperation: Operation<OverlayGridInput, OverlayGridOutput, OverlayGridConfig> = {
@@ -38,21 +34,25 @@ export const overlayGridOperation: Operation<OverlayGridInput, OverlayGridOutput
 
       const imageBuffer = yield* Effect.tryPromise({
         try: () => sharp(input.image.path).toBuffer(),
-        catch: (e) => makeError('Failed to read image', e),
+        catch: (e) => new OperationError({ operation: 'overlay-grid', detail: 'Failed to read image', cause: e }),
       });
 
       const gridBuffer = yield* Effect.tryPromise({
         try: () => addGridOverlay(imageBuffer, { showLabels }),
-        catch: (e) => makeError('Failed to add grid overlay', e),
+        catch: (e) => new OperationError({ operation: 'overlay-grid', detail: 'Failed to add grid overlay', cause: e }),
       });
 
       const outputPath = yield* ctx
         .getArtifactPath('withGrid')
-        .pipe(Effect.mapError((e) => makeError('Failed to get output path', e)));
+        .pipe(
+          Effect.mapError(
+            (e) => new OperationError({ operation: 'overlay-grid', detail: 'Failed to get output path', cause: e }),
+          ),
+        );
 
       yield* Effect.tryPromise({
         try: () => sharp(gridBuffer).toFile(outputPath),
-        catch: (e) => makeError('Failed to save grid image', e),
+        catch: (e) => new OperationError({ operation: 'overlay-grid', detail: 'Failed to save grid image', cause: e }),
       });
 
       const artifact: ImageArtifact = {

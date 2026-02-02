@@ -6,7 +6,7 @@ import { Effect } from 'effect';
 import sharp from 'sharp';
 import { renderAnnotations } from '../../core/overlays.js';
 import type { ImageArtifact, ToolCall } from '../../core/types.js';
-import type { Operation, OperationError } from '../types.js';
+import { type Operation, OperationError } from '../types.js';
 
 export type RenderConfig = Record<string, never>;
 
@@ -17,10 +17,6 @@ export interface RenderInput {
 
 export interface RenderOutput {
   readonly image: ImageArtifact;
-}
-
-function makeError(message: string, cause?: unknown): OperationError {
-  return { _tag: 'OperationError', operation: 'render', message, cause };
 }
 
 export const renderOperation: Operation<RenderInput, RenderOutput, RenderConfig> = {
@@ -40,21 +36,25 @@ export const renderOperation: Operation<RenderInput, RenderOutput, RenderConfig>
 
       const imageBuffer = yield* Effect.tryPromise({
         try: () => sharp(input.image.path).toBuffer(),
-        catch: (e) => makeError('Failed to read image', e),
+        catch: (e) => new OperationError({ operation: 'render', detail: 'Failed to read image', cause: e }),
       });
 
       const annotatedBuffer = yield* Effect.tryPromise({
         try: () => renderAnnotations(imageBuffer, input.toolCalls),
-        catch: (e) => makeError('Failed to render annotations', e),
+        catch: (e) => new OperationError({ operation: 'render', detail: 'Failed to render annotations', cause: e }),
       });
 
       const outputPath = yield* ctx
         .getArtifactPath('annotated')
-        .pipe(Effect.mapError((e) => makeError('Failed to get output path', e)));
+        .pipe(
+          Effect.mapError(
+            (e) => new OperationError({ operation: 'render', detail: 'Failed to get output path', cause: e }),
+          ),
+        );
 
       yield* Effect.tryPromise({
         try: () => sharp(annotatedBuffer).toFile(outputPath),
-        catch: (e) => makeError('Failed to save annotated image', e),
+        catch: (e) => new OperationError({ operation: 'render', detail: 'Failed to save annotated image', cause: e }),
       });
 
       const artifact: ImageArtifact = {
