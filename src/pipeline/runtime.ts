@@ -129,7 +129,10 @@ function createContext(
       return artifact.id;
     },
     getArtifact: (id) => artifacts.get(id) ?? semanticNames.get(id),
+    // Typed getData for known keys (cast needed since implementation uses string)
     getData: (key) => dataMap.get(key),
+    // Raw getData for dynamic node:field keys used in edge routing
+    getDataRaw: (key) => dataMap.get(key),
     getViewportDir,
     getArtifactPath,
     // Internal methods for mapping semantic names
@@ -183,7 +186,8 @@ function executeNode(
       if (artifact) {
         inputs[targetKey] = artifact;
       } else {
-        const data = ctx.getData(sourceKey);
+        // Use getDataRaw for dynamic edge routing keys
+        const data = ctx.getDataRaw(sourceKey);
         if (data !== undefined) {
           inputs[targetKey] = data;
         }
