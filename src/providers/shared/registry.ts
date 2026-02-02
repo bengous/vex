@@ -80,6 +80,17 @@ export function resolveProviderLayer<TConfig = unknown>(
 }
 
 /**
+ * Unregister a provider by name.
+ * Useful for test cleanup to prevent registry pollution.
+ *
+ * @param name - Provider identifier to remove
+ * @returns true if provider was removed, false if not found
+ */
+export function unregisterProvider(name: string): boolean {
+  return PROVIDER_ENTRIES.delete(name);
+}
+
+/**
  * Get list of registered provider names.
  */
 export function listProviderNames(): string[] {

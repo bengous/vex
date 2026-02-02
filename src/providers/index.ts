@@ -19,6 +19,7 @@ export {
   type ProviderMetadata,
   registerProvider,
   resolveProviderLayer,
+  unregisterProvider,
 } from './shared/registry.js';
 
 export {

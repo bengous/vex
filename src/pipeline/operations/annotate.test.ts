@@ -10,8 +10,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
 import type { AnalysisResult, Issue, ToolCall } from '../../core/types.js';
-import { registerProvider } from '../../providers/index.js';
-import { createMockAnalysisError, createMockVisionProviderLayer, createMockVisionResult, expectOperationFailure, runEffectExit } from '../../testing/index.js';
+import { registerProvider, unregisterProvider } from '../../providers/index.js';
+import {
+  createMockAnalysisError,
+  createMockVisionProviderLayer,
+  createMockVisionResult,
+  expectOperationFailure,
+  runEffectExit,
+} from '../../testing/index.js';
 import { createCapturingLogger, createMockContext } from '../../testing/mocks/pipeline-context.js';
 import { annotateOperation } from './annotate.js';
 
@@ -21,6 +27,7 @@ import { annotateOperation } from './annotate.js';
 
 describe('annotateOperation', () => {
   let testDir: string;
+  const registeredProviders: string[] = [];
 
   beforeAll(async () => {
     testDir = join(tmpdir(), `annotate-test-${Date.now()}`);
@@ -29,11 +36,22 @@ describe('annotateOperation', () => {
 
   afterAll(async () => {
     await rm(testDir, { recursive: true });
+    // Clean up registered mock providers
+    for (const name of registeredProviders) {
+      unregisterProvider(name);
+    }
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Test Fixtures
   // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Register a mock provider and track for cleanup */
+  function registerMockProvider(name: string, options: Parameters<typeof createMockVisionProviderLayer>[0]) {
+    registerProvider(name, () => createMockVisionProviderLayer(options));
+    registeredProviders.push(name);
+    return name;
+  }
 
   function createMockIssue(overrides: Partial<Issue> = {}): Issue {
     return {
@@ -84,7 +102,7 @@ describe('annotateOperation', () => {
         provider: providerName,
         response: createToolCallsResponse(toolCalls),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
@@ -110,7 +128,7 @@ describe('annotateOperation', () => {
         provider: providerName,
         response: createToolCallsResponse(toolCalls),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
@@ -131,11 +149,9 @@ describe('annotateOperation', () => {
     test('returns empty toolCalls when no issues', async () => {
       const providerName = `test-annotate-empty-${Date.now()}`;
       // Provider should not even be called when issues is empty
-      registerProvider(providerName, () =>
-        createMockVisionProviderLayer({
-          analyzeResponse: createMockVisionResult({ response: '[]' }),
-        }),
-      );
+      registerMockProvider(providerName, {
+        analyzeResponse: createMockVisionResult({ response: '[]' }),
+      });
 
       const logger = createCapturingLogger();
       const ctx = createMockContext({ sessionDir: testDir, logger });
@@ -162,7 +178,7 @@ describe('annotateOperation', () => {
         provider: providerName,
         response: createToolCallsResponse([createValidToolCall()]),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const logger = createCapturingLogger();
       const ctx = createMockContext({ sessionDir: testDir, logger });
@@ -189,7 +205,7 @@ describe('annotateOperation', () => {
         provider: providerName,
         response: 'This is not valid JSON at all!!!',
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
@@ -217,7 +233,7 @@ describe('annotateOperation', () => {
         provider: providerName,
         response: createToolCallsResponse(mixedToolCalls),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
@@ -245,7 +261,7 @@ Let me know if you need more.`;
         provider: providerName,
         response: embeddedResponse,
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
@@ -285,7 +301,7 @@ Let me know if you need more.`;
         kind: 'timeout',
         message: 'Request timed out',
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockError }));
+      registerMockProvider(providerName, { analyzeResponse: mockError });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
@@ -311,7 +327,7 @@ Let me know if you need more.`;
         provider: providerName,
         response: createToolCallsResponse(toolCalls),
       });
-      registerProvider(providerName, () => createMockVisionProviderLayer({ analyzeResponse: mockResult }));
+      registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const issues = [createMockIssue({ id: 1 }), createMockIssue({ id: 2 }), createMockIssue({ id: 3 })];
