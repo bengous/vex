@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
 import sharp from 'sharp';
-import { registerProvider, unregisterProvider } from '../../providers/index.js';
+import { registerProvider, unregisterProvider } from '../../providers/shared/registry.js';
 import {
   createCapturingLogger,
   createMockAnalysisError,
