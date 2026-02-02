@@ -10,7 +10,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { Args, Command } from '@effect/cli';
 import { Effect, Option } from 'effect';
-import { parseIssuesFromResponse } from '../../core/validation.js';
+import { buildRetryPrompt, parseIssuesFromResponse, parseIssuesStrict } from '../../core/validation.js';
 import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
 import { jsonOption, modelOption, outputOption, providerOption } from '../options.js';
 // Import providers for self-registration
@@ -81,13 +81,34 @@ export const analyzeCommand = Command.make(
 
       const providerLayer = yield* resolveProviderLayer(providerName);
 
-      const result = yield* Effect.gen(function* () {
-        const provider = yield* VisionProvider;
-        return yield* provider.analyze([imagePath], DEFAULT_PROMPT, { model });
-      }).pipe(Effect.provide(providerLayer));
+      // Helper: call VLM and parse strictly (fails on validation issues)
+      const analyzeStrict = (prompt: string) =>
+        Effect.gen(function* () {
+          const provider = yield* VisionProvider;
+          const r = yield* provider.analyze([imagePath], prompt, { model });
+          const issues = yield* parseIssuesStrict(r.response);
+          return { ...r, issues };
+        }).pipe(Effect.provide(providerLayer));
 
-      // Parse and validate issues with partial recovery
-      const issues = yield* parseIssuesFromResponse(result.response);
+      // Helper: call VLM with partial recovery (fallback, never fails)
+      const analyzeWithRecovery = (prompt: string) =>
+        Effect.gen(function* () {
+          const provider = yield* VisionProvider;
+          const r = yield* provider.analyze([imagePath], prompt, { model });
+          const issues = yield* parseIssuesFromResponse(r.response);
+          return { ...r, issues };
+        }).pipe(Effect.provide(providerLayer));
+
+      // Try strict validation first, retry with schema reminder on failure
+      const { issues, ...result } = yield* analyzeStrict(DEFAULT_PROMPT).pipe(
+        Effect.catchTag('ValidationRetryNeeded', (err) => {
+          if (!args.json) {
+            console.log(`Validation failed (${err.reason}), retrying with schema reminder...`);
+          }
+          const retryPrompt = buildRetryPrompt(DEFAULT_PROMPT, err);
+          return analyzeWithRecovery(retryPrompt);
+        }),
+      );
 
       // Write to output directory if specified (additive to console output)
       if (outputDir) {
