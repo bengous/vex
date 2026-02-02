@@ -4,9 +4,10 @@
  * Uses ManagedRuntime to reuse the runtime across test runs (performance)
  * and properly type-constrain Effects to BunContext services (type safety).
  */
-import { BunContext } from '@effect/platform-bun';
-import { Effect, Exit, type Layer, ManagedRuntime } from 'effect';
+
 import { expect } from 'bun:test';
+import { BunContext } from '@effect/platform-bun';
+import { type Effect, Exit, type Layer, ManagedRuntime } from 'effect';
 import type { OperationError } from '../pipeline/types.js';
 
 /** Services provided by BunContext.layer */
