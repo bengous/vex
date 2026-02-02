@@ -78,9 +78,9 @@ export function createMockVisionProvider(options: MockVisionProviderOptions = {}
     analyze: (images: readonly string[], prompt: string) => {
       onAnalyze?.(images, prompt);
       if ('_tag' in analyzeResponse) {
-        return Effect.fail(analyzeResponse as ProviderError);
+        return Effect.fail(analyzeResponse);
       }
-      return Effect.succeed(analyzeResponse as VisionResult);
+      return Effect.succeed(analyzeResponse);
     },
     isAvailable: () => Effect.succeed(isAvailable),
     listModels: () => Effect.succeed(models),
