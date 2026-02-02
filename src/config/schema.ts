@@ -6,6 +6,7 @@
  */
 
 import { Schema as S } from 'effect';
+import { CodexProfile } from '../providers/codex-cli/schema.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Primitive Schemas
@@ -75,6 +76,17 @@ export const PositiveInt = S.Number.pipe(
 );
 export type PositiveInt = S.Schema.Type<typeof PositiveInt>;
 
+/**
+ * Profile name: alphanumeric with hyphens/underscores, no colons.
+ * Used for both built-in and user-defined profiles.
+ */
+export const ProfileName = S.String.pipe(
+  S.pattern(/^[a-zA-Z][a-zA-Z0-9_-]*$/, {
+    message: () => 'Profile name must start with a letter and contain only letters, numbers, hyphens, or underscores',
+  }),
+);
+export type ProfileName = S.Schema.Type<typeof ProfileName>;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Provider Discriminated Union
 // ═══════════════════════════════════════════════════════════════════════════
@@ -95,6 +107,8 @@ export const CodexProvider = S.Struct({
   name: S.Literal('codex-cli'),
   model: S.optional(S.String),
   reasoning: S.optional(ReasoningLevel),
+  /** Profile name for sandbox/approval settings */
+  profile: S.optional(ProfileName),
 });
 export type CodexProvider = S.Schema.Type<typeof CodexProvider>;
 
@@ -169,6 +183,15 @@ export type LoopPreset = S.Schema.Type<typeof LoopPreset>;
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Provider-specific profiles configuration.
+ */
+export const ProvidersConfig = S.Struct({
+  /** User-defined Codex CLI profiles */
+  codex: S.optional(S.Record({ key: ProfileName, value: CodexProfile })),
+});
+export type ProvidersConfig = S.Schema.Type<typeof ProvidersConfig>;
+
+/**
  * Root vex configuration file schema.
  */
 export const VexConfig = S.Struct({
@@ -178,6 +201,8 @@ export const VexConfig = S.Struct({
   scanPresets: S.optional(S.Record({ key: S.String, value: ScanPreset })),
   /** Named presets for the loop command */
   loopPresets: S.optional(S.Record({ key: S.String, value: LoopPreset })),
+  /** Provider-specific configuration (profiles, etc.) */
+  providers: S.optional(ProvidersConfig),
 });
 export type VexConfig = S.Schema.Type<typeof VexConfig>;
 
