@@ -7,14 +7,12 @@
 
 import { describe, expect, test } from 'bun:test';
 import { Effect, Exit } from 'effect';
-import type { Issue, SimpleIssue } from './schema.js';
+import type { Issue } from './schema.js';
 import {
   IssueParseError,
   parseIssuesFromResponse,
-  parseSimpleAnalysisResponse,
   validateIssues,
   validateIssuesWithPartialRecovery,
-  validateSimpleIssuesWithPartialRecovery,
 } from './validation.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -29,16 +27,6 @@ function createValidIssue(overrides: Partial<Issue> = {}): Issue {
     region: 'A1',
     ...overrides,
   } as Issue;
-}
-
-function createValidSimpleIssue(overrides: Partial<SimpleIssue> = {}): SimpleIssue {
-  return {
-    id: 1,
-    description: 'Test simple issue',
-    severity: 'medium',
-    region: 'top-center',
-    ...overrides,
-  } as SimpleIssue;
 }
 
 /** Create a mock logger that records calls */
@@ -395,198 +383,6 @@ Let me know if you have questions.`;
       const exit = await Effect.runPromiseExit(parseIssuesFromResponse(input));
       expect(Exit.isSuccess(exit)).toBe(true);
     }
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// validateSimpleIssuesWithPartialRecovery Tests
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('validateSimpleIssuesWithPartialRecovery', () => {
-  test('returns all issues when all valid', () => {
-    const issues = [createValidSimpleIssue({ id: 1 }), createValidSimpleIssue({ id: 2, region: 'bottom-left' })];
-
-    const result = validateSimpleIssuesWithPartialRecovery(issues);
-
-    expect(result).toHaveLength(2);
-  });
-
-  test('keeps valid issues when some are invalid', () => {
-    const issues = [
-      createValidSimpleIssue({ id: 1 }),
-      { id: 2, description: 'Invalid' }, // missing severity and region
-      createValidSimpleIssue({ id: 3 }),
-    ];
-
-    const result = validateSimpleIssuesWithPartialRecovery(issues);
-
-    expect(result).toHaveLength(2);
-    expect(result.map((i) => i.id)).toEqual([1, 3]);
-  });
-
-  test('returns empty array when all invalid', () => {
-    const issues = [{ id: 1 }, { id: 2, severity: 'wrong' }, { bad: true }];
-
-    const result = validateSimpleIssuesWithPartialRecovery(issues);
-
-    expect(result).toEqual([]);
-  });
-
-  test('returns empty array for non-array', () => {
-    expect(validateSimpleIssuesWithPartialRecovery({ notArray: true })).toEqual([]);
-    expect(validateSimpleIssuesWithPartialRecovery('string')).toEqual([]);
-    expect(validateSimpleIssuesWithPartialRecovery(null)).toEqual([]);
-    expect(validateSimpleIssuesWithPartialRecovery(undefined)).toEqual([]);
-  });
-
-  test('accepts freeform string regions (unlike Issue)', () => {
-    const issues = [
-      createValidSimpleIssue({ region: 'upper-center' }),
-      createValidSimpleIssue({ id: 2, region: 'navigation area' }),
-      createValidSimpleIssue({ id: 3, region: 'hero section, left side' }),
-    ];
-
-    const result = validateSimpleIssuesWithPartialRecovery(issues);
-
-    expect(result).toHaveLength(3);
-    expect(result[0]?.region).toBe('upper-center');
-    expect(result[1]?.region).toBe('navigation area');
-  });
-
-  test('is synchronous (returns SimpleIssue[] directly)', () => {
-    const result = validateSimpleIssuesWithPartialRecovery([createValidSimpleIssue()]);
-
-    // Result should be array directly, not Effect or Promise
-    expect(Array.isArray(result)).toBe(true);
-    expect(result).toHaveLength(1);
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// parseSimpleAnalysisResponse Tests
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('parseSimpleAnalysisResponse', () => {
-  test('extracts issues from clean JSON', () => {
-    const content = JSON.stringify({
-      issues: [createValidSimpleIssue({ id: 1 }), createValidSimpleIssue({ id: 2 })],
-    });
-
-    const result = parseSimpleAnalysisResponse(content);
-
-    expect(result.issues).toHaveLength(2);
-    expect(result.clarificationNeeded).toBeUndefined();
-  });
-
-  test('extracts clarificationNeeded field', () => {
-    const content = JSON.stringify({
-      issues: [],
-      clarificationNeeded: 'Which page are you referring to?',
-    });
-
-    const result = parseSimpleAnalysisResponse(content);
-
-    expect(result.issues).toEqual([]);
-    expect(result.clarificationNeeded).toBe('Which page are you referring to?');
-  });
-
-  test('extracts both issues and clarification', () => {
-    const content = JSON.stringify({
-      issues: [createValidSimpleIssue({ id: 1 })],
-      clarificationNeeded: 'Should I also check the footer?',
-    });
-
-    const result = parseSimpleAnalysisResponse(content);
-
-    expect(result.issues).toHaveLength(1);
-    expect(result.clarificationNeeded).toBe('Should I also check the footer?');
-  });
-
-  test('extracts from markdown code block', () => {
-    const content = `Here's what I found:
-
-\`\`\`json
-{
-  "issues": [
-    {"id": 1, "description": "Text hard to read", "severity": "high", "region": "hero"}
-  ]
-}
-\`\`\`
-`;
-
-    const result = parseSimpleAnalysisResponse(content);
-
-    expect(result.issues).toHaveLength(1);
-    expect(result.issues[0]?.description).toBe('Text hard to read');
-  });
-
-  test('returns empty issues when no JSON found', () => {
-    const content = 'I analyzed the image but cannot provide structured output.';
-
-    const result = parseSimpleAnalysisResponse(content);
-
-    expect(result.issues).toEqual([]);
-    expect(result.clarificationNeeded).toBeUndefined();
-  });
-
-  test('returns empty issues for malformed JSON', () => {
-    const content = '{"issues": [{"id": 1'; // truncated
-
-    const result = parseSimpleAnalysisResponse(content);
-
-    expect(result.issues).toEqual([]);
-  });
-
-  test('ignores non-string clarificationNeeded', () => {
-    const content = JSON.stringify({
-      issues: [],
-      clarificationNeeded: 123, // not a string
-    });
-
-    const result = parseSimpleAnalysisResponse(content);
-
-    expect(result.clarificationNeeded).toBeUndefined();
-  });
-
-  test('applies partial recovery to issues', () => {
-    const content = JSON.stringify({
-      issues: [
-        createValidSimpleIssue({ id: 1 }),
-        { id: 2, description: 'Invalid' }, // missing fields
-        createValidSimpleIssue({ id: 3 }),
-      ],
-    });
-
-    const result = parseSimpleAnalysisResponse(content);
-
-    expect(result.issues).toHaveLength(2);
-    expect(result.issues.map((i) => i.id)).toEqual([1, 3]);
-  });
-
-  test('handles issues: null gracefully', () => {
-    const content = '{"issues": null}';
-
-    const result = parseSimpleAnalysisResponse(content);
-
-    expect(result.issues).toEqual([]);
-  });
-
-  test('handles issues: undefined gracefully', () => {
-    // JSON.stringify removes undefined, so this becomes just {}
-    // But the function should handle missing issues field
-    const content = '{"other": "data"}';
-
-    const result = parseSimpleAnalysisResponse(content);
-
-    expect(result.issues).toEqual([]);
-  });
-
-  test('is synchronous', () => {
-    const result = parseSimpleAnalysisResponse('{"issues": []}');
-
-    // Should return object directly, not Promise
-    expect(typeof result).toBe('object');
-    expect(result).toHaveProperty('issues');
   });
 });
 

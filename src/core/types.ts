@@ -6,6 +6,32 @@
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Re-export validated types from schema (single source of truth)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Import for local use and re-export
+import type {
+  BoundingBox as BoundingBoxSchema,
+  CodeLocation as CodeLocationSchema,
+  Confidence as ConfidenceSchema,
+  GridRef as GridRefSchema,
+  Issue as IssueSchema,
+  IssueArray as IssueArraySchema,
+  Region as RegionSchema,
+  Severity as SeveritySchema,
+} from './schema.js';
+
+// Re-export with original names
+export type BoundingBox = BoundingBoxSchema;
+export type CodeLocation = CodeLocationSchema;
+export type Confidence = ConfidenceSchema;
+export type GridRef = GridRefSchema;
+export type Issue = IssueSchema;
+export type IssueArray = IssueArraySchema;
+export type Region = RegionSchema;
+export type Severity = SeveritySchema;
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Viewport & Capture Configuration
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -39,30 +65,8 @@ export interface FoldConfig {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Geometry Types
+// Geometry Types (not in schema)
 // ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Pixel bounding box (absolute coordinates).
- */
-export interface BoundingBox {
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-}
-
-/**
- * Grid cell reference (e.g., "A1", "B3", "J99").
- * Columns: A-J (10 columns)
- * Rows: 1-99
- */
-export type GridRef = string;
-
-/**
- * Region can be specified as pixels or grid reference.
- */
-export type Region = BoundingBox | GridRef;
 
 /**
  * Point in 2D space.
@@ -165,43 +169,8 @@ export interface DiffReportArtifact extends Artifact {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Issue & Analysis Types
+// Analysis Types (not in schema - wrapper types for pipeline)
 // ═══════════════════════════════════════════════════════════════════════════
-//
-// For runtime validation of LLM responses, use the Effect Schemas in:
-// - vex/core/schema.ts (schema definitions)
-// - vex/core/validation.ts (validation utilities)
-
-/**
- * Issue severity levels.
- */
-export type Severity = 'high' | 'medium' | 'low';
-
-/**
- * Visual issue detected during analysis.
- */
-export interface Issue {
-  readonly id: number;
-  readonly description: string;
-  readonly severity: Severity;
-  readonly region: Region;
-  readonly suggestedFix?: string;
-  readonly category?: string;
-  readonly codeLocations?: CodeLocation[];
-}
-
-/**
- * Code location where an issue might be fixed.
- */
-export interface CodeLocation {
-  readonly file: string;
-  readonly lineNumber?: number;
-  readonly columnNumber?: number;
-  readonly selector?: string;
-  readonly confidence: 'high' | 'medium' | 'low';
-  readonly reasoning: string;
-  readonly strategy: string;
-}
 
 /**
  * VLM analysis result.
