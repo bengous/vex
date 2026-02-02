@@ -6,7 +6,7 @@
  */
 
 import type { PlatformError } from '@effect/platform/Error';
-import type { Effect } from 'effect';
+import { Data, type Effect } from 'effect';
 import type { Artifact, ArtifactName, ArtifactType, Issue, ViewportConfig } from '../core/types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -15,12 +15,19 @@ import type { Artifact, ArtifactName, ArtifactType, Issue, ViewportConfig } from
 
 /**
  * Operation execution failed.
+ * Extends Data.TaggedError for proper Effect-TS integration:
+ * - Structural equality via Equal.equals()
+ * - Is an Error instance with stack trace
+ * - Works with Effect.catchTag()
  */
-export interface OperationError {
-  readonly _tag: 'OperationError';
+export class OperationError extends Data.TaggedError('OperationError')<{
   readonly operation: string;
-  readonly message: string;
+  readonly detail: string;
   readonly cause?: unknown;
+}> {
+  override get message(): string {
+    return `[${this.operation}] ${this.detail}`;
+  }
 }
 
 /**

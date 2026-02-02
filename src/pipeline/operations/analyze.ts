@@ -12,7 +12,7 @@ import {
 } from '../../core/types.js';
 import { buildRetryPrompt, parseIssuesFromResponse, parseIssuesStrict } from '../../core/validation.js';
 import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
-import type { Operation, OperationError } from '../types.js';
+import { type Operation, OperationError } from '../types.js';
 
 export interface AnalyzeConfig {
   readonly provider: string;
@@ -65,10 +65,6 @@ Format your response as JSON:
 }`;
 }
 
-function makeError(message: string, cause?: unknown): OperationError {
-  return { _tag: 'OperationError', operation: 'analyze', message, cause };
-}
-
 export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeConfig> = {
   name: 'analyze',
   description: 'Analyze image with VLM for visual issues',
@@ -84,16 +80,19 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
       // Validate reasoning is only used with supported providers
       if (reasoning && !REASONING_PROVIDERS.includes(provider as (typeof REASONING_PROVIDERS)[number])) {
         return yield* Effect.fail(
-          makeError(
-            `Provider '${provider}' does not support --reasoning. Supported: ${REASONING_PROVIDERS.join(', ')}`,
-          ),
+          new OperationError({
+            operation: 'analyze',
+            detail: `Provider '${provider}' does not support --reasoning. Supported: ${REASONING_PROVIDERS.join(', ')}`,
+          }),
         );
       }
 
       ctx.logger.info(`Analyzing ${input.image.path} with ${provider}`);
 
       const providerLayer = yield* resolveProviderLayer(provider).pipe(
-        Effect.mapError((e) => makeError(`Provider error: ${e.reason}`, e)),
+        Effect.mapError(
+          (e) => new OperationError({ operation: 'analyze', detail: `Provider error: ${e.reason}`, cause: e }),
+        ),
       );
 
       // Helper: call VLM and parse strictly (fails on validation issues)
@@ -121,7 +120,7 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
           const retryPrompt = buildRetryPrompt(effectivePrompt, err);
           return analyzeWithRecovery(retryPrompt);
         }),
-        Effect.mapError((e) => makeError('Analysis failed', e)),
+        Effect.mapError((e) => new OperationError({ operation: 'analyze', detail: 'Analysis failed', cause: e })),
       );
 
       const issues = visionResult.issues;
@@ -136,11 +135,15 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
 
       const outputPath = yield* ctx
         .getArtifactPath('analysis')
-        .pipe(Effect.mapError((e) => makeError('Failed to get output path', e)));
+        .pipe(
+          Effect.mapError(
+            (e) => new OperationError({ operation: 'analyze', detail: 'Failed to get output path', cause: e }),
+          ),
+        );
 
       yield* Effect.tryPromise({
         try: () => Bun.write(outputPath, JSON.stringify(result, null, 2)),
-        catch: (e) => makeError('Failed to save analysis', e),
+        catch: (e) => new OperationError({ operation: 'analyze', detail: 'Failed to save analysis', cause: e }),
       });
 
       const artifact: AnalysisArtifact = {
