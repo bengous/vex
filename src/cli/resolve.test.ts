@@ -4,7 +4,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { Option } from 'effect';
-import { runEffect, runEffectExit } from '../testing/index.js';
+import { runEffect, runEffectExit } from '../testing/effect-helpers.js';
 import type { LoopCliArgs, ScanCliArgs } from './resolve.js';
 import { resolveLoopOptions, resolveScanOptions } from './resolve.js';
 

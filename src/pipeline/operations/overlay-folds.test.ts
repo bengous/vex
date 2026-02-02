@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
 import sharp from 'sharp';
-import { runEffectExit } from '../../testing/index.js';
+import { runEffectExit } from '../../testing/effect-helpers.js';
 import {
   createCapturingLogger,
   createMockContext,

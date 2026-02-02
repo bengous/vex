@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { Exit } from 'effect';
 import sharp from 'sharp';
 import type { ToolCall } from '../../core/types.js';
-import { expectOperationFailure, runEffectExit } from '../../testing/index.js';
+import { expectOperationFailure, runEffectExit } from '../../testing/effect-helpers.js';
 import {
   createCapturingLogger,
   createMockContext,
