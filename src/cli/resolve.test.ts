@@ -18,6 +18,8 @@ const emptyScanArgs: ScanCliArgs = {
   provider: Option.none(),
   model: Option.none(),
   reasoning: Option.none(),
+  providerProfile: Option.none(),
+  allowUnknownModel: false,
   full: false,
   placeholderMedia: false,
   output: Option.none(),
@@ -29,6 +31,8 @@ const emptyLoopArgs: LoopCliArgs = {
   device: Option.none(),
   provider: Option.none(),
   model: Option.none(),
+  providerProfile: Option.none(),
+  allowUnknownModel: false,
   maxIterations: Option.none(),
   autoFix: Option.none(),
   dryRun: false,
@@ -63,7 +67,7 @@ describe('resolveScanOptions', () => {
       url: Option.some('https://example.com'),
       device: Option.some('iphone-15-pro'),
       provider: Option.some('claude-cli'),
-      model: Option.some('claude-sonnet-4'),
+      model: Option.some('claude-sonnet-4-20250514'),
       reasoning: Option.some('high'),
       full: true,
       placeholderMedia: true,
@@ -74,7 +78,7 @@ describe('resolveScanOptions', () => {
     expect(result.urls).toEqual(['https://example.com']);
     expect(result.devices).toEqual(['iphone-15-pro']);
     expect(result.provider).toBe('claude-cli');
-    expect(result.model).toBe('claude-sonnet-4');
+    expect(result.model).toBe('claude-sonnet-4-20250514');
     expect(result.reasoning).toBe('high');
     expect(result.full).toBe(true);
     expect(result.placeholderMedia).toBe(true);
@@ -173,7 +177,7 @@ describe('resolveLoopOptions', () => {
       url: Option.some('https://example.com'),
       device: Option.some('ipad-pro-11'),
       provider: Option.some('gemini-cli'),
-      model: Option.some('gemini-pro'),
+      model: Option.some('gemini-2.5-pro'),
       maxIterations: Option.some(10),
       autoFix: Option.some('medium'),
       dryRun: true,
@@ -185,7 +189,7 @@ describe('resolveLoopOptions', () => {
     expect(result.urls).toEqual(['https://example.com']);
     expect(result.devices).toEqual(['ipad-pro-11']);
     expect(result.provider).toBe('gemini-cli');
-    expect(result.model).toBe('gemini-pro');
+    expect(result.model).toBe('gemini-2.5-pro');
     expect(result.maxIterations).toBe(10);
     expect(result.autoFix).toBe('medium');
     expect(result.dryRun).toBe(true);
@@ -229,5 +233,77 @@ describe('resolveLoopOptions', () => {
     const result = await Effect.runPromise(resolveLoopOptions(args));
 
     expect(result.projectRoot).toBe('/my/project/path');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Profile Resolution Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('resolveScanOptions profile handling', () => {
+  let originalEnv: string | undefined;
+
+  beforeEach(() => {
+    originalEnv = process.env.VEX_OUTPUT_DIR;
+    process.env.VEX_OUTPUT_DIR = '/test/output';
+  });
+
+  afterEach(() => {
+    if (originalEnv !== undefined) {
+      process.env.VEX_OUTPUT_DIR = originalEnv;
+    } else {
+      delete process.env.VEX_OUTPUT_DIR;
+    }
+  });
+
+  it('defaults to minimal profile', async () => {
+    const args: ScanCliArgs = {
+      ...emptyScanArgs,
+      url: Option.some('https://example.com'),
+      provider: Option.some('codex-cli'),
+    };
+
+    const result = await Effect.runPromise(resolveScanOptions(args));
+
+    expect(result.profile).toBe('minimal');
+  });
+
+  it('parses --provider-profile correctly', async () => {
+    const args: ScanCliArgs = {
+      ...emptyScanArgs,
+      url: Option.some('https://example.com'),
+      provider: Option.some('codex-cli'),
+      providerProfile: Option.some('codex:fast'),
+    };
+
+    const result = await Effect.runPromise(resolveScanOptions(args));
+
+    expect(result.profile).toBe('fast');
+  });
+
+  it('rejects mismatched profile prefix', async () => {
+    const args: ScanCliArgs = {
+      ...emptyScanArgs,
+      url: Option.some('https://example.com'),
+      provider: Option.some('codex-cli'),
+      providerProfile: Option.some('claude:fast'),
+    };
+
+    const exit = await Effect.runPromiseExit(resolveScanOptions(args));
+
+    expect(exit._tag).toBe('Failure');
+  });
+
+  it('rejects invalid profile format', async () => {
+    const args: ScanCliArgs = {
+      ...emptyScanArgs,
+      url: Option.some('https://example.com'),
+      provider: Option.some('codex-cli'),
+      providerProfile: Option.some('fast'), // Missing provider: prefix
+    };
+
+    const exit = await Effect.runPromiseExit(resolveScanOptions(args));
+
+    expect(exit._tag).toBe('Failure');
   });
 });
