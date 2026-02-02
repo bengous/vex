@@ -25,7 +25,7 @@ export class ProviderUnavailable extends Data.TaggedError('ProviderUnavailable')
  */
 export class AnalysisFailed extends Data.TaggedError('AnalysisFailed')<{
   readonly provider: string;
-  readonly kind: 'timeout' | 'execution' | 'http' | 'image_read';
+  readonly kind: 'timeout' | 'execution' | 'http' | 'image_read' | 'parse';
   readonly message: string;
   readonly cause?: unknown;
 }> {}
