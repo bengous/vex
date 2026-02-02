@@ -77,6 +77,32 @@ export const PositiveInt = S.Number.pipe(
 export type PositiveInt = S.Schema.Type<typeof PositiveInt>;
 
 /**
+ * CSS selector string.
+ */
+export const CssSelector = S.String.pipe(S.minLength(1, { message: () => 'CSS selector cannot be empty' }));
+export type CssSelector = S.Schema.Type<typeof CssSelector>;
+
+/**
+ * Placeholder media configuration for replacing images/videos with boxes.
+ *
+ * This is the schema input type. When resolved, it becomes ResolvedPlaceholderMedia
+ * (in cli/resolve.ts), which is compatible with core PlaceholderMediaOptions.
+ */
+export const PlaceholderMediaConfig = S.Struct({
+  /** Minimum size (px) for SVG placeholders (default: 100) */
+  svgMinSize: S.optional(S.Number.pipe(S.positive({ message: () => 'svgMinSize must be positive' }))),
+  /** CSS selectors for elements to preserve (not replace) */
+  preserve: S.optional(S.Array(CssSelector)),
+});
+export type PlaceholderMediaConfig = S.Schema.Type<typeof PlaceholderMediaConfig>;
+
+/**
+ * Placeholder media specification: boolean (use defaults) or detailed config.
+ */
+export const PlaceholderMediaSpec = S.Union(S.Boolean, PlaceholderMediaConfig);
+export type PlaceholderMediaSpec = S.Schema.Type<typeof PlaceholderMediaSpec>;
+
+/**
  * Profile name: alphanumeric with hyphens/underscores, no colons.
  * Used for both built-in and user-defined profiles.
  */
@@ -152,8 +178,8 @@ export const ScanPreset = S.Struct({
   provider: S.optional(ProviderSpec),
   /** Run full annotation pipeline */
   full: S.optional(S.Boolean),
-  /** Replace images/videos with placeholder boxes */
-  placeholderMedia: S.optional(S.Boolean),
+  /** Replace images/videos with placeholder boxes (true for defaults, or object for custom) */
+  placeholderMedia: S.optional(PlaceholderMediaSpec),
 });
 export type ScanPreset = S.Schema.Type<typeof ScanPreset>;
 
@@ -173,8 +199,8 @@ export const LoopPreset = S.Struct({
   autoFix: S.optional(AutoFixThreshold),
   /** Dry run mode (no code changes) */
   dryRun: S.optional(S.Boolean),
-  /** Replace images/videos with placeholder boxes */
-  placeholderMedia: S.optional(S.Boolean),
+  /** Replace images/videos with placeholder boxes (true for defaults, or object for custom) */
+  placeholderMedia: S.optional(PlaceholderMediaSpec),
 });
 export type LoopPreset = S.Schema.Type<typeof LoopPreset>;
 

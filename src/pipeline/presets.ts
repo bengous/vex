@@ -2,6 +2,7 @@
  * Pipeline presets - common pipeline configurations.
  */
 
+import type { PlaceholderMediaOptions } from '../core/capture.js';
 import type { ViewportConfig } from '../core/types.js';
 import type { PipelineDefinition } from './types.js';
 
@@ -14,7 +15,7 @@ export function simpleAnalysis(
   provider: string,
   model?: string,
   reasoning?: string,
-  placeholderMedia?: boolean,
+  placeholderMedia?: PlaceholderMediaOptions,
 ): PipelineDefinition {
   return {
     name: 'simple-analysis',
@@ -68,7 +69,7 @@ export function fullAnnotation(
   provider: string,
   model?: string,
   reasoning?: string,
-  placeholderMedia?: boolean,
+  placeholderMedia?: PlaceholderMediaOptions,
 ): PipelineDefinition {
   return {
     name: 'full-annotation',

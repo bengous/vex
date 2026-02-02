@@ -148,6 +148,19 @@ interface MyError {
 
 **Effect service requirements in interfaces:** If a callback implementation needs a service (e.g., `FileSystem`), declare it in the interface's Effect return type. Type assertions to hide requirements are a code smell - either be honest about dependencies or restructure so the callback doesn't need the service.
 
+**Config option evolution pattern:** When upgrading a boolean config option to support detailed options:
+
+1. Schema: `FooSpec = S.Union(S.Boolean, FooConfig)` - accept both forms
+2. Resolve: `normalizeFoo(cli, preset)` → `ResolvedFoo | undefined` - merge with defaults
+3. Runtime: Pass resolved type directly to core (no defaults at call sites)
+
+Type naming convention to avoid collisions across layers:
+
+- `*Config` - schema input type (user-facing, partial fields)
+- `*Spec` - union of boolean | config (schema)
+- `Resolved*` - fully populated after CLI resolution
+- `*Options` - core runtime type (internal, all fields required)
+
 ## DOM Tracer Algorithm
 
 The core innovation for mapping visual issues to code:
