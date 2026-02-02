@@ -7,7 +7,41 @@
 
 import type { PlatformError } from '@effect/platform/Error';
 import { Data, type Effect } from 'effect';
-import type { Artifact, ArtifactName, ArtifactType, Issue, ViewportConfig } from '../core/types.js';
+import type {
+  AnalysisResult,
+  Artifact,
+  ArtifactName,
+  ArtifactType,
+  Issue,
+  ToolCall,
+  ViewportConfig,
+} from '../core/types.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Data Key Registry (Type-Safe Pipeline Data)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Registry mapping semantic data keys to their value types.
+ * Used by getData/storeData for compile-time type safety.
+ *
+ * Keys follow the pattern "operation:field" for node outputs.
+ */
+export interface DataKeyRegistry {
+  'analyze:result': AnalysisResult;
+  'annotate:toolCalls': readonly ToolCall[];
+  'diff:pixelDiffPercent': number;
+}
+
+/**
+ * Known data keys with type-safe access.
+ */
+export type DataKey = keyof DataKeyRegistry;
+
+/**
+ * Value type for a given data key.
+ */
+export type DataValue<K extends DataKey> = DataKeyRegistry[K];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Error Types
@@ -54,8 +88,17 @@ export interface PipelineContext {
   readonly storeArtifact: (artifact: Artifact) => string;
   readonly getArtifact: (id: string) => Artifact | undefined;
 
-  /** Get non-artifact data by semantic key (e.g., "analyze:result") */
-  readonly getData: (key: string) => unknown | undefined;
+  /**
+   * Get non-artifact data by known semantic key with type safety.
+   * @example ctx.getData('analyze:result') // returns AnalysisResult | undefined
+   */
+  readonly getData: <K extends DataKey>(key: K) => DataValue<K> | undefined;
+
+  /**
+   * Get non-artifact data by dynamic key (e.g., "nodeId:field").
+   * Use for dynamic edge routing; prefer getData for known keys.
+   */
+  readonly getDataRaw: (key: string) => unknown | undefined;
 
   /** Current viewport configuration (set by capture operation) */
   readonly viewport?: ViewportConfig;
