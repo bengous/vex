@@ -272,6 +272,18 @@ bun test vex/e2e/
 
 ## Testing Patterns
 
+**Type narrowing with node:assert:** Use `node:assert` for type narrowing instead of non-null assertions (`!`) or `as` casts. Bun fully supports Node's standard library, so mixing `bun:test` with `node:assert` is idiomatic:
+
+```typescript
+import { expect, test } from 'bun:test';
+import assert from 'node:assert';
+
+let captured: string | undefined;
+// ... effect that sets captured ...
+assert(captured); // narrows to string, throws if undefined
+expect(existsSync(captured)).toBe(false); // no cast needed
+```
+
 **Test helpers with ManagedRuntime:** Use `ManagedRuntime.make(BunContext.layer)` for test helpers instead of `any` type parameters. See `vex/testing/effect-helpers.ts` - provides type safety and runtime reuse across tests.
 
 **Fixture factories with spread overrides:**
