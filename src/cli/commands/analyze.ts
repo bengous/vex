@@ -10,7 +10,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { Args, Command } from '@effect/cli';
 import { Effect, Option } from 'effect';
-import { buildRetryPrompt, parseIssuesFromResponse, parseIssuesStrict } from '../../core/validation.js';
+import { analyzeWithRetry } from '../../core/analysis.js';
 import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
 import { jsonOption, modelOption, outputOption, providerOption } from '../options.js';
 // Import providers for self-registration
@@ -81,34 +81,22 @@ export const analyzeCommand = Command.make(
 
       const providerLayer = yield* resolveProviderLayer(providerName);
 
-      // Helper: call VLM and parse strictly (fails on validation issues)
-      const analyzeStrict = (prompt: string) =>
+      // Create analyze callback pre-composed with provider layer
+      const analyze = (prompt: string) =>
         Effect.gen(function* () {
           const provider = yield* VisionProvider;
-          const r = yield* provider.analyze([imagePath], prompt, { model });
-          const issues = yield* parseIssuesStrict(r.response);
-          return { ...r, issues };
+          return yield* provider.analyze([imagePath], prompt, { model });
         }).pipe(Effect.provide(providerLayer));
 
-      // Helper: call VLM with partial recovery (fallback, never fails)
-      const analyzeWithRecovery = (prompt: string) =>
-        Effect.gen(function* () {
-          const provider = yield* VisionProvider;
-          const r = yield* provider.analyze([imagePath], prompt, { model });
-          const issues = yield* parseIssuesFromResponse(r.response);
-          return { ...r, issues };
-        }).pipe(Effect.provide(providerLayer));
+      // Optional logger for retry messages (suppress in JSON mode)
+      const logger = args.json ? undefined : { warn: (msg: string) => console.log(msg) };
 
-      // Try strict validation first, retry with schema reminder on failure
-      const { issues, ...result } = yield* analyzeStrict(DEFAULT_PROMPT).pipe(
-        Effect.catchTag('ValidationRetryNeeded', (err) => {
-          if (!args.json) {
-            console.log(`Validation failed (${err.reason}), retrying with schema reminder...`);
-          }
-          const retryPrompt = buildRetryPrompt(DEFAULT_PROMPT, err);
-          return analyzeWithRecovery(retryPrompt);
-        }),
-      );
+      // Use shared retry logic from core/analysis.ts
+      const { issues, ...result } = yield* analyzeWithRetry({
+        analyze,
+        prompt: DEFAULT_PROMPT,
+        logger,
+      });
 
       // Write to output directory if specified (additive to console output)
       if (outputDir) {
