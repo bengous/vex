@@ -303,11 +303,9 @@ test.each(cases)('conf=%s, sev=%s → %s', (conf, sev, single, expected) => { ..
 **Effect error path testing:**
 
 ```typescript
-const exit = await Effect.runPromiseExit(program);
-expect(Exit.isFailure(exit)).toBe(true);
-if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
-  expect(exit.cause.error._tag).toBe('MyError');
-}
+const exit = await runEffectExit(program);
+const error = expectOperationFailure(exit, 'operationName');
+expect(error.detail).toContain('expected message');
 ```
 
 **Temp fixtures for grep integration tests:**
