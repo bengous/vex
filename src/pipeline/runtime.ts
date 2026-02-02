@@ -8,15 +8,13 @@ import type { PlatformError } from '@effect/platform/Error';
 import { Effect } from 'effect';
 import type { Artifact, ViewportConfig } from '../core/types.js';
 import { ARTIFACT_NAMES, getViewportDirName } from '../core/types.js';
-import {
-  analyzeOperation,
-  annotateOperation,
-  captureOperation,
-  diffOperation,
-  overlayFoldsOperation,
-  overlayGridOperation,
-  renderOperation,
-} from './operations/index.js';
+import { analyzeOperation } from './operations/analyze.js';
+import { annotateOperation } from './operations/annotate.js';
+import { captureOperation } from './operations/capture.js';
+import { diffOperation } from './operations/diff.js';
+import { overlayFoldsOperation } from './operations/overlay-folds.js';
+import { overlayGridOperation } from './operations/overlay-grid.js';
+import { renderOperation } from './operations/render.js';
 import {
   createSessionDir,
   getReadyNodes,
