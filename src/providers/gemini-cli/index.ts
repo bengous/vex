@@ -36,7 +36,7 @@ const config: CliProviderConfig = {
 
 export const GeminiCliProviderLayer = createCliProviderLayer(config);
 
-registerProvider('gemini-cli', GeminiCliProviderLayer, {
+registerProvider('gemini-cli', () => GeminiCliProviderLayer, {
   displayName: config.displayName,
   type: 'cli',
   command: config.command,

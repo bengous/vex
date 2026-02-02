@@ -2,8 +2,7 @@
  * Provider registry for runtime provider selection.
  *
  * Providers register factory functions that create layers on demand.
- * This enables runtime configuration (e.g., profiles) while maintaining
- * backwards compatibility with existing Layer-based registration.
+ * This enables runtime configuration (e.g., profiles).
  */
 
 import { Effect, type Layer } from 'effect';
@@ -35,17 +34,14 @@ const PROVIDER_ENTRIES = new Map<string, ProviderEntry>();
  * Register a provider factory. Called by provider modules during import.
  *
  * @param name - Provider identifier (e.g., 'codex-cli')
- * @param layerOrFactory - Either a Layer (backwards compat) or factory function
+ * @param factory - Factory function that creates the provider layer
  * @param metadata - Provider metadata for introspection
  */
 export function registerProvider(
   name: string,
-  layerOrFactory: Layer.Layer<VisionProvider> | ProviderFactory,
+  factory: ProviderFactory,
   metadata?: Omit<ProviderMetadata, 'name'>,
 ): void {
-  // Support both Layer (backwards compat) and factory function
-  const factory: ProviderFactory = typeof layerOrFactory === 'function' ? layerOrFactory : () => layerOrFactory;
-
   PROVIDER_ENTRIES.set(name, {
     factory,
     metadata: {
