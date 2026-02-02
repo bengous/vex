@@ -20,7 +20,8 @@
  */
 
 import { BunContext } from '@effect/platform-bun';
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Option } from 'effect';
+import { CodexEnv } from '../codex-cli/environment.js';
 import { AnalysisFailed, VisionProvider, type VisionProviderService, type VisionQueryOptions } from './service.js';
 import { Subprocess, type SubprocessError, SubprocessLive } from './subprocess.js';
 
@@ -72,23 +73,25 @@ export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<V
         name,
         displayName,
 
-        analyze: (images, prompt, options) => {
-          const rawModel = options?.model ?? '';
-          const model = modelAliases?.[rawModel.toLowerCase()] ?? rawModel;
-          const timeout = options?.timeoutMs ?? timeoutMs;
-          const args = buildArgs(model, prompt, images, options);
-          const env = buildEnv?.();
+        analyze: (images, prompt, options) =>
+          Effect.gen(function* () {
+            const rawModel = options?.model ?? '';
+            const model = modelAliases?.[rawModel.toLowerCase()] ?? rawModel;
+            const timeout = options?.timeoutMs ?? timeoutMs;
+            const args = buildArgs(model, prompt, images, options);
 
-          return subprocess.exec(command, args, timeout, env).pipe(
-            Effect.map((result) => ({
+            // Check for CodexEnv service (provided when profile is active)
+            const codexEnvOption = yield* Effect.serviceOption(CodexEnv);
+            const env = Option.isSome(codexEnvOption) ? { CODEX_HOME: codexEnvOption.value.codexHome } : buildEnv?.();
+
+            const result = yield* subprocess.exec(command, args, timeout, env);
+            return {
               response: result.stdout.trim(),
               durationMs: result.durationMs,
               model,
               provider: name,
-            })),
-            Effect.mapError((err) => mapSubprocessError(name, err)),
-          );
-        },
+            };
+          }).pipe(Effect.mapError((err) => mapSubprocessError(name, err as SubprocessError))),
 
         isAvailable: () => subprocess.commandExists(command),
 

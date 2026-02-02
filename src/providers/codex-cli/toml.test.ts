@@ -12,9 +12,10 @@ describe('generateConfigToml', () => {
 
     expect(toml).toContain('sandbox_mode = "read-only"');
     expect(toml).toContain('approval_policy = "on-request"');
-    expect(toml).toContain('[features]');
     expect(toml).toContain('web_search = "disabled"');
     expect(toml).toContain('[mcp_servers]');
+    // web_search is at top level, not under [features] - per Codex config docs
+    expect(toml).not.toContain('[features]');
   });
 
   test('produces valid TOML for fast profile', () => {
