@@ -8,9 +8,9 @@ import {
   type AnalysisResult,
   GRID_CONFIG,
   type ImageArtifact,
-  type Issue,
   type ViewportConfig,
 } from '../../core/types.js';
+import { parseIssuesFromResponse } from '../../core/validation.js';
 import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
 import type { Operation, OperationError } from '../types.js';
 
@@ -69,26 +69,6 @@ function makeError(message: string, cause?: unknown): OperationError {
   return { _tag: 'OperationError', operation: 'analyze', message, cause };
 }
 
-function parseIssues(response: string): Issue[] {
-  try {
-    const jsonMatch = response.match(/\{[\s\S]*"issues"[\s\S]*\}/);
-    if (!jsonMatch) return [];
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(parsed.issues)) return [];
-
-    return parsed.issues.map((issue: Record<string, unknown>, idx: number) => ({
-      id: typeof issue.id === 'number' ? issue.id : idx + 1,
-      description: String(issue.description ?? ''),
-      severity: ['high', 'medium', 'low'].includes(String(issue.severity)) ? issue.severity : 'medium',
-      region: issue.region ?? 'A1',
-      suggestedFix: issue.suggestedFix ? String(issue.suggestedFix) : undefined,
-    })) as Issue[];
-  } catch {
-    return [];
-  }
-}
-
 export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeConfig> = {
   name: 'analyze',
   description: 'Analyze image with VLM for visual issues',
@@ -124,7 +104,8 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
         Effect.mapError((e) => makeError('Analysis failed', e)),
       );
 
-      const issues = parseIssues(visionResult.response);
+      // Parse and validate issues with partial recovery (logs warnings for invalid issues)
+      const issues = yield* parseIssuesFromResponse(visionResult.response, ctx.logger);
 
       const result: AnalysisResult = {
         provider: visionResult.provider,
