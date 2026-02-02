@@ -17,7 +17,6 @@ import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from '..
 import type { AppliedFix, GateDecision, HumanResponse, LoopError, LoopOptions, LoopResult } from '../../loop/types.js';
 import { generateSessionId, runPipeline, simpleAnalysis } from '../../pipeline/index.js';
 import {
-  allowUnknownModelOption,
   autoFixOption,
   deviceOption,
   dryRunOption,
@@ -180,7 +179,6 @@ export const loopCommand = Command.make(
     provider: providerOption,
     model: modelOption,
     providerProfile: providerProfileOption,
-    allowUnknownModel: allowUnknownModelOption,
     maxIterations: maxIterationsOption,
     autoFix: autoFixOption,
     project: projectOption,
@@ -204,7 +202,6 @@ export const loopCommand = Command.make(
         provider: args.provider,
         model: args.model,
         providerProfile: args.providerProfile,
-        allowUnknownModel: args.allowUnknownModel,
         maxIterations: args.maxIterations,
         autoFix: args.autoFix,
         dryRun: args.dryRun,
