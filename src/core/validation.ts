@@ -94,6 +94,99 @@ export function validateIssuesWithPartialRecovery(
 }
 
 /**
+ * Parse issues with strict validation - FAILS if any issues found.
+ * Use with Effect.orElse or Effect.catchTag for retry-then-fallback pattern.
+ *
+ * Failure modes:
+ * - no_json: Response contains no JSON with "issues" field
+ * - json_parse_error: JSON is malformed
+ * - schema_validation_error: JSON parses but doesn't match Issue schema
+ */
+export function parseIssuesStrict(response: string): Effect.Effect<S.Issue[], ValidationRetryNeeded, never> {
+  // Extract JSON from response
+  const jsonMatch = response.match(/\{[\s\S]*"issues"[\s\S]*\}/);
+  if (!jsonMatch) {
+    return Effect.fail(
+      new ValidationRetryNeeded({
+        reason: 'no_json',
+        details: 'No JSON object with "issues" field found in response',
+        partialIssues: [],
+      }),
+    );
+  }
+
+  // Parse JSON
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonMatch[0]);
+  } catch (e) {
+    return Effect.fail(
+      new ValidationRetryNeeded({
+        reason: 'json_parse_error',
+        details: e instanceof Error ? e.message : String(e),
+        partialIssues: [],
+      }),
+    );
+  }
+
+  // Extract issues array from parsed object
+  if (typeof parsed !== 'object' || parsed === null) {
+    return Effect.fail(
+      new ValidationRetryNeeded({
+        reason: 'json_parse_error',
+        details: 'Parsed JSON is not an object',
+        partialIssues: [],
+      }),
+    );
+  }
+
+  const issues = (parsed as Record<string, unknown>).issues;
+  if (issues === undefined) {
+    return Effect.fail(
+      new ValidationRetryNeeded({
+        reason: 'no_json',
+        details: 'JSON object missing "issues" field',
+        partialIssues: [],
+      }),
+    );
+  }
+
+  // Validate strictly - fail if array validation fails or any individual issue is invalid
+  if (!Array.isArray(issues)) {
+    return Effect.fail(
+      new ValidationRetryNeeded({
+        reason: 'schema_validation_error',
+        details: '"issues" field is not an array',
+        partialIssues: [],
+      }),
+    );
+  }
+
+  // Try validating the full array
+  const fullResult = Schema.decodeUnknownEither(S.IssueArray)(issues);
+  if (Either.isRight(fullResult)) {
+    return Effect.succeed(fullResult.right);
+  }
+
+  // Full validation failed - collect partial issues for the error
+  const partialIssues: S.Issue[] = [];
+  for (const item of issues) {
+    const itemResult = Schema.decodeUnknownEither(S.Issue)(item);
+    if (Either.isRight(itemResult)) {
+      partialIssues.push(itemResult.right);
+    }
+  }
+
+  return Effect.fail(
+    new ValidationRetryNeeded({
+      reason: 'schema_validation_error',
+      details: formatParseError(fullResult.left),
+      partialIssues,
+    }),
+  );
+}
+
+/**
  * Extract and validate issues from a raw LLM response string.
  *
  * 1. Extracts JSON from response (handles markdown code blocks)
