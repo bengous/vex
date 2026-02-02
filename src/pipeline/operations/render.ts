@@ -48,10 +48,9 @@ export const renderOperation: Operation<RenderInput, RenderOutput, RenderConfig>
         catch: (e) => makeError('Failed to render annotations', e),
       });
 
-      const outputPath = yield* Effect.tryPromise({
-        try: () => ctx.getArtifactPath('annotated'),
-        catch: (e) => makeError('Failed to get output path', e),
-      });
+      const outputPath = yield* ctx
+        .getArtifactPath('annotated')
+        .pipe(Effect.mapError((e) => makeError('Failed to get output path', e)));
 
       yield* Effect.tryPromise({
         try: () => sharp(annotatedBuffer).toFile(outputPath),

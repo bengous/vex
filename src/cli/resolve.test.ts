@@ -3,7 +3,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { Effect, Option } from 'effect';
+import { Option } from 'effect';
+import { runEffect, runEffectExit } from '../testing/index.js';
 import type { LoopCliArgs, ScanCliArgs } from './resolve.js';
 import { resolveLoopOptions, resolveScanOptions } from './resolve.js';
 
@@ -71,7 +72,7 @@ describe('resolveScanOptions', () => {
       placeholderMedia: true,
     };
 
-    const result = await Effect.runPromise(resolveScanOptions(args));
+    const result = await runEffect(resolveScanOptions(args));
 
     expect(result.urls).toEqual(['https://example.com']);
     expect(result.devices).toEqual(['iphone-15-pro']);
@@ -88,7 +89,7 @@ describe('resolveScanOptions', () => {
       url: Option.some('https://example.com'),
     };
 
-    const result = await Effect.runPromise(resolveScanOptions(args));
+    const result = await runEffect(resolveScanOptions(args));
 
     expect(result.devices).toEqual(['desktop-1920']);
     expect(result.provider).toBe('ollama');
@@ -103,7 +104,7 @@ describe('resolveScanOptions', () => {
       ...emptyScanArgs,
     };
 
-    const result = await Effect.runPromiseExit(resolveScanOptions(args));
+    const result = await runEffectExit(resolveScanOptions(args));
 
     expect(result._tag).toBe('Failure');
     if (result._tag === 'Failure') {
@@ -120,7 +121,7 @@ describe('resolveScanOptions', () => {
     };
 
     // Use a path where no config exists
-    const result = await Effect.runPromiseExit(resolveScanOptions(args, '/tmp/no-config-here'));
+    const result = await runEffectExit(resolveScanOptions(args, '/tmp/no-config-here'));
 
     expect(result._tag).toBe('Failure');
   });
@@ -131,7 +132,7 @@ describe('resolveScanOptions', () => {
       url: Option.some('https://example.com'),
     };
 
-    const result = await Effect.runPromise(resolveScanOptions(args));
+    const result = await runEffect(resolveScanOptions(args));
 
     expect(result.outputDir).toBe('/test/output');
   });
@@ -143,7 +144,7 @@ describe('resolveScanOptions', () => {
       output: Option.some('/cli/output'),
     };
 
-    const result = await Effect.runPromise(resolveScanOptions(args));
+    const result = await runEffect(resolveScanOptions(args));
 
     expect(result.outputDir).toBe('/cli/output');
   });
@@ -182,7 +183,7 @@ describe('resolveLoopOptions', () => {
       placeholderMedia: true,
     };
 
-    const result = await Effect.runPromise(resolveLoopOptions(args));
+    const result = await runEffect(resolveLoopOptions(args));
 
     expect(result.urls).toEqual(['https://example.com']);
     expect(result.devices).toEqual(['ipad-pro-11']);
@@ -201,7 +202,7 @@ describe('resolveLoopOptions', () => {
       url: Option.some('https://example.com'),
     };
 
-    const result = await Effect.runPromise(resolveLoopOptions(args));
+    const result = await runEffect(resolveLoopOptions(args));
 
     expect(result.devices).toEqual(['desktop-1920']);
     expect(result.provider).toBe('ollama');
@@ -216,7 +217,7 @@ describe('resolveLoopOptions', () => {
       ...emptyLoopArgs,
     };
 
-    const result = await Effect.runPromiseExit(resolveLoopOptions(args));
+    const result = await runEffectExit(resolveLoopOptions(args));
 
     expect(result._tag).toBe('Failure');
   });
@@ -228,7 +229,7 @@ describe('resolveLoopOptions', () => {
       project: '/my/project/path',
     };
 
-    const result = await Effect.runPromise(resolveLoopOptions(args));
+    const result = await runEffect(resolveLoopOptions(args));
 
     expect(result.projectRoot).toBe('/my/project/path');
   });
@@ -261,7 +262,7 @@ describe('resolveScanOptions profile handling', () => {
       provider: Option.some('codex-cli'),
     };
 
-    const result = await Effect.runPromise(resolveScanOptions(args));
+    const result = await runEffect(resolveScanOptions(args));
 
     expect(result.profile).toBe('minimal');
   });
@@ -274,7 +275,7 @@ describe('resolveScanOptions profile handling', () => {
       providerProfile: Option.some('codex:fast'),
     };
 
-    const result = await Effect.runPromise(resolveScanOptions(args));
+    const result = await runEffect(resolveScanOptions(args));
 
     expect(result.profile).toBe('fast');
   });
@@ -287,7 +288,7 @@ describe('resolveScanOptions profile handling', () => {
       providerProfile: Option.some('claude:fast'),
     };
 
-    const exit = await Effect.runPromiseExit(resolveScanOptions(args));
+    const exit = await runEffectExit(resolveScanOptions(args));
 
     expect(exit._tag).toBe('Failure');
   });
@@ -300,7 +301,7 @@ describe('resolveScanOptions profile handling', () => {
       providerProfile: Option.some('fast'), // Missing provider: prefix
     };
 
-    const exit = await Effect.runPromiseExit(resolveScanOptions(args));
+    const exit = await runEffectExit(resolveScanOptions(args));
 
     expect(exit._tag).toBe('Failure');
   });
@@ -313,7 +314,7 @@ describe('resolveScanOptions profile handling', () => {
       providerProfile: Option.some('codex:typo'),
     };
 
-    const exit = await Effect.runPromiseExit(resolveScanOptions(args));
+    const exit = await runEffectExit(resolveScanOptions(args));
 
     expect(exit._tag).toBe('Failure');
     if (exit._tag === 'Failure' && exit.cause._tag === 'Fail') {

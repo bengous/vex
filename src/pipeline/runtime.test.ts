@@ -9,7 +9,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Effect, Exit } from 'effect';
+import { Exit } from 'effect';
+import { runEffectExit } from '../testing/index.js';
 import { runPipeline } from './runtime.js';
 import type { PipelineDefinition } from './types.js';
 
@@ -67,7 +68,7 @@ describe('runPipeline', () => {
     test('returns validation error for empty pipeline', async () => {
       const definition = createEmptyPipeline();
 
-      const exit = await Effect.runPromiseExit(runPipeline(definition, testDir));
+      const exit = await runEffectExit(runPipeline(definition, testDir));
 
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {
@@ -86,7 +87,7 @@ describe('runPipeline', () => {
     test('returns error for unknown operation', async () => {
       const definition = createPipelineWithUnknownOperation();
 
-      const exit = await Effect.runPromiseExit(runPipeline(definition, testDir));
+      const exit = await runEffectExit(runPipeline(definition, testDir));
 
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {
@@ -107,7 +108,7 @@ describe('runPipeline', () => {
       // the error doesn't mention session directory failures.
       const definition = createEmptyPipeline();
 
-      const exit = await Effect.runPromiseExit(runPipeline(definition, testDir));
+      const exit = await runEffectExit(runPipeline(definition, testDir));
 
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {

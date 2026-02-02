@@ -82,10 +82,9 @@ function parseToolCalls(response: string): ToolCall[] {
  */
 function createAnnotationsArtifact(toolCalls: readonly ToolCall[], issueCount: number, ctx: PipelineContext) {
   return Effect.gen(function* () {
-    const outputPath = yield* Effect.tryPromise({
-      try: () => ctx.getArtifactPath('annotations'),
-      catch: (e) => makeError('Failed to get annotations path', e),
-    });
+    const outputPath = yield* ctx
+      .getArtifactPath('annotations')
+      .pipe(Effect.mapError((e) => makeError('Failed to get annotations path', e)));
 
     yield* Effect.tryPromise({
       try: () => Bun.write(outputPath, JSON.stringify(toolCalls, null, 2)),

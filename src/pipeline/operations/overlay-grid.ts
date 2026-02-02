@@ -46,10 +46,9 @@ export const overlayGridOperation: Operation<OverlayGridInput, OverlayGridOutput
         catch: (e) => makeError('Failed to add grid overlay', e),
       });
 
-      const outputPath = yield* Effect.tryPromise({
-        try: () => ctx.getArtifactPath('withGrid'),
-        catch: (e) => makeError('Failed to get output path', e),
-      });
+      const outputPath = yield* ctx
+        .getArtifactPath('withGrid')
+        .pipe(Effect.mapError((e) => makeError('Failed to get output path', e)));
 
       yield* Effect.tryPromise({
         try: () => sharp(gridBuffer).toFile(outputPath),

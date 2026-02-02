@@ -9,6 +9,7 @@ import { describe, expect, mock, test } from 'bun:test';
 import { Effect } from 'effect';
 import type { CodeLocation, Issue, ViewportConfig } from '../core/types.js';
 import type { PipelineDefinition, PipelineState } from '../pipeline/types.js';
+import { runEffect, runEffectExit } from '../testing/index.js';
 import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from './orchestrator.js';
 import type { AppliedFix, GateDecision, HumanResponse, LoopOptions } from './types.js';
 
@@ -118,7 +119,7 @@ describe('LoopOrchestrator', () => {
       const options = createLoopOptions({ maxIterations: 5 });
       const orchestrator = new LoopOrchestrator(options, callbacks);
 
-      const result = await Effect.runPromise(orchestrator.run());
+      const result = await runEffect(orchestrator.run());
 
       expect(result.status).toBe('completed-resolved');
       expect(result.iterations).toBe(1);
@@ -149,7 +150,7 @@ describe('LoopOrchestrator', () => {
       const options = createLoopOptions({ maxIterations: 3, interactive: false });
       const orchestrator = new LoopOrchestrator(options, callbacks);
 
-      const result = await Effect.runPromise(orchestrator.run());
+      const result = await runEffect(orchestrator.run());
 
       expect(result.status).toBe('completed-max-iterations');
       expect(result.iterations).toBe(3);
@@ -187,7 +188,7 @@ describe('LoopOrchestrator', () => {
       const options = createLoopOptions({ maxIterations: 1, interactive: true });
       const orchestrator = new LoopOrchestrator(options, callbacks);
 
-      const result = await Effect.runPromise(orchestrator.run());
+      const result = await runEffect(orchestrator.run());
 
       // Issues with no locations are skipped, not sent to human review
       expect(result.status).toBe('completed-max-iterations');
@@ -221,7 +222,7 @@ describe('LoopOrchestrator', () => {
       const options = createLoopOptions({ maxIterations: 1, interactive: false });
       const orchestrator = new LoopOrchestrator(options, callbacks);
 
-      const result = await Effect.runPromise(orchestrator.run());
+      const result = await runEffect(orchestrator.run());
 
       // The resolver needs DOM snapshot to find locations.
       // Without it, issues get "skip" action (no locations found).
@@ -251,7 +252,7 @@ describe('LoopOrchestrator', () => {
         humanReviewSeverity: 'low',
       });
 
-      const result = await Effect.runPromise(orchestrator.run());
+      const result = await runEffect(orchestrator.run());
 
       expect(result.status).toBe('completed-max-iterations');
     });
@@ -287,7 +288,7 @@ describe('LoopOrchestrator', () => {
       const options = createLoopOptions({ maxIterations: 5, interactive: false });
       const orchestrator = new LoopOrchestrator(options, callbacks);
 
-      const result = await Effect.runPromise(orchestrator.run());
+      const result = await runEffect(orchestrator.run());
 
       expect(result.status).toBe('completed-resolved');
       expect(result.iterations).toBe(3);
@@ -302,7 +303,7 @@ describe('LoopOrchestrator', () => {
       const options = createLoopOptions({ viewports: [] }); // No viewports!
       const orchestrator = new LoopOrchestrator(options, callbacks);
 
-      const exit = await Effect.runPromiseExit(orchestrator.run());
+      const exit = await runEffectExit(orchestrator.run());
 
       expect(exit._tag).toBe('Failure');
     });
@@ -331,7 +332,7 @@ describe('LoopOrchestrator', () => {
       const options = createLoopOptions({ maxIterations: 5, interactive: false });
       const orchestrator = new LoopOrchestrator(options, callbacks);
 
-      const result = await Effect.runPromise(orchestrator.run());
+      const result = await runEffect(orchestrator.run());
 
       expect(result.initialIssueCount).toBe(2); // First call: 3-1=2
       expect(result.finalIssueCount).toBe(0);
@@ -355,7 +356,7 @@ describe('LoopOrchestrator', () => {
       const options = createLoopOptions({ maxIterations: 5, interactive: false });
       const orchestrator = new LoopOrchestrator(options, callbacks);
 
-      const result = await Effect.runPromise(orchestrator.run());
+      const result = await runEffect(orchestrator.run());
 
       expect(result.iterationHistory.length).toBe(3);
       expect(result.iterationHistory[0]?.number).toBe(0);
