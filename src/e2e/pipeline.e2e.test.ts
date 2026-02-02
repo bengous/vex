@@ -25,6 +25,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Effect, Exit } from 'effect';
+import { runEffectExit } from '../testing/index.js';
 
 import '../providers/index.js'; // Register all providers
 import { ARTIFACT_NAMES, getViewportDirName, type ViewportConfig } from '../core/types.js';
@@ -87,7 +88,7 @@ async function runAndValidate(
 ): Promise<ValidationResult> {
   const pipeline = simpleAnalysis(testUrl, viewport, provider.name, provider.model, provider.reasoning);
 
-  const exit = await Effect.runPromiseExit(runPipeline(pipeline, outputDir));
+  const exit = await runEffectExit(runPipeline(pipeline, outputDir));
 
   expect(Exit.isSuccess(exit)).toBe(true);
   if (!Exit.isSuccess(exit)) {

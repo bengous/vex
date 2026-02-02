@@ -74,10 +74,9 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
 
       ctx.logger.info(`Pixel difference: ${pixelDiffPercent.toFixed(2)}%`);
 
-      const reportPath = yield* Effect.tryPromise({
-        try: () => ctx.getArtifactPath('diffReport'),
-        catch: (e) => makeError('Failed to get output path', e),
-      });
+      const reportPath = yield* ctx
+        .getArtifactPath('diffReport')
+        .pipe(Effect.mapError((e) => makeError('Failed to get output path', e)));
 
       const reportData = {
         baseImage: input.baseImage.path,

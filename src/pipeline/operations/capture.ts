@@ -2,7 +2,6 @@
  * Capture operation - takes a screenshot of a URL.
  */
 
-import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { Effect } from 'effect';
 import { chromium } from 'playwright';
@@ -40,15 +39,10 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
 
       ctx.logger.info(`Capturing ${url} at ${viewport.width}x${viewport.height}`);
 
-      const screenshotPath = yield* Effect.tryPromise({
-        try: () => ctx.getArtifactPath('screenshot'),
-        catch: (e) => makeError('Failed to get screenshot path', e),
-      });
-
-      yield* Effect.tryPromise({
-        try: () => mkdir(dirname(screenshotPath), { recursive: true }),
-        catch: (e) => makeError('Failed to create viewport directory', e),
-      });
+      // getArtifactPath creates the viewport directory if needed
+      const screenshotPath = yield* ctx
+        .getArtifactPath('screenshot')
+        .pipe(Effect.mapError((e) => makeError('Failed to get screenshot path', e)));
 
       const browser = yield* Effect.tryPromise({
         try: () => chromium.launch(),
@@ -56,10 +50,9 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
       });
 
       if (withDOM) {
-        const domPath = yield* Effect.tryPromise({
-          try: () => ctx.getArtifactPath('dom'),
-          catch: (e) => makeError('Failed to get DOM path', e),
-        });
+        const domPath = yield* ctx
+          .getArtifactPath('dom')
+          .pipe(Effect.mapError((e) => makeError('Failed to get DOM path', e)));
 
         const result = yield* Effect.tryPromise({
           try: () =>

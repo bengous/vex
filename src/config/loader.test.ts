@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'bun:test';
 import { Effect, Exit } from 'effect';
 import { BUILTIN_PROFILES, type CodexProfile } from '../providers/codex-cli/schema.js';
-import { ConfigError, loadCodexProfile } from './loader.js';
+import { type ConfigError, loadCodexProfile } from './loader.js';
 import type { VexConfig } from './schema.js';
 
 // ═══════════════════════════════════════════════════════════════════════════

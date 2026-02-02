@@ -2,9 +2,9 @@
  * Tests for scoped Codex environment resource.
  */
 
+import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, test } from 'bun:test';
 import { Effect } from 'effect';
 import { makeCodexEnvResource } from './environment.js';
 import { BUILTIN_PROFILES } from './schema.js';
