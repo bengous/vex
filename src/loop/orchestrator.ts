@@ -14,7 +14,9 @@ import type { FileSystem } from '@effect/platform';
 import { Effect } from 'effect';
 import { loadDOMSnapshotFromPath } from '../core/dom-snapshot-loader.js';
 import type { CodeLocation, DOMSnapshot, Issue, ViewportConfig } from '../core/types.js';
-import { createResolverWithStrategies, domTracerStrategy, type LocatorContext } from '../locator/index.js';
+import { createResolverWithStrategies } from '../locator/resolver.js';
+import { domTracerStrategy } from '../locator/strategies/dom-tracer.js';
+import type { LocatorContext } from '../locator/types.js';
 import type { PipelineState } from '../pipeline/types.js';
 import { evaluateGates, filterByAction } from './gates.js';
 // Metrics can be calculated from iterationHistory using calculateLoopMetrics if needed
