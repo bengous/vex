@@ -12,17 +12,15 @@ import { Exit } from 'effect';
 import sharp from 'sharp';
 import { registerProvider, unregisterProvider } from '../../providers/index.js';
 import {
+  createCapturingLogger,
   createMockAnalysisError,
+  createMockContext,
+  createMockImageArtifact,
   createMockVisionProviderLayer,
   createMockVisionResult,
   expectOperationFailure,
   runEffectExit,
 } from '../../testing/index.js';
-import {
-  createCapturingLogger,
-  createMockContext,
-  createMockImageArtifact,
-} from '../../testing/mocks/pipeline-context.js';
 import { analyzeOperation } from './analyze.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
