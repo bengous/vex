@@ -16,7 +16,9 @@ import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { CodeLocation, Issue, ViewportConfig } from '../../core/types.js';
 import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from '../../loop/orchestrator.js';
 import type { AppliedFix, GateDecision, HumanResponse, LoopError, LoopOptions, LoopResult } from '../../loop/types.js';
-import { generateSessionId, runPipeline, simpleAnalysis } from '../../pipeline/index.js';
+import { simpleAnalysis } from '../../pipeline/presets.js';
+import { runPipeline } from '../../pipeline/runtime.js';
+import { generateSessionId } from '../../pipeline/state.js';
 import { CodexEnv, makeCodexEnvResource } from '../../providers/codex-cli/index.js';
 import {
   autoFixOption,
