@@ -11,10 +11,9 @@ import { basename, extname, join } from 'node:path';
 import { Args, Command } from '@effect/cli';
 import { Effect, Option } from 'effect';
 import { analyzeWithRetry } from '../../core/analysis.js';
-import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
+import { resolveProviderLayer } from '../../providers/shared/registry.js';
+import { VisionProvider } from '../../providers/shared/service.js';
 import { jsonOption, modelOption, outputOption, providerOption } from '../options.js';
-// Import providers for self-registration
-import '../../providers/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Constants

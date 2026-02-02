@@ -10,10 +10,8 @@ import { Command, Options } from '@effect/cli';
 import { Effect } from 'effect';
 import { loadConfigOptional } from '../../config/loader.js';
 import { BUILTIN_PROFILES } from '../../providers/codex-cli/schema.js';
-import { getAllProviders, type ProviderInfo } from '../../providers/index.js';
+import { getAllProviders, type ProviderInfo } from '../../providers/shared/introspection.js';
 import { jsonOption } from '../options.js';
-// Import providers for self-registration
-import '../../providers/index.js';
 
 const showProfilesOption = Options.boolean('show-profiles').pipe(
   Options.withDescription('Show available profiles for each provider'),
