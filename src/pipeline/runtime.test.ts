@@ -11,7 +11,7 @@ import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
-import { runEffectExit } from '../testing/index.js';
+import { runEffectExit } from '../testing/effect-helpers.js';
 import { runPipeline } from './runtime.js';
 import type { PipelineDefinition } from './types.js';
 
