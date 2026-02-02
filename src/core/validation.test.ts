@@ -9,10 +9,13 @@ import { describe, expect, test } from 'bun:test';
 import { Effect, Exit } from 'effect';
 import type { Issue } from './schema.js';
 import {
+  buildRetryPrompt,
   IssueParseError,
   parseIssuesFromResponse,
+  parseIssuesStrict,
   validateIssues,
   validateIssuesWithPartialRecovery,
+  ValidationRetryNeeded,
 } from './validation.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -410,6 +413,225 @@ describe('IssueParseError', () => {
   test('raw is optional', () => {
     const error = new IssueParseError({ message: 'Test' });
     expect(error.raw).toBeUndefined();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// parseIssuesStrict Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('parseIssuesStrict', () => {
+  test('succeeds for valid JSON with all valid issues', async () => {
+    const response = JSON.stringify({
+      issues: [createValidIssue({ id: 1 }), createValidIssue({ id: 2 })],
+    });
+
+    const result = await Effect.runPromise(parseIssuesStrict(response));
+
+    expect(result).toHaveLength(2);
+  });
+
+  test('succeeds for empty issues array (LLM found no issues)', async () => {
+    const response = '{"issues": []}';
+
+    const result = await Effect.runPromise(parseIssuesStrict(response));
+
+    expect(result).toEqual([]);
+  });
+
+  test('fails with ValidationRetryNeeded when no JSON found', async () => {
+    const response = 'No JSON here';
+
+    const exit = await Effect.runPromiseExit(parseIssuesStrict(response));
+
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
+      expect(exit.cause.error._tag).toBe('ValidationRetryNeeded');
+      expect(exit.cause.error.reason).toBe('no_json');
+      expect(exit.cause.error.partialIssues).toEqual([]);
+    }
+  });
+
+  test('fails with ValidationRetryNeeded for malformed JSON', async () => {
+    const response = '{"issues": [bad json}';
+
+    const exit = await Effect.runPromiseExit(parseIssuesStrict(response));
+
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
+      expect(exit.cause.error._tag).toBe('ValidationRetryNeeded');
+      expect(exit.cause.error.reason).toBe('json_parse_error');
+    }
+  });
+
+  test('fails with ValidationRetryNeeded when issues field missing', async () => {
+    const response = '{"analysis": "something"}';
+
+    const exit = await Effect.runPromiseExit(parseIssuesStrict(response));
+
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
+      expect(exit.cause.error._tag).toBe('ValidationRetryNeeded');
+      expect(exit.cause.error.reason).toBe('no_json');
+    }
+  });
+
+  test('fails with ValidationRetryNeeded when issues is not array', async () => {
+    const response = '{"issues": "not an array"}';
+
+    const exit = await Effect.runPromiseExit(parseIssuesStrict(response));
+
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
+      expect(exit.cause.error._tag).toBe('ValidationRetryNeeded');
+      expect(exit.cause.error.reason).toBe('schema_validation_error');
+      expect(exit.cause.error.details).toContain('not an array');
+    }
+  });
+
+  test('fails with ValidationRetryNeeded for partial schema failures, includes partial issues', async () => {
+    const response = JSON.stringify({
+      issues: [
+        createValidIssue({ id: 1 }),
+        { id: 2, description: 'Invalid' }, // missing fields
+        createValidIssue({ id: 3 }),
+      ],
+    });
+
+    const exit = await Effect.runPromiseExit(parseIssuesStrict(response));
+
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
+      expect(exit.cause.error._tag).toBe('ValidationRetryNeeded');
+      expect(exit.cause.error.reason).toBe('schema_validation_error');
+      expect(exit.cause.error.partialIssues).toHaveLength(2); // valid ones
+      expect(exit.cause.error.partialIssues.map((i) => i.id)).toEqual([1, 3]);
+    }
+  });
+
+  test('extracts JSON from markdown code block', async () => {
+    const response = `Here's my analysis:
+
+\`\`\`json
+{
+  "issues": [
+    { "id": 1, "description": "Test", "severity": "high", "region": "A1" }
+  ]
+}
+\`\`\`
+
+That's all I found.`;
+
+    const result = await Effect.runPromise(parseIssuesStrict(response));
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.severity).toBe('high');
+  });
+
+  test('extracts JSON from mixed text response', async () => {
+    const response = `Found these issues:
+
+{"issues": [{"id": 1, "description": "Button too small", "severity": "medium", "region": "B3"}]}
+
+Let me know if questions.`;
+
+    const result = await Effect.runPromise(parseIssuesStrict(response));
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.description).toBe('Button too small');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ValidationRetryNeeded Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('ValidationRetryNeeded', () => {
+  test('is tagged error with correct tag', () => {
+    const error = new ValidationRetryNeeded({
+      reason: 'no_json',
+      details: 'test',
+      partialIssues: [],
+    });
+    expect(error._tag).toBe('ValidationRetryNeeded');
+  });
+
+  test('includes reason and details', () => {
+    const error = new ValidationRetryNeeded({
+      reason: 'json_parse_error',
+      details: 'Unexpected token',
+      partialIssues: [],
+    });
+    expect(error.reason).toBe('json_parse_error');
+    expect(error.details).toBe('Unexpected token');
+  });
+
+  test('includes partial issues', () => {
+    const partialIssues = [createValidIssue({ id: 1 }), createValidIssue({ id: 2 })];
+    const error = new ValidationRetryNeeded({
+      reason: 'schema_validation_error',
+      details: 'Some issues invalid',
+      partialIssues,
+    });
+    expect(error.partialIssues).toHaveLength(2);
+    expect(error.partialIssues.map((i) => i.id)).toEqual([1, 2]);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// buildRetryPrompt Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('buildRetryPrompt', () => {
+  const createError = (reason: ValidationRetryNeeded['reason'], details: string) =>
+    new ValidationRetryNeeded({ reason, details, partialIssues: [] });
+
+  test('includes original prompt', () => {
+    const error = createError('json_parse_error', 'Unexpected token');
+    const prompt = buildRetryPrompt('Analyze this image for issues', error);
+
+    expect(prompt).toContain('Analyze this image for issues');
+  });
+
+  test('includes JSON schema', () => {
+    const error = createError('no_json', 'No JSON found');
+    const prompt = buildRetryPrompt('Original prompt', error);
+
+    expect(prompt).toContain('"issues"');
+    expect(prompt).toContain('"severity"');
+    expect(prompt).toContain('"region"');
+    expect(prompt).toContain('"high" | "medium" | "low"');
+  });
+
+  test('includes error-specific message for no_json', () => {
+    const error = createError('no_json', 'No JSON found');
+    const prompt = buildRetryPrompt('Original', error);
+
+    expect(prompt).toContain('did not contain valid JSON');
+  });
+
+  test('includes error-specific message for json_parse_error', () => {
+    const error = createError('json_parse_error', 'Unexpected token');
+    const prompt = buildRetryPrompt('Original', error);
+
+    expect(prompt).toContain('malformed JSON');
+    expect(prompt).toContain('Unexpected token');
+  });
+
+  test('includes error-specific message for schema_validation_error', () => {
+    const error = createError('schema_validation_error', 'Missing required field');
+    const prompt = buildRetryPrompt('Original', error);
+
+    expect(prompt).toContain('did not match the required schema');
+    expect(prompt).toContain('Missing required field');
+  });
+
+  test('instructs to return only JSON', () => {
+    const error = createError('no_json', '');
+    const prompt = buildRetryPrompt('Original', error);
+
+    expect(prompt).toContain('Return ONLY the JSON object');
+    expect(prompt).toContain('no markdown code blocks');
   });
 });
 
