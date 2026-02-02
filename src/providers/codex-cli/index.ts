@@ -51,7 +51,7 @@ const config: CliProviderConfig = {
 
 export const CodexCliProviderLayer = createCliProviderLayer(config);
 
-registerProvider('codex-cli', CodexCliProviderLayer, {
+registerProvider('codex-cli', () => CodexCliProviderLayer, {
   displayName: config.displayName,
   type: 'cli',
   command: config.command,
