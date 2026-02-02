@@ -181,3 +181,23 @@ export const currentOption = Options.integer('current').pipe(
   Options.withDescription('Current iteration index'),
   Options.optional,
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Profile Options
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Provider profile (format: provider:profile, e.g., codex:fast).
+ */
+export const providerProfileOption = Options.text('provider-profile').pipe(
+  Options.withDescription('Provider profile (format: provider:profile, e.g., codex:fast)'),
+  Options.optional,
+);
+
+/**
+ * Allow models not in provider's known models list.
+ */
+export const allowUnknownModelOption = Options.boolean('allow-unknown-model').pipe(
+  Options.withDescription("Allow models not in provider's known models list"),
+  Options.withDefault(false),
+);
