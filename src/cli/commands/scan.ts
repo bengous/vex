@@ -13,6 +13,7 @@ import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { AnalysisResult, ViewportConfig } from '../../core/types.js';
 import { fullAnnotation, runPipeline, simpleAnalysis } from '../../pipeline/index.js';
 import {
+  allowUnknownModelOption,
   deviceOption,
   fullOption,
   listDevicesOption,
@@ -21,6 +22,7 @@ import {
   placeholderMediaOption,
   presetOption,
   providerOption,
+  providerProfileOption,
   reasoningOption,
 } from '../options.js';
 import type { ScanCliArgs } from '../resolve.js';
@@ -53,6 +55,8 @@ export const scanCommand = Command.make(
     provider: providerOption,
     model: modelOption,
     reasoning: reasoningOption,
+    providerProfile: providerProfileOption,
+    allowUnknownModel: allowUnknownModelOption,
     full: fullOption,
     placeholderMedia: placeholderMediaOption,
     output: outputOption,
@@ -72,6 +76,8 @@ export const scanCommand = Command.make(
         provider: args.provider,
         model: args.model,
         reasoning: args.reasoning,
+        providerProfile: args.providerProfile,
+        allowUnknownModel: args.allowUnknownModel,
         full: args.full,
         placeholderMedia: args.placeholderMedia,
         output: args.output,
@@ -91,7 +97,7 @@ export const scanCommand = Command.make(
           console.log(`Scanning ${url}`);
           console.log(`Viewport: ${viewport.width}x${viewport.height} (${deviceId})`);
           console.log(
-            `Provider: ${resolved.provider}${resolved.model ? ` (model: ${resolved.model})` : ''}${resolved.reasoning ? ` (reasoning: ${resolved.reasoning})` : ''}`,
+            `Provider: ${resolved.provider}${resolved.model ? ` (model: ${resolved.model})` : ''}${resolved.reasoning ? ` (reasoning: ${resolved.reasoning})` : ''}${resolved.profile !== 'minimal' ? ` (profile: ${resolved.profile})` : ''}`,
           );
           if (resolved.full) {
             console.log('Pipeline: full-annotation (analyze + annotate + render)');

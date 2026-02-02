@@ -17,6 +17,7 @@ import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from '..
 import type { AppliedFix, GateDecision, HumanResponse, LoopError, LoopOptions, LoopResult } from '../../loop/types.js';
 import { generateSessionId, runPipeline, simpleAnalysis } from '../../pipeline/index.js';
 import {
+  allowUnknownModelOption,
   autoFixOption,
   deviceOption,
   dryRunOption,
@@ -29,6 +30,7 @@ import {
   presetOption,
   projectOption,
   providerOption,
+  providerProfileOption,
 } from '../options.js';
 import type { LoopCliArgs } from '../resolve.js';
 import { resolveLoopOptions } from '../resolve.js';
@@ -177,6 +179,8 @@ export const loopCommand = Command.make(
     device: deviceOption,
     provider: providerOption,
     model: modelOption,
+    providerProfile: providerProfileOption,
+    allowUnknownModel: allowUnknownModelOption,
     maxIterations: maxIterationsOption,
     autoFix: autoFixOption,
     project: projectOption,
@@ -199,6 +203,8 @@ export const loopCommand = Command.make(
         device: args.device,
         provider: args.provider,
         model: args.model,
+        providerProfile: args.providerProfile,
+        allowUnknownModel: args.allowUnknownModel,
         maxIterations: args.maxIterations,
         autoFix: args.autoFix,
         dryRun: args.dryRun,
@@ -237,7 +243,9 @@ export const loopCommand = Command.make(
       console.log(`Starting improvement loop for ${loopOptions.url}`);
       console.log(`Max iterations: ${loopOptions.maxIterations}`);
       console.log(`Auto-fix threshold: ${loopOptions.autoFixThreshold}`);
-      console.log(`Provider: ${loopOptions.provider}${resolved.model ? ` (model: ${resolved.model})` : ''}`);
+      console.log(
+        `Provider: ${loopOptions.provider}${resolved.model ? ` (model: ${resolved.model})` : ''}${resolved.profile !== 'minimal' ? ` (profile: ${resolved.profile})` : ''}`,
+      );
       console.log(`Viewport: ${viewport.width}x${viewport.height} (${resolved.devices[0]})`);
       if (resolved.placeholderMedia) {
         console.log('Placeholder media: enabled');
