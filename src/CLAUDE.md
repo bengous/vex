@@ -102,6 +102,11 @@ vex/
     └── index.ts    # Entry point (run with bun)
 ```
 
+## Type Architecture
+
+- **Single source of truth**: Types with runtime validation live in `core/schema.ts` (Effect Schema)
+- **Re-export pattern**: `core/types.ts` re-exports schema types; don't duplicate definitions
+
 ## Key Patterns
 
 **Options flow (CLI → Core):**
