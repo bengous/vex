@@ -12,13 +12,12 @@ import { join } from 'node:path';
 import { Exit } from 'effect';
 import type { AnalysisResult, Issue, ToolCall } from '../../core/types.js';
 import { registerProvider, unregisterProvider } from '../../providers/shared/registry.js';
+import { expectOperationFailure, runEffectExit } from '../../testing/effect-helpers.js';
 import {
   createMockAnalysisError,
   createMockVisionProviderLayer,
   createMockVisionResult,
-  expectOperationFailure,
-  runEffectExit,
-} from '../../testing/index.js';
+} from '../../testing/mocks/vision-provider.js';
 import { createCapturingLogger, createMockContext } from '../../testing/mocks/pipeline-context.js';
 import { annotateOperation } from './annotate.js';
 
