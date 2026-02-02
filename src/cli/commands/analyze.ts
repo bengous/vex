@@ -10,7 +10,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { Args, Command } from '@effect/cli';
 import { Effect, Option } from 'effect';
-import type { Issue } from '../../core/types.js';
+import { parseIssuesFromResponse } from '../../core/validation.js';
 import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
 import { jsonOption, modelOption, outputOption, providerOption } from '../options.js';
 // Import providers for self-registration
@@ -51,30 +51,6 @@ Format your response as JSON:
 const imageArg = Args.file({ name: 'image', exists: 'yes' });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Helper Functions
-// ═══════════════════════════════════════════════════════════════════════════
-
-function parseIssues(response: string): Issue[] {
-  try {
-    const jsonMatch = response.match(/\{[\s\S]*"issues"[\s\S]*\}/);
-    if (!jsonMatch) return [];
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(parsed.issues)) return [];
-
-    return parsed.issues.map((issue: Record<string, unknown>, idx: number) => ({
-      id: typeof issue.id === 'number' ? issue.id : idx + 1,
-      description: String(issue.description ?? ''),
-      severity: ['high', 'medium', 'low'].includes(String(issue.severity)) ? issue.severity : 'medium',
-      region: issue.region ?? 'A1',
-      suggestedFix: issue.suggestedFix ? String(issue.suggestedFix) : undefined,
-    })) as Issue[];
-  } catch {
-    return [];
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // Analyze Command
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -110,7 +86,8 @@ export const analyzeCommand = Command.make(
         return yield* provider.analyze([imagePath], DEFAULT_PROMPT, { model });
       }).pipe(Effect.provide(providerLayer));
 
-      const issues = parseIssues(result.response);
+      // Parse and validate issues with partial recovery
+      const issues = yield* parseIssuesFromResponse(result.response);
 
       // Write to output directory if specified (additive to console output)
       if (outputDir) {

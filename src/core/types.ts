@@ -167,6 +167,10 @@ export interface DiffReportArtifact extends Artifact {
 // ═══════════════════════════════════════════════════════════════════════════
 // Issue & Analysis Types
 // ═══════════════════════════════════════════════════════════════════════════
+//
+// For runtime validation of LLM responses, use the Effect Schemas in:
+// - vex/core/schema.ts (schema definitions)
+// - vex/core/validation.ts (validation utilities)
 
 /**
  * Issue severity levels.
