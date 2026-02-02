@@ -320,6 +320,8 @@ const error = expectOperationFailure(exit, 'operationName');
 expect(error.detail).toContain('expected message');
 ```
 
+**Mock provider cleanup:** Call `unregisterProvider(name)` in `afterAll` to prevent registry pollution. See `analyze.test.ts` for pattern.
+
 **Temp fixtures for grep integration tests:**
 
 ```typescript

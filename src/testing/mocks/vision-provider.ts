@@ -25,6 +25,8 @@ export interface MockVisionProviderOptions {
   readonly analyzeResponse?: VisionResult | ProviderError;
   readonly isAvailable?: boolean;
   readonly models?: readonly string[];
+  /** Callback to capture analyze call arguments for assertions */
+  readonly onAnalyze?: (images: readonly string[], prompt: string) => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -67,12 +69,14 @@ export function createMockVisionProvider(options: MockVisionProviderOptions = {}
     analyzeResponse = createMockVisionResult(),
     isAvailable = true,
     models = ['mock-model'],
+    onAnalyze,
   } = options;
 
   return {
     name,
     displayName,
-    analyze: () => {
+    analyze: (images: readonly string[], prompt: string) => {
+      onAnalyze?.(images, prompt);
       if ('_tag' in analyzeResponse) {
         return Effect.fail(analyzeResponse as ProviderError);
       }

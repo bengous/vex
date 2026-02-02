@@ -258,7 +258,14 @@ describe('analyzeOperation', () => {
         provider: providerName,
         response: createIssuesResponse([]),
       });
-      registerMockProvider(providerName, { analyzeResponse: mockResult });
+
+      let capturedPrompt: string | undefined;
+      registerMockProvider(providerName, {
+        analyzeResponse: mockResult,
+        onAnalyze: (_images, prompt) => {
+          capturedPrompt = prompt;
+        },
+      });
 
       const viewport = { width: 375, height: 812, deviceScaleFactor: 3, isMobile: true };
       const ctx = createMockContext({ sessionDir: testDir });
@@ -266,8 +273,10 @@ describe('analyzeOperation', () => {
 
       const exit = await runEffectExit(analyzeOperation.execute(input, { provider: providerName }, ctx));
 
-      // Just verify it succeeds - prompt building is internal
       expect(Exit.isSuccess(exit)).toBe(true);
+      expect(capturedPrompt).toBeDefined();
+      expect(capturedPrompt).toContain('375×812px');
+      expect(capturedPrompt).toContain('mobile');
     });
   });
 });
