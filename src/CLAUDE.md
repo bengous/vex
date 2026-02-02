@@ -138,6 +138,8 @@ interface MyError {
 }
 ```
 
+**Optional service injection:** Use `Effect.serviceOption(Tag)` when a service may or may not be provided. Returns `Option<Service>` - gracefully handles absence without requiring the service in the type signature.
+
 **Artifact system:** All operations produce typed artifacts (image, analysis, dom-snapshot) stored in session directories.
 
 ## DOM Tracer Algorithm
@@ -179,6 +181,19 @@ Human-in-the-loop controls based on confidence × severity × scope:
 - Don't capture `CommandExecutor` at layer construction - provide `BunContext.layer` where layer is composed
 
 **Codex MCP startup overhead:** User codex configs with MCPs add 30-60s per call. Solved via colocated `config.toml` in `providers/codex-cli/` with CODEX_HOME env var (set by `buildEnv` in CliProviderConfig).
+
+**Circular dependency in providers:** When importing from provider modules in shared code (e.g., `cli-factory.ts`), import from leaf modules directly:
+
+- ✅ `import { CodexEnv } from '../codex-cli/environment.js'`
+- ❌ `import { CodexEnv } from '../codex-cli/index.js'` (causes cycle with cli-factory)
+
+## External Tool Integration
+
+When modifying integration with external CLIs (codex, claude, etc.):
+
+1. Fetch official documentation first - do not guess from error messages
+2. Add `LLM:` prefixed comments with doc links for future agents
+3. Test with actual CLI before assuming error messages are accurate
 
 ## Development
 

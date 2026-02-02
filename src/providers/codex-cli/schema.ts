@@ -3,6 +3,10 @@
  *
  * Profiles configure sandbox permissions, approval policies, and features.
  * Built-in profiles cover common use cases; user profiles extend via config.
+ *
+ * LLM: Before modifying sandbox/approval/webSearch values, fetch official docs:
+ * - https://developers.openai.com/codex/config-reference/ (valid enum values)
+ * - https://developers.openai.com/codex/security/ (sandbox and approval behavior)
  */
 
 import { Schema as S } from 'effect';
