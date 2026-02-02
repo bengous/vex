@@ -6,7 +6,8 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
+import { rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Effect } from 'effect';
@@ -353,8 +354,7 @@ describe('domTracerStrategy', () => {
     let testDir: string;
 
     beforeAll(async () => {
-      testDir = join(tmpdir(), `dom-tracer-test-${Date.now()}`);
-      await mkdir(testDir, { recursive: true });
+      testDir = mkdtempSync(join(tmpdir(), 'dom-tracer-test-'));
 
       await writeFile(join(testDir, 'hero.liquid'), '<div id="hero" class="hero-section banner">Hero content</div>');
 

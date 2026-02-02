@@ -5,7 +5,8 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
@@ -27,8 +28,7 @@ describe('overlayGridOperation', () => {
   let testImagePath: string;
 
   beforeAll(async () => {
-    testDir = join(tmpdir(), `overlay-grid-test-${Date.now()}`);
-    await mkdir(testDir, { recursive: true });
+    testDir = mkdtempSync(join(tmpdir(), 'overlay-grid-test-'));
 
     // Create a simple test image (100x100 white square)
     testImagePath = join(testDir, 'test-input.png');

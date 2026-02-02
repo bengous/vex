@@ -5,7 +5,8 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
@@ -27,8 +28,7 @@ describe('overlayFoldsOperation', () => {
   let testImagePath: string;
 
   beforeAll(async () => {
-    testDir = join(tmpdir(), `overlay-folds-test-${Date.now()}`);
-    await mkdir(testDir, { recursive: true });
+    testDir = mkdtempSync(join(tmpdir(), 'overlay-folds-test-'));
 
     // Create a tall test image (400x1200 to have multiple fold lines)
     testImagePath = join(testDir, 'test-input.png');
