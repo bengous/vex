@@ -103,31 +103,3 @@ export function makeCodexEnvResource(profile: CodexProfile): Effect.Effect<Layer
 
   return Effect.acquireRelease(acquire, release).pipe(Effect.map((service) => Layer.succeed(CodexEnv, service)));
 }
-
-/**
- * Create a CodexEnv layer directly (without Scope management).
- * Useful for testing or when lifetime is managed externally.
- *
- * WARNING: Does not clean up automatically. Use makeCodexEnvResource for production.
- *
- * @param profile - Codex profile configuration
- * @returns Layer providing CodexEnv
- */
-export function makeCodexEnvLayerUnsafe(profile: CodexProfile): Layer.Layer<CodexEnv> {
-  return Layer.effect(
-    CodexEnv,
-    Effect.sync(() => {
-      const codexHome = generateTempDir();
-
-      mkdirSync(codexHome, { recursive: true });
-      writeFileSync(join(codexHome, 'config.toml'), generateConfigToml(profile), 'utf-8');
-
-      const userAuthPath = join(homedir(), '.codex', 'auth.json');
-      if (existsSync(userAuthPath)) {
-        symlinkSync(userAuthPath, join(codexHome, 'auth.json'));
-      }
-
-      return { codexHome, profile };
-    }),
-  );
-}
