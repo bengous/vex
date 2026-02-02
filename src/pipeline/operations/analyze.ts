@@ -111,15 +111,12 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
         Effect.mapError((e) => new OperationError({ operation: 'analyze', detail: 'Analysis failed', cause: e })),
       );
 
-      // Spread to convert readonly array to mutable (AnalysisResult requires mutable)
-      const issues = [...visionResult.issues];
-
       const result: AnalysisResult = {
         provider: visionResult.provider,
         model: visionResult.model,
         response: visionResult.response,
         durationMs: visionResult.durationMs,
-        issues,
+        issues: visionResult.issues,
       };
 
       const outputPath = yield* ctx
@@ -145,7 +142,7 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
           provider: result.provider,
           model: result.model,
           durationMs: result.durationMs,
-          issueCount: issues.length,
+          issueCount: result.issues.length,
         },
       };
 
