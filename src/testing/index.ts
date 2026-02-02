@@ -1,4 +1,4 @@
-export { runEffect, runEffectExit } from './effect-helpers.js';
+export { expectOperationFailure, runEffect, runEffectExit } from './effect-helpers.js';
 export {
   createCapturingLogger,
   createMockContext,
