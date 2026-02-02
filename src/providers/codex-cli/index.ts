@@ -55,5 +55,6 @@ registerProvider('codex-cli', CodexCliProviderLayer, {
   displayName: config.displayName,
   type: 'cli',
   command: config.command,
+  installHint: 'npm install -g @openai/codex',
   knownModels: config.knownModels,
 });

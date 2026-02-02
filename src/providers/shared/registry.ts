@@ -1,5 +1,9 @@
 /**
  * Provider registry for runtime provider selection.
+ *
+ * Providers register factory functions that create layers on demand.
+ * This enables runtime configuration (e.g., profiles) while maintaining
+ * backwards compatibility with existing Layer-based registration.
  */
 
 import { Effect, type Layer } from 'effect';
@@ -11,32 +15,45 @@ export interface ProviderMetadata {
   readonly displayName: string;
   readonly type: 'http' | 'cli';
   readonly command?: string;
+  /** Human-readable install instructions for CLI providers */
+  readonly installHint?: string;
   readonly knownModels?: readonly string[];
   readonly modelAliases?: Record<string, string>;
 }
 
+/** Factory function that creates a provider layer, optionally with configuration */
+export type ProviderFactory<TConfig = unknown> = (config?: TConfig) => Layer.Layer<VisionProvider>;
+
 interface ProviderEntry {
-  readonly layer: Layer.Layer<VisionProvider>;
+  readonly factory: ProviderFactory;
   readonly metadata: ProviderMetadata;
 }
 
 const PROVIDER_ENTRIES = new Map<string, ProviderEntry>();
 
 /**
- * Register a provider Layer. Called by provider modules during import.
+ * Register a provider factory. Called by provider modules during import.
+ *
+ * @param name - Provider identifier (e.g., 'codex-cli')
+ * @param layerOrFactory - Either a Layer (backwards compat) or factory function
+ * @param metadata - Provider metadata for introspection
  */
 export function registerProvider(
   name: string,
-  layer: Layer.Layer<VisionProvider>,
+  layerOrFactory: Layer.Layer<VisionProvider> | ProviderFactory,
   metadata?: Omit<ProviderMetadata, 'name'>,
 ): void {
+  // Support both Layer (backwards compat) and factory function
+  const factory: ProviderFactory = typeof layerOrFactory === 'function' ? layerOrFactory : () => layerOrFactory;
+
   PROVIDER_ENTRIES.set(name, {
-    layer,
+    factory,
     metadata: {
       name,
       displayName: metadata?.displayName ?? name,
       type: metadata?.type ?? 'http',
       command: metadata?.command,
+      installHint: metadata?.installHint,
       knownModels: metadata?.knownModels,
       modelAliases: metadata?.modelAliases,
     },
@@ -45,8 +62,14 @@ export function registerProvider(
 
 /**
  * Resolve provider Layer by name.
+ *
+ * @param name - Provider identifier
+ * @param config - Optional configuration passed to provider factory
  */
-export function resolveProviderLayer(name: string): Effect.Effect<Layer.Layer<VisionProvider>, ProviderUnavailable> {
+export function resolveProviderLayer<TConfig = unknown>(
+  name: string,
+  config?: TConfig,
+): Effect.Effect<Layer.Layer<VisionProvider>, ProviderUnavailable> {
   const entry = PROVIDER_ENTRIES.get(name);
   if (!entry) {
     return Effect.fail(
@@ -57,7 +80,7 @@ export function resolveProviderLayer(name: string): Effect.Effect<Layer.Layer<Vi
       }),
     );
   }
-  return Effect.succeed(entry.layer);
+  return Effect.succeed(entry.factory(config));
 }
 
 /**
