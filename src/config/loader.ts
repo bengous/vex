@@ -8,6 +8,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { Data, Effect, ParseResult, Schema as S } from 'effect';
+import { BUILTIN_PROFILES, type CodexProfile } from '../providers/codex-cli/schema.js';
 import { VexConfig } from './schema.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -244,5 +245,51 @@ export function getLoopPreset(
     }
 
     return preset;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Profile Loading
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Load a Codex CLI profile by name.
+ *
+ * Resolution order:
+ * 1. Built-in profiles (minimal, fast, safe)
+ * 2. User-defined profiles in config.providers.codex
+ *
+ * @param name - Profile name
+ * @param config - Optional vex config (for user-defined profiles)
+ */
+export function loadCodexProfile(name: string, config?: VexConfig): Effect.Effect<CodexProfile, ConfigError> {
+  return Effect.gen(function* () {
+    // Check built-in profiles first
+    if (name in BUILTIN_PROFILES) {
+      return BUILTIN_PROFILES[name as keyof typeof BUILTIN_PROFILES];
+    }
+
+    // Check user-defined profiles
+    const userProfiles = config?.providers?.codex ?? {};
+    const userProfile = userProfiles[name];
+    if (userProfile) {
+      return userProfile;
+    }
+
+    // Profile not found
+    const builtinNames = Object.keys(BUILTIN_PROFILES);
+    const userNames = Object.keys(userProfiles);
+    const allAvailable = [...builtinNames, ...userNames];
+
+    return yield* Effect.fail(
+      new ConfigError({
+        kind: 'preset_not_found',
+        message:
+          allAvailable.length > 0
+            ? `Unknown codex profile '${name}'. Available: ${allAvailable.join(', ')}`
+            : `Unknown codex profile '${name}'. No profiles available.`,
+        availablePresets: allAvailable,
+      }),
+    );
   });
 }
