@@ -18,6 +18,16 @@ export class IssueParseError extends Data.TaggedError('IssueParseError')<{
   readonly raw?: unknown;
 }> {}
 
+/**
+ * Error indicating validation failed and retry may help.
+ * Contains details for constructing a schema-reminder retry prompt.
+ */
+export class ValidationRetryNeeded extends Data.TaggedError('ValidationRetryNeeded')<{
+  readonly reason: 'no_json' | 'json_parse_error' | 'schema_validation_error';
+  readonly details: string;
+  readonly partialIssues: S.Issue[];
+}> {}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Validation Functions
 // ═══════════════════════════════════════════════════════════════════════════
