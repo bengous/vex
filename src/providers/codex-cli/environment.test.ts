@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import assert from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Effect } from 'effect';
@@ -31,7 +32,8 @@ describe('makeCodexEnvResource', () => {
     await Effect.runPromise(program);
 
     // Verify cleanup after scope
-    expect(existsSync(capturedPath!)).toBe(false);
+    assert(capturedPath);
+    expect(existsSync(capturedPath)).toBe(false);
   });
 
   test('temp dir name follows expected pattern', async () => {
@@ -79,6 +81,7 @@ describe('makeCodexEnvResource', () => {
     expect(exit._tag).toBe('Failure');
 
     // Verify cleanup happened despite error
-    expect(existsSync(capturedPath!)).toBe(false);
+    assert(capturedPath);
+    expect(existsSync(capturedPath)).toBe(false);
   });
 });
