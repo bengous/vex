@@ -12,7 +12,8 @@ import { loadCodexProfile, loadConfigOptional } from '../../config/loader.js';
 import { Url } from '../../config/schema.js';
 import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { AnalysisResult, ViewportConfig } from '../../core/types.js';
-import { fullAnnotation, runPipeline, simpleAnalysis } from '../../pipeline/index.js';
+import { fullAnnotation, simpleAnalysis } from '../../pipeline/presets.js';
+import { runPipeline } from '../../pipeline/runtime.js';
 import { CodexEnv, makeCodexEnvResource } from '../../providers/codex-cli/index.js';
 import {
   deviceOption,
