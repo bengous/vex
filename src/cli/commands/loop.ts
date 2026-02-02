@@ -287,8 +287,7 @@ export const loopCommand = Command.make(
             Effect.gen(function* () {
               const config = yield* loadConfigOptional();
               const profile = yield* loadCodexProfile(resolved.profile, config);
-              const envLayer = yield* makeCodexEnvResource(profile);
-              const codexEnv = yield* CodexEnv.pipe(Effect.provide(envLayer));
+              const codexEnv = yield* makeCodexEnvResource(profile);
               return yield* runOrchestrator.pipe(Effect.provideService(CodexEnv, codexEnv));
             }),
           )

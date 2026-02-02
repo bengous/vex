@@ -8,16 +8,15 @@
  * ```typescript
  * const program = Effect.gen(function* () {
  *   const env = yield* CodexEnv;
- *   // Use env.codexHome with subprocess
  *   console.log(`CODEX_HOME=${env.codexHome}`);
  * });
  *
  * // Run with scoped environment
  * const withEnv = Effect.scoped(
- *   Effect.flatMap(
- *     makeCodexEnvResource(profile),
- *     (layer) => Effect.provide(program, layer)
- *   )
+ *   Effect.gen(function* () {
+ *     const codexEnv = yield* makeCodexEnvResource(profile);
+ *     return yield* program.pipe(Effect.provideService(CodexEnv, codexEnv));
+ *   })
  * );
  * ```
  */
@@ -25,7 +24,7 @@
 import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Context, Effect, Layer, type Scope } from 'effect';
+import { Context, Effect, type Scope } from 'effect';
 import type { CodexProfile } from './schema.js';
 import { generateConfigToml } from './toml.js';
 
@@ -69,13 +68,13 @@ function generateTempDir(): string {
  * - acquire: Create temp directory, write config.toml, symlink auth.json
  * - release: Remove temp directory
  *
- * The returned Effect requires a Scope and produces a Layer providing CodexEnv.
+ * The returned Effect requires a Scope for lifecycle management.
  * Caller must use Effect.scoped() or provide a Scope to run this.
  *
  * @param profile - Codex profile configuration
- * @returns Effect that acquires/releases the environment and provides CodexEnv layer
+ * @returns Effect that acquires/releases the environment service
  */
-export function makeCodexEnvResource(profile: CodexProfile): Effect.Effect<Layer.Layer<CodexEnv>, never, Scope.Scope> {
+export function makeCodexEnvResource(profile: CodexProfile): Effect.Effect<CodexEnvService, never, Scope.Scope> {
   const acquire = Effect.sync(() => {
     const codexHome = generateTempDir();
 
@@ -101,5 +100,5 @@ export function makeCodexEnvResource(profile: CodexProfile): Effect.Effect<Layer
       rmSync(env.codexHome, { recursive: true, force: true });
     });
 
-  return Effect.acquireRelease(acquire, release).pipe(Effect.map((service) => Layer.succeed(CodexEnv, service)));
+  return Effect.acquireRelease(acquire, release);
 }
