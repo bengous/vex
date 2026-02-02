@@ -6,8 +6,10 @@
  */
 
 import { Effect, Option } from 'effect';
-import { ConfigError, getLoopPreset, getScanPreset, loadConfigOptional } from '../config/loader.js';
+import { ConfigError, getLoopPreset, getScanPreset, loadCodexProfile, loadConfigOptional } from '../config/loader.js';
 import type { DeviceSpec, LoopPreset, ProviderSpec, ScanPreset, VexConfig } from '../config/schema.js';
+import { BUILTIN_PROFILES } from '../providers/codex-cli/schema.js';
+import { ProfileNotFoundError } from '../providers/shared/errors.js';
 import { getProviderMetadata } from '../providers/shared/registry.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -198,7 +200,7 @@ Use --output flag, set VEX_OUTPUT_DIR env var, or create vex.config.ts`,
 export function resolveScanOptions(
   cliArgs: ScanCliArgs,
   projectRoot?: string,
-): Effect.Effect<ResolvedScanOptions, ConfigError> {
+): Effect.Effect<ResolvedScanOptions, ConfigError | ProfileNotFoundError> {
   return Effect.gen(function* () {
     const config = yield* loadConfigOptional(projectRoot);
 
@@ -270,6 +272,20 @@ Expected: ${expectedPrefix ?? 'unknown'}:${profileName}`,
         );
       }
       profile = profileName;
+
+      // Validate profile exists for codex-cli
+      if (provider === 'codex-cli') {
+        yield* loadCodexProfile(profile, config).pipe(
+          Effect.mapError(() => {
+            const builtinNames = Object.keys(BUILTIN_PROFILES);
+            const userNames = Object.keys(config?.providers?.codex ?? {});
+            return new ProfileNotFoundError({
+              profileName: profile,
+              availableProfiles: [...builtinNames, ...userNames],
+            });
+          }),
+        );
+      }
     }
 
     // Validate model against knownModels
@@ -316,7 +332,7 @@ Known: ${providerMeta.knownModels.join(', ')}`,
 export function resolveLoopOptions(
   cliArgs: LoopCliArgs,
   projectRoot?: string,
-): Effect.Effect<ResolvedLoopOptions, ConfigError> {
+): Effect.Effect<ResolvedLoopOptions, ConfigError | ProfileNotFoundError> {
   return Effect.gen(function* () {
     const config = yield* loadConfigOptional(projectRoot);
 
@@ -385,6 +401,20 @@ Expected: ${expectedPrefix ?? 'unknown'}:${profileName}`,
         );
       }
       profile = profileName;
+
+      // Validate profile exists for codex-cli
+      if (provider === 'codex-cli') {
+        yield* loadCodexProfile(profile, config).pipe(
+          Effect.mapError(() => {
+            const builtinNames = Object.keys(BUILTIN_PROFILES);
+            const userNames = Object.keys(config?.providers?.codex ?? {});
+            return new ProfileNotFoundError({
+              profileName: profile,
+              availableProfiles: [...builtinNames, ...userNames],
+            });
+          }),
+        );
+      }
     }
 
     // Validate model against knownModels

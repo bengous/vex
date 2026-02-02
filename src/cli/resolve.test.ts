@@ -304,4 +304,21 @@ describe('resolveScanOptions profile handling', () => {
 
     expect(exit._tag).toBe('Failure');
   });
+
+  it('rejects nonexistent profile name', async () => {
+    const args: ScanCliArgs = {
+      ...emptyScanArgs,
+      url: Option.some('https://example.com'),
+      provider: Option.some('codex-cli'),
+      providerProfile: Option.some('codex:typo'),
+    };
+
+    const exit = await Effect.runPromiseExit(resolveScanOptions(args));
+
+    expect(exit._tag).toBe('Failure');
+    if (exit._tag === 'Failure' && exit.cause._tag === 'Fail') {
+      expect(exit.cause.error._tag).toBe('ProfileNotFoundError');
+      expect((exit.cause.error as { availableProfiles: readonly string[] }).availableProfiles).toContain('fast');
+    }
+  });
 });

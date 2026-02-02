@@ -23,7 +23,13 @@ export class ProviderNotInstalled extends Data.TaggedError('ProviderNotInstalled
 export class ProfileNotFoundError extends Data.TaggedError('ProfileNotFoundError')<{
   readonly profileName: string;
   readonly availableProfiles: readonly string[];
-}> {}
+}> {
+  override get message(): string {
+    return this.availableProfiles.length > 0
+      ? `Profile '${this.profileName}' not found. Available: ${this.availableProfiles.join(', ')}`
+      : `Profile '${this.profileName}' not found. No profiles available.`;
+  }
+}
 
 /**
  * Profile prefix doesn't match the target provider.
