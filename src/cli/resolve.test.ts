@@ -80,7 +80,7 @@ describe('resolveScanOptions', () => {
     expect(result.model).toBe('claude-sonnet-4-20250514');
     expect(result.reasoning).toBe('high');
     expect(result.full).toBe(true);
-    expect(result.placeholderMedia).toBe(true);
+    expect(result.placeholderMedia).toEqual({ enabled: true, svgMinSize: 100, preserve: [] });
   });
 
   it('uses defaults when no CLI or preset', async () => {
@@ -96,7 +96,7 @@ describe('resolveScanOptions', () => {
     expect(result.model).toBeUndefined();
     expect(result.reasoning).toBeUndefined();
     expect(result.full).toBe(false);
-    expect(result.placeholderMedia).toBe(false);
+    expect(result.placeholderMedia).toBeUndefined();
   });
 
   it('errors when URL is missing', async () => {
@@ -192,7 +192,7 @@ describe('resolveLoopOptions', () => {
     expect(result.maxIterations).toBe(10);
     expect(result.autoFix).toBe('medium');
     expect(result.dryRun).toBe(true);
-    expect(result.placeholderMedia).toBe(true);
+    expect(result.placeholderMedia).toEqual({ enabled: true, svgMinSize: 100, preserve: [] });
     expect(result.projectRoot).toBe('/test/project');
   });
 
@@ -209,7 +209,7 @@ describe('resolveLoopOptions', () => {
     expect(result.maxIterations).toBe(5);
     expect(result.autoFix).toBe('high');
     expect(result.dryRun).toBe(false);
-    expect(result.placeholderMedia).toBe(false);
+    expect(result.placeholderMedia).toBeUndefined();
   });
 
   it('errors when URL is missing', async () => {
