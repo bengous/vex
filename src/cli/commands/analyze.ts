@@ -98,6 +98,14 @@ export const analyzeCommand = Command.make(
         logger,
       });
 
+      // Consolidated output object for file write and JSON output
+      const output = {
+        provider: result.provider,
+        model: result.model,
+        durationMs: result.durationMs,
+        issues,
+      };
+
       // Write to output directory if specified (additive to console output)
       if (outputDir) {
         yield* Effect.promise(async () => {
@@ -106,31 +114,13 @@ export const analyzeCommand = Command.make(
           const imageName = basename(imagePath, extname(imagePath));
           const outputPath = join(outputDir, `${imageName}-analysis.json`);
 
-          const output = {
-            provider: result.provider,
-            model: result.model,
-            durationMs: result.durationMs,
-            issues,
-          };
-
           await writeFile(outputPath, JSON.stringify(output, null, 2));
           console.log(`Results written to: ${outputPath}`);
         });
       }
 
       if (args.json) {
-        console.log(
-          JSON.stringify(
-            {
-              provider: result.provider,
-              model: result.model,
-              durationMs: result.durationMs,
-              issues,
-            },
-            null,
-            2,
-          ),
-        );
+        console.log(JSON.stringify(output, null, 2));
         return;
       }
 
