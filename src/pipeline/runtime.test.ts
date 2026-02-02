@@ -6,7 +6,8 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
@@ -55,9 +56,8 @@ function createPipelineWithUnknownOperation(): PipelineDefinition {
 describe('runPipeline', () => {
   let testDir: string;
 
-  beforeAll(async () => {
-    testDir = join(tmpdir(), `pipeline-runtime-test-${Date.now()}`);
-    await mkdir(testDir, { recursive: true });
+  beforeAll(() => {
+    testDir = mkdtempSync(join(tmpdir(), 'pipeline-runtime-test-'));
   });
 
   afterAll(async () => {

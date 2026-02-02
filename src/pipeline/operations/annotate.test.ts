@@ -5,7 +5,8 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
@@ -29,9 +30,8 @@ describe('annotateOperation', () => {
   let testDir: string;
   const registeredProviders: string[] = [];
 
-  beforeAll(async () => {
-    testDir = join(tmpdir(), `annotate-test-${Date.now()}`);
-    await mkdir(testDir, { recursive: true });
+  beforeAll(() => {
+    testDir = mkdtempSync(join(tmpdir(), 'annotate-test-'));
   });
 
   afterAll(async () => {
