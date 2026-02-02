@@ -21,8 +21,6 @@ export {
   removeOverlayElements,
   setupNetworkBlocking,
 } from './capture.js';
-// Config
-export { getOutputDir, loadConfig, type VexConfig, VexConfigError } from './config.js';
 // DOM Snapshot Loader
 export { type LoadDOMSnapshotResult, loadDOMSnapshot, loadDOMSnapshotFromPath } from './dom-snapshot-loader.js';
 // Overlays
