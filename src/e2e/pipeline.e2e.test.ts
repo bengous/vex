@@ -26,9 +26,9 @@ import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Effect, Exit } from 'effect';
-import { runEffectExit } from '../testing/index.js';
+import { runEffectExit } from '../testing/effect-helpers.js';
 
-import '../providers/index.js'; // Register all providers
+import '../providers/init.js'; // Register all providers
 import { ARTIFACT_NAMES, getViewportDirName, type ViewportConfig } from '../core/types.js';
 import { simpleAnalysis } from '../pipeline/presets.js';
 import { runPipeline } from '../pipeline/runtime.js';
