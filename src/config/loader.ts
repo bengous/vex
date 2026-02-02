@@ -5,8 +5,8 @@
  * Validates with Effect Schema and returns typed config.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { FileSystem } from '@effect/platform';
 import { Data, Effect, ParseResult, Schema as S } from 'effect';
 import { BUILTIN_PROFILES, type CodexProfile } from '../providers/codex-cli/schema.js';
 import { VexConfig } from './schema.js';
@@ -32,18 +32,23 @@ export class ConfigError extends Data.TaggedError('ConfigError')<{
 /**
  * Find project root by looking for package.json.
  */
-export function findProjectRoot(startDir: string = process.cwd()): string {
-  let current = resolve(startDir);
-  const root = dirname(current);
+export function findProjectRoot(startDir: string = process.cwd()): Effect.Effect<string, never, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    let current = resolve(startDir);
+    const root = dirname(current);
 
-  while (current !== root) {
-    if (existsSync(join(current, 'package.json'))) {
-      return current;
+    while (current !== root) {
+      // Treat any error (permission denied, I/O error, etc.) as "not found" - continue searching upward
+      const found = yield* fs.exists(join(current, 'package.json')).pipe(Effect.orElseSucceed(() => false));
+      if (found) {
+        return current;
+      }
+      current = dirname(current);
     }
-    current = dirname(current);
-  }
 
-  return startDir;
+    return startDir;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -94,17 +99,20 @@ function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError>
 /**
  * Load .vexrc.json (legacy format).
  */
-function loadJsonConfig(configPath: string): Effect.Effect<VexConfig, ConfigError> {
+function loadJsonConfig(configPath: string): Effect.Effect<VexConfig, ConfigError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
-    const content = yield* Effect.try({
-      try: () => readFileSync(configPath, 'utf-8'),
-      catch: (error) =>
-        new ConfigError({
-          kind: 'invalid_schema',
-          message: `Failed to read ${configPath}: ${error instanceof Error ? error.message : String(error)}`,
+    const fs = yield* FileSystem.FileSystem;
+    const content = yield* fs.readFileString(configPath).pipe(
+      Effect.mapError((e) => {
+        // Preserve NotFound vs other errors for loadConfigOptional
+        const kind = e._tag === 'SystemError' && e.reason === 'NotFound' ? 'not_found' : 'invalid_schema';
+        return new ConfigError({
+          kind,
+          message: `Failed to read ${configPath}: ${e.message}`,
           path: configPath,
-        }),
-    });
+        });
+      }),
+    );
 
     const raw = yield* Effect.try({
       try: () => JSON.parse(content) as unknown,
@@ -153,17 +161,18 @@ function formatParseError(error: ParseResult.ParseError): string {
  * @param projectRoot - Project root directory (defaults to auto-detected)
  * @returns Effect containing validated VexConfig or ConfigError
  */
-export function loadConfig(projectRoot?: string): Effect.Effect<VexConfig, ConfigError> {
+export function loadConfig(projectRoot?: string): Effect.Effect<VexConfig, ConfigError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
-    const root = projectRoot ?? findProjectRoot();
+    const fs = yield* FileSystem.FileSystem;
+    const root = projectRoot ?? (yield* findProjectRoot());
 
     const tsConfigPath = join(root, 'vex.config.ts');
-    if (existsSync(tsConfigPath)) {
+    if (yield* fs.exists(tsConfigPath).pipe(Effect.orElseSucceed(() => false))) {
       return yield* loadTsConfig(tsConfigPath);
     }
 
     const jsonConfigPath = join(root, '.vexrc.json');
-    if (existsSync(jsonConfigPath)) {
+    if (yield* fs.exists(jsonConfigPath).pipe(Effect.orElseSucceed(() => false))) {
       return yield* loadJsonConfig(jsonConfigPath);
     }
 
@@ -182,7 +191,9 @@ export function loadConfig(projectRoot?: string): Effect.Effect<VexConfig, Confi
  * Load config or return undefined if not found.
  * Useful when config is optional (CLI args can provide all values).
  */
-export function loadConfigOptional(projectRoot?: string): Effect.Effect<VexConfig | undefined, ConfigError> {
+export function loadConfigOptional(
+  projectRoot?: string,
+): Effect.Effect<VexConfig | undefined, ConfigError, FileSystem.FileSystem> {
   return loadConfig(projectRoot).pipe(
     Effect.catchTag('ConfigError', (error) =>
       error.kind === 'not_found' ? Effect.succeed(undefined) : Effect.fail(error),

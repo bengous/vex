@@ -5,6 +5,7 @@
  * CLI flag > preset value > default > error (if required)
  */
 
+import type { FileSystem } from '@effect/platform';
 import { Effect, Option } from 'effect';
 import { ConfigError, getLoopPreset, getScanPreset, loadCodexProfile, loadConfigOptional } from '../config/loader.js';
 import type { DeviceSpec, LoopPreset, ProviderSpec, ScanPreset, VexConfig } from '../config/schema.js';
@@ -200,7 +201,7 @@ Use --output flag, set VEX_OUTPUT_DIR env var, or create vex.config.ts`,
 export function resolveScanOptions(
   cliArgs: ScanCliArgs,
   projectRoot?: string,
-): Effect.Effect<ResolvedScanOptions, ConfigError | ProfileNotFoundError> {
+): Effect.Effect<ResolvedScanOptions, ConfigError | ProfileNotFoundError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     const config = yield* loadConfigOptional(projectRoot);
 
@@ -332,7 +333,7 @@ Known: ${providerMeta.knownModels.join(', ')}`,
 export function resolveLoopOptions(
   cliArgs: LoopCliArgs,
   projectRoot?: string,
-): Effect.Effect<ResolvedLoopOptions, ConfigError | ProfileNotFoundError> {
+): Effect.Effect<ResolvedLoopOptions, ConfigError | ProfileNotFoundError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     const config = yield* loadConfigOptional(projectRoot);
 

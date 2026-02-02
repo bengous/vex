@@ -2,8 +2,9 @@
  * Pipeline runtime - DAG executor for composable operations.
  */
 
-import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { FileSystem } from '@effect/platform';
+import type { PlatformError } from '@effect/platform/Error';
 import { Effect } from 'effect';
 import type { Artifact, ViewportConfig } from '../core/types.js';
 import { ARTIFACT_NAMES, getViewportDirName } from '../core/types.js';
@@ -22,6 +23,7 @@ import {
   hasFailed,
   initializePipelineState,
   isComplete,
+  loadPipelineState,
   savePipelineState,
   storeArtifact,
   storeData,
@@ -77,7 +79,11 @@ function createLogger(_sessionDir: string): Logger {
 /**
  * Create pipeline context for operation execution.
  */
-function createContext(state: PipelineState, viewport?: ViewportConfig): PipelineContext {
+function createContext(
+  state: PipelineState,
+  viewport: ViewportConfig | undefined,
+  fs: FileSystem.FileSystem,
+): PipelineContext {
   const artifacts = new Map<string, Artifact>();
   for (const [id, artifact] of Object.entries(state.artifacts)) {
     artifacts.set(id, artifact);
@@ -93,21 +99,24 @@ function createContext(state: PipelineState, viewport?: ViewportConfig): Pipelin
 
   const createdDirs = new Set<string>();
 
-  const getViewportDir = async (): Promise<string> => {
+  const getViewportDir = (): Effect.Effect<string, PlatformError> => {
     if (!viewport) {
-      return state.sessionDir;
+      return Effect.succeed(state.sessionDir);
     }
     const viewportDir = join(state.sessionDir, getViewportDirName(viewport));
-    if (!createdDirs.has(viewportDir)) {
-      await mkdir(viewportDir, { recursive: true });
-      createdDirs.add(viewportDir);
+    if (createdDirs.has(viewportDir)) {
+      return Effect.succeed(viewportDir);
     }
-    return viewportDir;
+    return fs.makeDirectory(viewportDir, { recursive: true }).pipe(
+      Effect.map(() => {
+        createdDirs.add(viewportDir);
+        return viewportDir;
+      }),
+    );
   };
 
-  const getArtifactPath = async (name: keyof typeof ARTIFACT_NAMES): Promise<string> => {
-    const viewportDir = await getViewportDir();
-    return join(viewportDir, ARTIFACT_NAMES[name]);
+  const getArtifactPath = (name: keyof typeof ARTIFACT_NAMES): Effect.Effect<string, PlatformError> => {
+    return getViewportDir().pipe(Effect.map((viewportDir) => join(viewportDir, ARTIFACT_NAMES[name])));
   };
 
   return {
@@ -239,20 +248,20 @@ export function runPipeline(
   definition: PipelineDefinition,
   baseDir: string,
   _inputs?: Record<string, unknown>,
-): Effect.Effect<PipelineState, PipelineError> {
+): Effect.Effect<PipelineState, PipelineError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     if (definition.nodes.length === 0) {
       return yield* Effect.fail(makeError('validation', 'Pipeline has no nodes'));
     }
 
-    const sessionDir = yield* Effect.tryPromise({
-      try: () => createSessionDir(baseDir),
-      catch: () => makeError('execution', 'Failed to create session directory', undefined),
-    });
+    const sessionDir = yield* createSessionDir(baseDir).pipe(
+      Effect.mapError((e) => makeError('execution', `Failed to create session directory: ${e.message}`, undefined)),
+    );
 
+    const fs = yield* FileSystem.FileSystem;
     let state = initializePipelineState(definition, sessionDir);
     const viewport = extractViewport(definition);
-    const ctx = createContext(state, viewport);
+    const ctx = createContext(state, viewport, fs);
 
     ctx.logger.info(`Starting pipeline: ${definition.name}`);
     ctx.logger.info(`Session: ${sessionDir}`);
@@ -273,10 +282,9 @@ export function runPipeline(
         state = result.state;
       }
 
-      yield* Effect.tryPromise({
-        try: () => savePipelineState(state),
-        catch: () => makeError('persistence', 'Failed to save state'),
-      });
+      yield* savePipelineState(state).pipe(
+        Effect.mapError((e) => makeError('persistence', `Failed to save state: ${e.message}`)),
+      );
     }
 
     state = {
@@ -285,10 +293,9 @@ export function runPipeline(
       status: hasFailed(state) ? 'failed' : 'completed',
     };
 
-    yield* Effect.tryPromise({
-      try: () => savePipelineState(state),
-      catch: () => makeError('persistence', 'Failed to save final state'),
-    });
+    yield* savePipelineState(state).pipe(
+      Effect.mapError((e) => makeError('persistence', `Failed to save final state: ${e.message}`)),
+    );
 
     ctx.logger.info(`Pipeline ${state.status}: ${Object.keys(state.artifacts).length} artifacts`);
 
@@ -299,24 +306,19 @@ export function runPipeline(
 /**
  * Resume a paused pipeline.
  */
-export function resumePipeline(sessionDir: string): Effect.Effect<PipelineState, PipelineError> {
+export function resumePipeline(sessionDir: string): Effect.Effect<PipelineState, PipelineError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
-    const { loadPipelineState } = yield* Effect.tryPromise({
-      try: () => import('./state.js'),
-      catch: () => makeError('execution', 'Failed to load state module'),
-    });
-
-    let state = yield* Effect.tryPromise({
-      try: () => loadPipelineState(sessionDir),
-      catch: () => makeError('execution', 'Failed to load pipeline state'),
-    });
+    let state = yield* loadPipelineState(sessionDir).pipe(
+      Effect.mapError((e) => makeError('execution', `Failed to load pipeline state: ${e.message}`)),
+    );
 
     if (state.status === 'completed' || state.status === 'failed') {
       return state;
     }
 
+    const fs = yield* FileSystem.FileSystem;
     const viewport = extractViewport(state.definition);
-    const ctx = createContext(state, viewport);
+    const ctx = createContext(state, viewport, fs);
     ctx.logger.info(`Resuming pipeline from ${sessionDir}`);
 
     state = { ...state, status: 'running' };
@@ -335,10 +337,9 @@ export function resumePipeline(sessionDir: string): Effect.Effect<PipelineState,
         state = result.state;
       }
 
-      yield* Effect.tryPromise({
-        try: () => savePipelineState(state),
-        catch: () => makeError('persistence', 'Failed to save state'),
-      });
+      yield* savePipelineState(state).pipe(
+        Effect.mapError((e) => makeError('persistence', `Failed to save state: ${e.message}`)),
+      );
     }
 
     state = {
@@ -347,10 +348,9 @@ export function resumePipeline(sessionDir: string): Effect.Effect<PipelineState,
       status: hasFailed(state) ? 'failed' : 'completed',
     };
 
-    yield* Effect.tryPromise({
-      try: () => savePipelineState(state),
-      catch: () => makeError('persistence', 'Failed to save final state'),
-    });
+    yield* savePipelineState(state).pipe(
+      Effect.mapError((e) => makeError('persistence', `Failed to save final state: ${e.message}`)),
+    );
 
     return state;
   });

@@ -2,11 +2,21 @@
  * Pipeline state management - session persistence and artifact storage.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { FileSystem } from '@effect/platform';
+import type { PlatformError } from '@effect/platform/Error';
+import { Data, Effect } from 'effect';
 import type { Artifact } from '../core/types.js';
 import { SESSION_STRUCTURE } from '../core/types.js';
 import type { PipelineDefinition, PipelineState } from './types.js';
+
+/**
+ * JSON parsing failed when loading pipeline state.
+ */
+export class JsonParseError extends Data.TaggedError('JsonParseError')<{
+  readonly message: string;
+  readonly path: string;
+}> {}
 
 /**
  * Generate a unique session ID.
@@ -24,13 +34,17 @@ export function generateSessionId(): string {
  * Create session directory.
  * Note: Viewport subdirectories are created by operations, not here.
  */
-export async function createSessionDir(baseDir: string, sessionId?: string): Promise<string> {
-  const id = sessionId ?? generateSessionId();
-  const sessionDir = join(baseDir, id);
-
-  await mkdir(sessionDir, { recursive: true });
-
-  return sessionDir;
+export function createSessionDir(
+  baseDir: string,
+  sessionId?: string,
+): Effect.Effect<string, PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const id = sessionId ?? generateSessionId();
+    const sessionDir = join(baseDir, id);
+    yield* fs.makeDirectory(sessionDir, { recursive: true });
+    return sessionDir;
+  });
 }
 
 /**
@@ -62,18 +76,33 @@ export function initializePipelineState(definition: PipelineDefinition, sessionD
 /**
  * Save pipeline state to disk.
  */
-export async function savePipelineState(state: PipelineState): Promise<void> {
-  const statePath = join(state.sessionDir, SESSION_STRUCTURE.stateFile);
-  await writeFile(statePath, JSON.stringify(state, null, 2), 'utf-8');
+export function savePipelineState(state: PipelineState): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const statePath = join(state.sessionDir, SESSION_STRUCTURE.stateFile);
+    yield* fs.writeFileString(statePath, JSON.stringify(state, null, 2));
+  });
 }
 
 /**
  * Load pipeline state from disk.
  */
-export async function loadPipelineState(sessionDir: string): Promise<PipelineState> {
-  const statePath = join(sessionDir, SESSION_STRUCTURE.stateFile);
-  const content = await readFile(statePath, 'utf-8');
-  return JSON.parse(content) as PipelineState;
+export function loadPipelineState(
+  sessionDir: string,
+): Effect.Effect<PipelineState, PlatformError | JsonParseError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const statePath = join(sessionDir, SESSION_STRUCTURE.stateFile);
+    const content = yield* fs.readFileString(statePath);
+    return yield* Effect.try({
+      try: () => JSON.parse(content) as PipelineState,
+      catch: (e) =>
+        new JsonParseError({
+          message: `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`,
+          path: statePath,
+        }),
+    });
+  });
 }
 
 /**

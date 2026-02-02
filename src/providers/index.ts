@@ -31,7 +31,7 @@ export {
   type VisionResult,
 } from './shared/service.js';
 
-export { Subprocess, SubprocessLive, SubprocessError, type SubprocessResult } from './shared/subprocess.js';
+export { Subprocess, SubprocessError, SubprocessLive, type SubprocessResult } from './shared/subprocess.js';
 
 // Import providers for self-registration (order matters: first registered = default)
 import './ollama/index.js';

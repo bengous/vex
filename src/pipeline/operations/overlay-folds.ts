@@ -49,10 +49,9 @@ export const overlayFoldsOperation: Operation<OverlayFoldsInput, OverlayFoldsOut
         catch: (e) => makeError('Failed to add fold lines', e),
       });
 
-      const outputPath = yield* Effect.tryPromise({
-        try: () => ctx.getArtifactPath('withFolds'),
-        catch: (e) => makeError('Failed to get output path', e),
-      });
+      const outputPath = yield* ctx
+        .getArtifactPath('withFolds')
+        .pipe(Effect.mapError((e) => makeError('Failed to get output path', e)));
 
       yield* Effect.tryPromise({
         try: () => sharp(foldBuffer).toFile(outputPath),

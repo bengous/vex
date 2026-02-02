@@ -146,6 +146,8 @@ interface MyError {
 
 **Artifact system:** All operations produce typed artifacts (image, analysis, dom-snapshot) stored in session directories.
 
+**Effect service requirements in interfaces:** If a callback implementation needs a service (e.g., `FileSystem`), declare it in the interface's Effect return type. Type assertions to hide requirements are a code smell - either be honest about dependencies or restructure so the callback doesn't need the service.
+
 ## DOM Tracer Algorithm
 
 The core innovation for mapping visual issues to code:
@@ -243,6 +245,8 @@ bun test vex/e2e/
 **TODO:** Find a cleaner auth strategy that doesn't require manual symlink setup.
 
 ## Testing Patterns
+
+**Test helpers with ManagedRuntime:** Use `ManagedRuntime.make(BunContext.layer)` for test helpers instead of `any` type parameters. See `vex/testing/effect-helpers.ts` - provides type safety and runtime reuse across tests.
 
 **Fixture factories with spread overrides:**
 

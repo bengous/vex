@@ -5,6 +5,7 @@
  * for composable visual analysis operations.
  */
 
+import type { PlatformError } from '@effect/platform/Error';
 import type { Effect } from 'effect';
 import type { Artifact, ArtifactName, ArtifactType, Issue, ViewportConfig } from '../core/types.js';
 
@@ -57,14 +58,14 @@ export interface PipelineContext {
    * Returns sessionDir/{deviceType}-{width}x{height}/
    * Falls back to sessionDir if no viewport is set.
    */
-  readonly getViewportDir: () => Promise<string>;
+  readonly getViewportDir: () => Effect.Effect<string, PlatformError>;
 
   /**
    * Get the full path for a named artifact in the current viewport directory.
    * @param name - Artifact name key from ARTIFACT_NAMES
    * @returns Full path like sessionDir/desktop-1920x1080/01-screenshot.png
    */
-  readonly getArtifactPath: (name: ArtifactName) => Promise<string>;
+  readonly getArtifactPath: (name: ArtifactName) => Effect.Effect<string, PlatformError>;
 }
 
 /**
