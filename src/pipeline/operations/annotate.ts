@@ -4,7 +4,8 @@
 
 import { Effect } from 'effect';
 import type { AnalysisResult, AnnotationsArtifact, Issue, ToolCall } from '../../core/types.js';
-import { resolveProviderLayer, VisionProvider } from '../../providers/index.js';
+import { resolveProviderLayer } from '../../providers/shared/registry.js';
+import { VisionProvider } from '../../providers/shared/service.js';
 import { type Operation, OperationError, type PipelineContext } from '../types.js';
 
 export interface AnnotateConfig {

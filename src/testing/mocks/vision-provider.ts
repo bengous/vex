@@ -12,7 +12,7 @@ import {
   VisionProvider,
   type VisionProviderService,
   type VisionResult,
-} from '../../providers/index.js';
+} from '../../providers/shared/service.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types

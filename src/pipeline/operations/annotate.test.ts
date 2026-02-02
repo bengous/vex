@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
 import type { AnalysisResult, Issue, ToolCall } from '../../core/types.js';
-import { registerProvider, unregisterProvider } from '../../providers/index.js';
+import { registerProvider, unregisterProvider } from '../../providers/shared/registry.js';
 import {
   createMockAnalysisError,
   createMockVisionProviderLayer,
