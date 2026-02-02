@@ -180,7 +180,7 @@ export interface AnalysisResult {
   readonly model: string;
   readonly response: string;
   readonly durationMs: number;
-  readonly issues: Issue[];
+  readonly issues: readonly Issue[];
   readonly rawJson?: unknown;
 }
 
