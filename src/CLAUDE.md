@@ -193,6 +193,14 @@ Human-in-the-loop controls based on confidence × severity × scope:
 - ✅ `import { CodexEnv } from '../codex-cli/environment.js'`
 - ❌ `import { CodexEnv } from '../codex-cli/index.js'` (causes cycle with cli-factory)
 
+**@effect/platform HttpClient patterns:** When using HttpClient for HTTP providers:
+
+- Use typed schemas with `HttpClientResponse.schemaBodyJson(MySchema)` - avoid `Schema.Unknown`
+- Use `Effect.catchTags({ TimeoutException, RequestError, ResponseError, ParseError })` for error handling
+- API names differ from some docs: `bodyUnsafeJson` (not `jsonBody`), `schemaBodyJson` (not `json`)
+- `HttpClient.filterStatusOk` wraps client to fail on non-2xx → produces `ResponseError`
+- Self-contained layers: use `.pipe(Layer.provide(FetchHttpClient.layer))` instead of modifying CLI entry
+
 ## External Tool Integration
 
 When modifying integration with external CLIs (codex, claude, etc.):
