@@ -26,7 +26,11 @@ export class ValidationRetryNeeded extends Data.TaggedError('ValidationRetryNeed
   readonly reason: 'no_json' | 'json_parse_error' | 'schema_validation_error';
   readonly details: string;
   readonly partialIssues: S.Issue[];
-}> {}
+}> {
+  override get message(): string {
+    return `Validation retry needed (${this.reason}): ${this.details}`;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Validation Functions
