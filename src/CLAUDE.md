@@ -147,7 +147,7 @@ interface MyError {
 
 **Scoped resources vs Layers:** `acquireRelease` returns `Effect<A, E, Scope>` - return the service directly, not wrapped in Layer. Use Layer only for app-wide singletons shared across the dependency graph. Per-invocation resources (like `CodexEnv`) should return the service directly and callers use `Effect.provideService`.
 
-**Effect TaggedError messages:** `Data.TaggedError` provides "An error has occurred" by default. Add `override get message(): string` getter for useful CLI error output. See `ProfileNotFoundError` in `providers/shared/errors.ts` for example.
+**Effect TaggedError messages:** `Data.TaggedError` provides "An error has occurred" by default. Add `override get message(): string` getter for useful CLI error output. When using a message getter, name the inner field `detail`, `reason`, or similar (not `message`) to avoid getter recursion. See `ProfileNotFoundError` in `providers/shared/errors.ts` and `OperationError` in `pipeline/types.ts` for examples.
 
 **Artifact system:** All operations produce typed artifacts (image, analysis, dom-snapshot) stored in session directories.
 
