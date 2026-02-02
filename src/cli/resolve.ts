@@ -8,6 +8,7 @@
 import { Effect, Option } from 'effect';
 import { ConfigError, getLoopPreset, getScanPreset, loadConfigOptional } from '../config/loader.js';
 import type { DeviceSpec, LoopPreset, ProviderSpec, ScanPreset, VexConfig } from '../config/schema.js';
+import { getProviderMetadata } from '../providers/shared/registry.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Resolved Options Types
@@ -22,6 +23,7 @@ export interface ResolvedScanOptions {
   readonly provider: string;
   readonly model: string | undefined;
   readonly reasoning: string | undefined;
+  readonly profile: string;
   readonly full: boolean;
   readonly placeholderMedia: boolean;
   readonly outputDir: string;
@@ -35,6 +37,7 @@ export interface ResolvedLoopOptions {
   readonly devices: readonly string[];
   readonly provider: string;
   readonly model: string | undefined;
+  readonly profile: string;
   readonly maxIterations: number;
   readonly autoFix: 'high' | 'medium' | 'none';
   readonly dryRun: boolean;
@@ -57,6 +60,8 @@ export interface ScanCliArgs {
   readonly provider: Option.Option<string>;
   readonly model: Option.Option<string>;
   readonly reasoning: Option.Option<string>;
+  readonly providerProfile: Option.Option<string>;
+  readonly allowUnknownModel: boolean;
   readonly full: boolean;
   readonly placeholderMedia: boolean;
   readonly output: Option.Option<string>;
@@ -71,6 +76,8 @@ export interface LoopCliArgs {
   readonly device: Option.Option<string>;
   readonly provider: Option.Option<string>;
   readonly model: Option.Option<string>;
+  readonly providerProfile: Option.Option<string>;
+  readonly allowUnknownModel: boolean;
   readonly maxIterations: Option.Option<number>;
   readonly autoFix: Option.Option<string>;
   readonly dryRun: boolean;
@@ -86,12 +93,41 @@ export interface LoopCliArgs {
 const DEFAULTS = {
   devices: ['desktop-1920'] as readonly string[],
   provider: 'ollama',
+  profile: 'minimal',
   full: false,
   placeholderMedia: false,
   maxIterations: 5,
   autoFix: 'high' as const,
   dryRun: false,
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Profile Resolution
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Maps provider names to their profile prefix */
+const PROVIDER_TO_PROFILE_PREFIX: Record<string, string> = {
+  'codex-cli': 'codex',
+  'claude-cli': 'claude',
+  'gemini-cli': 'gemini',
+  ollama: 'ollama',
+};
+
+/**
+ * Parse "provider:profile" string into tuple.
+ */
+function parseProviderProfile(input: string): Effect.Effect<[provider: string, profile: string], ConfigError> {
+  const idx = input.indexOf(':');
+  if (idx === -1) {
+    return Effect.fail(
+      new ConfigError({
+        kind: 'invalid_schema',
+        message: `Invalid profile format '${input}'. Expected 'provider:profile' (e.g., codex:fast).`,
+      }),
+    );
+  }
+  return Effect.succeed([input.slice(0, idx), input.slice(idx + 1)]);
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Helper Functions
@@ -215,6 +251,45 @@ Either provide a URL argument or add 'urls' field to the preset.`,
     // Resolve reasoning: CLI > preset > undefined
     const reasoning = Option.isSome(cliArgs.reasoning) ? cliArgs.reasoning.value : presetProviderInfo.reasoning;
 
+    // Resolve profile: CLI > preset.provider.profile > 'minimal'
+    let profile = DEFAULTS.profile;
+    if (preset?.provider && typeof preset.provider === 'object' && 'profile' in preset.provider) {
+      profile = preset.provider.profile ?? profile;
+    }
+
+    // CLI override with validation
+    if (Option.isSome(cliArgs.providerProfile)) {
+      const [profileProvider, profileName] = yield* parseProviderProfile(cliArgs.providerProfile.value);
+      const expectedPrefix = PROVIDER_TO_PROFILE_PREFIX[provider];
+
+      if (!expectedPrefix || profileProvider !== expectedPrefix) {
+        return yield* Effect.fail(
+          new ConfigError({
+            kind: 'invalid_schema',
+            message: `Profile '${profileProvider}:${profileName}' doesn't match provider '${provider}'.
+Expected: ${expectedPrefix ?? 'unknown'}:${profileName}`,
+          }),
+        );
+      }
+      profile = profileName;
+    }
+
+    // Validate model against knownModels (unless escaped)
+    if (model && !cliArgs.allowUnknownModel) {
+      const providerMeta = getProviderMetadata(provider);
+      if (providerMeta?.knownModels && !providerMeta.knownModels.includes(model)) {
+        return yield* Effect.fail(
+          new ConfigError({
+            kind: 'invalid_schema',
+            message: `Model '${model}' not in known models for '${provider}'.
+Known: ${providerMeta.knownModels.join(', ')}
+
+Use --allow-unknown-model to bypass.`,
+          }),
+        );
+      }
+    }
+
     // Resolve boolean flags: CLI true overrides preset, otherwise use preset or default
     const full = cliArgs.full || preset?.full || DEFAULTS.full;
     const placeholderMedia = cliArgs.placeholderMedia || preset?.placeholderMedia || DEFAULTS.placeholderMedia;
@@ -227,6 +302,7 @@ Either provide a URL argument or add 'urls' field to the preset.`,
       provider,
       model,
       reasoning,
+      profile,
       full,
       placeholderMedia,
       outputDir,
@@ -292,6 +368,45 @@ Either provide a URL argument or add 'urls' field to the preset.`,
     // Resolve model: CLI > preset > undefined
     const model = Option.isSome(cliArgs.model) ? cliArgs.model.value : presetProviderInfo.model;
 
+    // Resolve profile: CLI > preset.provider.profile > 'minimal'
+    let profile = DEFAULTS.profile;
+    if (preset?.provider && typeof preset.provider === 'object' && 'profile' in preset.provider) {
+      profile = preset.provider.profile ?? profile;
+    }
+
+    // CLI override with validation
+    if (Option.isSome(cliArgs.providerProfile)) {
+      const [profileProvider, profileName] = yield* parseProviderProfile(cliArgs.providerProfile.value);
+      const expectedPrefix = PROVIDER_TO_PROFILE_PREFIX[provider];
+
+      if (!expectedPrefix || profileProvider !== expectedPrefix) {
+        return yield* Effect.fail(
+          new ConfigError({
+            kind: 'invalid_schema',
+            message: `Profile '${profileProvider}:${profileName}' doesn't match provider '${provider}'.
+Expected: ${expectedPrefix ?? 'unknown'}:${profileName}`,
+          }),
+        );
+      }
+      profile = profileName;
+    }
+
+    // Validate model against knownModels (unless escaped)
+    if (model && !cliArgs.allowUnknownModel) {
+      const providerMeta = getProviderMetadata(provider);
+      if (providerMeta?.knownModels && !providerMeta.knownModels.includes(model)) {
+        return yield* Effect.fail(
+          new ConfigError({
+            kind: 'invalid_schema',
+            message: `Model '${model}' not in known models for '${provider}'.
+Known: ${providerMeta.knownModels.join(', ')}
+
+Use --allow-unknown-model to bypass.`,
+          }),
+        );
+      }
+    }
+
     // Resolve maxIterations: CLI > preset > default
     const maxIterations = Option.isSome(cliArgs.maxIterations)
       ? cliArgs.maxIterations.value
@@ -316,6 +431,7 @@ Either provide a URL argument or add 'urls' field to the preset.`,
       devices,
       provider,
       model,
+      profile,
       maxIterations,
       autoFix,
       dryRun,
