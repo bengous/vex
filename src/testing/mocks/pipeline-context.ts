@@ -7,7 +7,7 @@
 
 import { join } from 'node:path';
 import { Effect } from 'effect';
-import type { Artifact } from '../../core/types.js';
+import type { Artifact, ImageArtifact, ViewportConfig } from '../../core/types.js';
 import type { DataKey, DataValue, Logger, PipelineContext } from '../../pipeline/types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -83,8 +83,6 @@ export function createMockContext(options: MockContextOptions): PipelineContext 
 // ═══════════════════════════════════════════════════════════════════════════
 // Image Artifact Factory
 // ═══════════════════════════════════════════════════════════════════════════
-
-import type { ImageArtifact, ViewportConfig } from '../../core/types.js';
 
 export interface MockImageArtifactOptions {
   readonly path: string;
