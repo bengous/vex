@@ -143,6 +143,8 @@ interface MyError {
 }
 ```
 
+**Type narrowing with TaggedError:** TypeScript correctly narrows `Data.TaggedError` unions via `'_tag' in x` - no `as` casts needed. Use `Predicate.isTagged(tag)` for explicit guards when matching specific tags.
+
 **Optional service injection:** Use `Effect.serviceOption(Tag)` when a service may or may not be provided. Returns `Option<Service>` - gracefully handles absence without requiring the service in the type signature.
 
 **Scoped resources vs Layers:** `acquireRelease` returns `Effect<A, E, Scope>` - return the service directly, not wrapped in Layer. Use Layer only for app-wide singletons shared across the dependency graph. Per-invocation resources (like `CodexEnv`) should return the service directly and callers use `Effect.provideService`.
