@@ -25,9 +25,9 @@
 import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Context, Effect, Layer, Scope } from 'effect';
-import { generateConfigToml } from './toml.js';
+import { Context, Effect, Layer, type Scope } from 'effect';
 import type { CodexProfile } from './schema.js';
+import { generateConfigToml } from './toml.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Service Definition
