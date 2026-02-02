@@ -34,7 +34,7 @@ const config: CliProviderConfig = {
 
 export const ClaudeCliProviderLayer = createCliProviderLayer(config);
 
-registerProvider('claude-cli', ClaudeCliProviderLayer, {
+registerProvider('claude-cli', () => ClaudeCliProviderLayer, {
   displayName: config.displayName,
   type: 'cli',
   command: config.command,
