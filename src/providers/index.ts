@@ -33,9 +33,3 @@ export {
 } from './shared/service.js';
 
 export { Subprocess, SubprocessError, SubprocessLive, type SubprocessResult } from './shared/subprocess.js';
-
-// Import providers for self-registration (order matters: first registered = default)
-import './ollama/index.js';
-import './claude-cli/index.js';
-import './codex-cli/index.js';
-import './gemini-cli/index.js';
