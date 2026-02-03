@@ -25,9 +25,6 @@ import { fileURLToPath } from 'node:url';
 import { CLI_DEFAULT_TIMEOUT_MS, type CliProviderConfig, createCliProviderLayer } from '../shared/cli-factory.js';
 import { registerProvider } from '../shared/registry.js';
 
-// biome-ignore lint/performance/noBarrelFile: Provider with re-exported types for cross-module use
-export { CodexEnv, type CodexEnvService, makeCodexEnvResource } from './environment.js';
-
 /** Directory containing this file and the colocated config.toml */
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
