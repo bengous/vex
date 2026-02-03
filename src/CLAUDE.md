@@ -208,6 +208,8 @@ Human-in-the-loop controls based on confidence × severity × scope:
 
 **Codex MCP startup overhead:** User codex configs with MCPs add 30-60s per call. Solved via colocated `config.toml` in `providers/codex-cli/` with CODEX_HOME env var (set by `buildEnv` in CliProviderConfig).
 
+**Provider initialization:** Providers self-register via `registerProvider()` at import time. `vex/providers/init.ts` centralizes these side-effect imports. CLI entry (`cli/index.ts`) imports init.ts once. The `sideEffects` field in package.json marks this file for bundlers.
+
 **Import patterns:** Internal modules use leaf imports directly (no barrels):
 
 - ✅ `import { CodexEnv } from '../codex-cli/environment.js'`
@@ -215,6 +217,8 @@ Human-in-the-loop controls based on confidence × severity × scope:
 - ❌ `import { ... } from '../providers/index.js'` (barrel files removed)
 
 Public API: External consumers import from `vex/index.ts` only.
+
+**Effect Schema re-exports:** When a module exports both `const Foo = S.Literal(...)` and `type Foo = S.Schema.Type<typeof Foo>`, re-exporting just the value (`export { Foo }`) automatically includes the type. No need for separate `export type { Foo as FooType }`.
 
 **@effect/platform HttpClient patterns:** When using HttpClient for HTTP providers:
 
