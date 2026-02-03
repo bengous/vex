@@ -15,8 +15,8 @@ import type {
   CodeLocation as CodeLocationSchema,
   Confidence as ConfidenceSchema,
   GridRef as GridRefSchema,
-  Issue as IssueSchema,
   IssueArray as IssueArraySchema,
+  Issue as IssueSchema,
   Region as RegionSchema,
   Severity as SeveritySchema,
 } from './schema.js';

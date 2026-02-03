@@ -25,6 +25,7 @@
  * ```
  */
 
+// biome-ignore lint/performance/noBarrelFile: User-facing config API with defineConfig
 export {
   ConfigError,
   findProjectRoot,
