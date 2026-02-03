@@ -14,7 +14,7 @@ import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { AnalysisResult, ViewportConfig } from '../../core/types.js';
 import { fullAnnotation, simpleAnalysis } from '../../pipeline/presets.js';
 import { runPipeline } from '../../pipeline/runtime.js';
-import { CodexEnv, makeCodexEnvResource } from '../../providers/codex-cli/index.js';
+import { CodexEnv, makeCodexEnvResource } from '../../providers/codex-cli/environment.js';
 import {
   deviceOption,
   fullOption,
