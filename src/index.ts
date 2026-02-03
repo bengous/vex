@@ -12,14 +12,254 @@
  * @module vex
  */
 
+// ═══════════════════════════════════════════════════════════════════════════
 // Core library (Layer 0)
-export * from './core/index.js';
-// Code locator (Layer 2)
-export * from './locator/index.js';
-// Feedback loop (Layer 3)
-export * from './loop/index.js';
-// Pipeline runtime (Layer 1)
-export * from './pipeline/index.js';
+// ═══════════════════════════════════════════════════════════════════════════
 
+// Capture
+export {
+  applyPlaceholderMedia,
+  BLOCKED_SCRIPT_PATTERNS,
+  type CaptureOptions,
+  type CaptureResult,
+  captureScreenshot,
+  captureWithDOM,
+  cleanupOverlays,
+  type DOMCaptureOptions,
+  type DOMCaptureResult,
+  injectOverlayHidingCSS,
+  OVERLAY_SELECTORS,
+  type PlaceholderMediaOptions,
+  removeOverlayElements,
+  setupNetworkBlocking,
+} from './core/capture.js';
+
+// DOM Snapshot Loader
+export { type LoadDOMSnapshotResult, loadDOMSnapshot, loadDOMSnapshotFromPath } from './core/dom-snapshot-loader.js';
+
+// Overlays
+export {
+  addFoldLines,
+  addFoldOverlay,
+  addGridOverlay,
+  calculateGrid,
+  cellCenter,
+  cellRangeToPixels,
+  cellToPixels,
+  type FoldLineOptions,
+  generateAnnotationSvg,
+  generateGridSvg,
+  isValidCellRef,
+  parseCellRef,
+  pixelsToCell,
+  renderAnnotations,
+  renderAnnotationsToFile,
+  renderArrowSvg,
+  renderLabelSvg,
+  renderRectangleSvg,
+  renderToolCallSvg,
+  saveAnnotationSvg,
+} from './core/overlays.js';
+
+// Types
+export type {
+  AddLabelParams,
+  AnalysisArtifact,
+  AnalysisResult,
+  AnnotationStyle,
+  Artifact,
+  ArtifactName,
+  ArtifactType,
+  BoundingBox,
+  CodeLocation,
+  DiffReportArtifact,
+  DOMElement,
+  DOMSnapshot,
+  DOMSnapshotArtifact,
+  DrawArrowParams,
+  DrawRectangleParams,
+  FoldConfig,
+  GridConfig,
+  GridMetadata,
+  GridRef,
+  GridStyleConfig,
+  ImageArtifact,
+  Issue,
+  LabelPosition,
+  Point,
+  Region,
+  SessionState,
+  Severity,
+  StyleConfig,
+  ToolCall,
+  ToolName,
+  ViewportConfig,
+  ViewportPreset,
+} from './core/types.js';
+
+export {
+  ARTIFACT_NAMES,
+  DEFAULT_FOLD_CONFIG,
+  GRID_CONFIG,
+  GRID_STYLE,
+  getViewportDirName,
+  SESSION_STRUCTURE,
+  STYLE_MAP,
+} from './core/types.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Pipeline runtime (Layer 1)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Operations
+export {
+  type AnalyzeConfig,
+  type AnalyzeInput,
+  type AnalyzeOutput,
+  analyzeOperation,
+} from './pipeline/operations/analyze.js';
+export {
+  type AnnotateConfig,
+  type AnnotateInput,
+  type AnnotateOutput,
+  annotateOperation,
+} from './pipeline/operations/annotate.js';
+export { type CaptureConfig, type CaptureOutput, captureOperation } from './pipeline/operations/capture.js';
+export { type DiffConfig, type DiffInput, type DiffOutput, diffOperation } from './pipeline/operations/diff.js';
+export {
+  type OverlayFoldsConfig,
+  type OverlayFoldsInput,
+  type OverlayFoldsOutput,
+  overlayFoldsOperation,
+} from './pipeline/operations/overlay-folds.js';
+export {
+  type OverlayGridConfig,
+  type OverlayGridInput,
+  type OverlayGridOutput,
+  overlayGridOperation,
+} from './pipeline/operations/overlay-grid.js';
+export {
+  type RenderConfig,
+  type RenderInput,
+  type RenderOutput,
+  renderOperation,
+} from './pipeline/operations/render.js';
+
+// Presets
+export { captureOnly, fullAnnotation, responsiveComparison, simpleAnalysis } from './pipeline/presets.js';
+
+// Runtime
+export { resumePipeline, runPipeline } from './pipeline/runtime.js';
+
+// State management
+export {
+  createSessionDir,
+  generateSessionId,
+  getReadyNodes,
+  hasFailed,
+  initializePipelineState,
+  isComplete,
+  loadPipelineState,
+  savePipelineState,
+  storeArtifact,
+  updateNodeState,
+} from './pipeline/state.js';
+
+// Types
+export type {
+  Logger,
+  NodeState,
+  NodeStatus,
+  Operation,
+  OperationError,
+  OperationRegistry,
+  PipelineBuilder,
+  PipelineContext,
+  PipelineDefinition,
+  PipelineEdge,
+  PipelineError,
+  PipelineNode,
+  PipelineState,
+} from './pipeline/types.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Code locator (Layer 2)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { createResolver, createResolverWithStrategies, StrategyResolver } from './locator/resolver.js';
+export { domTracerStrategy, findElementMatch } from './locator/strategies/dom-tracer.js';
+export type {
+  BatchResolutionResult,
+  ElementMatch,
+  GrepMatch,
+  HintConfig,
+  LocatorContext,
+  LocatorError,
+  LocatorStrategy,
+  ResolutionResult,
+  ResolverOptions,
+  SourceMapEntry,
+  SourceMapIndex,
+} from './locator/types.js';
+export { DEFAULT_RESOLVER_OPTIONS } from './locator/types.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Feedback loop (Layer 3)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { evaluateGate, evaluateGates, filterByAction, summarizeDecisions } from './loop/gates.js';
+export {
+  calculateLoopMetrics,
+  createIterationMetrics,
+  formatDuration,
+  formatResolutionRate,
+  metricsFromState,
+  summarizeMetrics,
+} from './loop/metrics.js';
+export type { LocateResult, LoopCallbacks, LoopCaptureResult } from './loop/orchestrator.js';
+export { LoopOrchestrator, runLoop } from './loop/orchestrator.js';
+export type {
+  AppliedFix,
+  AutoFixThreshold,
+  GateAction,
+  GateConfig,
+  GateDecision,
+  HumanResponse,
+  IterationMetrics,
+  IterationState,
+  LoopError,
+  LoopMetrics,
+  LoopOptions,
+  LoopResult,
+  LoopStatus,
+  VerificationMetrics,
+  VerificationResult,
+  VerificationVerdict,
+} from './loop/types.js';
+export { DEFAULT_GATE_CONFIG, DEFAULT_LOOP_OPTIONS } from './loop/types.js';
+export { isImproved, isResolved, verifyChanges } from './loop/verify.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
 // VLM providers
-export * from './providers/index.js';
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { getAllProviders, getProviderInfo, type ProviderInfo } from './providers/shared/introspection.js';
+export {
+  getAllProviderMetadata,
+  getProviderMetadata,
+  listProviderNames,
+  type ProviderMetadata,
+  registerProvider,
+  resolveProviderLayer,
+  unregisterProvider,
+} from './providers/shared/registry.js';
+export {
+  AnalysisFailed,
+  type ProviderError,
+  ProviderUnavailable,
+  VisionProvider,
+  type VisionProviderService,
+  type VisionQueryOptions,
+  type VisionResult,
+} from './providers/shared/service.js';
+export { Subprocess, SubprocessError, SubprocessLive, type SubprocessResult } from './providers/shared/subprocess.js';
