@@ -208,10 +208,13 @@ Human-in-the-loop controls based on confidence × severity × scope:
 
 **Codex MCP startup overhead:** User codex configs with MCPs add 30-60s per call. Solved via colocated `config.toml` in `providers/codex-cli/` with CODEX_HOME env var (set by `buildEnv` in CliProviderConfig).
 
-**Circular dependency in providers:** When importing from provider modules in shared code (e.g., `cli-factory.ts`), import from leaf modules directly:
+**Import patterns:** Internal modules use leaf imports directly (no barrels):
 
 - ✅ `import { CodexEnv } from '../codex-cli/environment.js'`
-- ❌ `import { CodexEnv } from '../codex-cli/index.js'` (causes cycle with cli-factory)
+- ✅ `import { VisionProvider } from '../providers/shared/service.js'`
+- ❌ `import { ... } from '../providers/index.js'` (barrel files removed)
+
+Public API: External consumers import from `vex/index.ts` only.
 
 **@effect/platform HttpClient patterns:** When using HttpClient for HTTP providers:
 
