@@ -19,7 +19,7 @@ import type { AppliedFix, GateDecision, HumanResponse, LoopError, LoopOptions, L
 import { simpleAnalysis } from '../../pipeline/presets.js';
 import { runPipeline } from '../../pipeline/runtime.js';
 import { generateSessionId } from '../../pipeline/state.js';
-import { CodexEnv, makeCodexEnvResource } from '../../providers/codex-cli/index.js';
+import { CodexEnv, makeCodexEnvResource } from '../../providers/codex-cli/environment.js';
 import {
   autoFixOption,
   deviceOption,
