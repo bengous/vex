@@ -1,9 +1,10 @@
 /**
- * Vex configuration module.
+ * User-facing config API.
+ *
+ * Internal code imports directly from schema.js and loader.js.
  *
  * @example
  * ```typescript
- * // In vex.config.ts
  * import { defineConfig } from './vex/config/index.js';
  *
  * export default defineConfig({
@@ -13,61 +14,7 @@
  *   },
  * });
  * ```
- *
- * @example
- * ```typescript
- * // Loading config programmatically
- * import { loadConfig, getScanPreset } from './vex/config/index.js';
- * import { Effect } from 'effect';
- *
- * const config = await Effect.runPromise(loadConfig());
- * const preset = await Effect.runPromise(getScanPreset(config, 'quick'));
- * ```
  */
 
-// biome-ignore lint/performance/noBarrelFile: User-facing config API with defineConfig
-export {
-  ConfigError,
-  findProjectRoot,
-  getLoopPreset,
-  getScanPreset,
-  loadConfig,
-  loadConfigOptional,
-} from './loader.js';
-
-export type {
-  AutoFixThreshold as AutoFixThresholdType,
-  ClaudeProvider as ClaudeProviderType,
-  CodexProvider as CodexProviderType,
-  DeviceId as DeviceIdType,
-  DeviceSpec as DeviceSpecType,
-  GeminiProvider as GeminiProviderType,
-  LoopPreset as LoopPresetType,
-  OllamaProvider as OllamaProviderType,
-  PositiveInt as PositiveIntType,
-  ProviderName as ProviderNameType,
-  ProviderSpec as ProviderSpecType,
-  ReasoningLevel as ReasoningLevelType,
-  ScanPreset as ScanPresetType,
-  Url as UrlType,
-  VexConfig as VexConfigType,
-} from './schema.js';
-
-export {
-  AutoFixThreshold,
-  ClaudeProvider,
-  CodexProvider,
-  DeviceId,
-  DeviceSpec,
-  defineConfig,
-  GeminiProvider,
-  LoopPreset,
-  OllamaProvider,
-  PositiveInt,
-  ProviderName,
-  ProviderSpec,
-  ReasoningLevel,
-  ScanPreset,
-  Url,
-  VexConfig,
-} from './schema.js';
+// biome-ignore lint/performance/noBarrelFile: User-facing defineConfig API
+export { defineConfig, VexConfig } from './schema.js';
