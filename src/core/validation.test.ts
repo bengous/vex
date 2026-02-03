@@ -13,9 +13,9 @@ import {
   IssueParseError,
   parseIssuesFromResponse,
   parseIssuesStrict,
+  ValidationRetryNeeded,
   validateIssues,
   validateIssuesWithPartialRecovery,
-  ValidationRetryNeeded,
 } from './validation.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
