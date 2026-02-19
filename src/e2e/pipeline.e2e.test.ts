@@ -135,15 +135,19 @@ describe('VEX Pipeline E2E', () => {
   const testUrl = `file://${resolve(import.meta.dir, 'fixtures/test-page.html')}`;
 
   beforeAll(async () => {
+    if (!process.env.RUN_E2E) return;
     outputDir = mkdtempSync(join(tmpdir(), 'vex-e2e-'));
     provider = await findAvailableProvider();
   });
 
   afterAll(async () => {
-    await rm(outputDir, { recursive: true, force: true });
+    if (!process.env.RUN_E2E) return;
+    if (outputDir) {
+      await rm(outputDir, { recursive: true, force: true });
+    }
   });
 
-  test(
+  test.skipIf(!process.env.RUN_E2E)(
     'full pipeline: capture -> folds -> grid -> analyze',
     async () => {
       if (!provider) {
