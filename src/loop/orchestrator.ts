@@ -134,8 +134,11 @@ export class LoopOrchestrator {
         }
 
         // 2. LOCATE code for issues
-        // Extract DOM snapshot from pipeline state data channel
-        const domSnapshotPath = currentState.data['capture:domSnapshotPath'] as string | undefined;
+        // Extract DOM snapshot from pipeline state artifacts
+        const domSnapshotArtifact = Object.values(currentState.artifacts).find(
+          (a) => a.type === 'dom-snapshot'
+        );
+        const domSnapshotPath = domSnapshotArtifact?.path as string | undefined;
         let domSnapshot: DOMSnapshot | undefined;
 
         if (domSnapshotPath) {
