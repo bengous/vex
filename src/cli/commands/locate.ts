@@ -38,6 +38,13 @@ function loadSessionIssues(sessionDir: string): Issue[] {
 
   const state = JSON.parse(readFileSync(statePath, 'utf-8'));
 
+  if (state.type === 'vex-loop') {
+    const loopIssues = state.iterationHistory?.at(-1)?.result?.state?.issues;
+    if (loopIssues && loopIssues.length > 0) {
+      return loopIssues;
+    }
+  }
+
   if (state.issues && state.issues.length > 0) {
     return state.issues;
   }
