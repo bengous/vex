@@ -15,7 +15,15 @@ import { Url } from '../../config/schema.js';
 import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { CodeLocation, Issue, ViewportConfig } from '../../core/types.js';
 import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from '../../loop/orchestrator.js';
-import type { AppliedFix, GateDecision, HumanResponse, LoopError, LoopOptions, LoopResult } from '../../loop/types.js';
+import type {
+  AppliedFix,
+  GateConfig,
+  GateDecision,
+  HumanResponse,
+  LoopError,
+  LoopOptions,
+  LoopResult,
+} from '../../loop/types.js';
 import { simpleAnalysis } from '../../pipeline/presets.js';
 import { runPipeline } from '../../pipeline/runtime.js';
 import { generateSessionId } from '../../pipeline/state.js';
@@ -98,6 +106,12 @@ function createIterationLogger(): LoopCallbacks['onIterationComplete'] {
       console.log(`  Introduced: ${state.verification.introduced.length}`);
       console.log(`  Unchanged: ${state.verification.unchanged.length}`);
     }
+  };
+}
+
+export function createGateConfigFromLoopOptions(options: LoopOptions): Pick<GateConfig, 'autoFixConfidence'> {
+  return {
+    autoFixConfidence: options.autoFixThreshold,
   };
 }
 
@@ -266,7 +280,11 @@ export const loopCommand = Command.make(
         onIterationComplete: createIterationLogger(),
       };
 
-      const orchestrator = new LoopOrchestrator(loopOptions, callbacks);
+      const orchestrator = new LoopOrchestrator(
+        loopOptions,
+        callbacks,
+        createGateConfigFromLoopOptions(loopOptions),
+      );
 
       // Run orchestrator with scoped environment when profile is active
       const needsScopedEnv = resolved.provider === 'codex-cli' && resolved.profile !== 'minimal';
