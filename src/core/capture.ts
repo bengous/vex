@@ -387,11 +387,7 @@ export async function captureWithDOM(
     captureStyles = ['display', 'position', 'width', 'height', 'margin', 'padding'],
   } = options;
 
-  console.log('[captureWithDOM] Starting capture for', url);
-  console.log('[captureWithDOM] Output dir:', outputDir);
-
   await mkdir(outputDir, { recursive: true });
-  console.log('[captureWithDOM] Directory created');
 
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
@@ -400,36 +396,27 @@ export async function captureWithDOM(
     hasTouch: viewport.hasTouch,
     userAgent: viewport.userAgent,
   });
-  console.log('[captureWithDOM] Context created');
-
-  await setupNetworkBlocking(context, { debug: true });
+  await setupNetworkBlocking(context);
   const page = await context.newPage();
-  console.log('[captureWithDOM] Page created');
 
   try {
-    console.log('[captureWithDOM] Navigating to URL...');
     const response = await page.goto(url, {
       waitUntil: 'domcontentloaded',
       timeout: navigationTimeout,
     });
-    console.log('[captureWithDOM] Navigation complete, status:', response?.status());
 
     if (!response?.ok()) {
       throw new Error(`HTTP ${response?.status()}: ${response?.statusText()}`);
     }
 
-    console.log('[captureWithDOM] Waiting for load state...');
     await page.waitForLoadState('load', { timeout: loadStateTimeout }).catch(() => {
-      console.log('[captureWithDOM] Load state timeout (ignored)');
+      // Ignore timeout, proceed with screenshot
     });
-    console.log('[captureWithDOM] Load state complete');
 
     // Clean overlays BEFORE DOM capture for accurate code locator mapping
     await cleanupOverlays(page);
-    console.log('[captureWithDOM] Overlays cleaned');
 
     // Capture DOM after cleanup - ensures DOM matches screenshot for locator accuracy
-    console.log('[captureWithDOM] Starting DOM capture...');
     const elements = await page.evaluate(
       (styleProps) => {
         const results: Array<{
@@ -482,24 +469,17 @@ export async function captureWithDOM(
       },
       [...captureStyles],
     );
-    console.log('[captureWithDOM] DOM capture complete, elements:', elements.length);
 
     const html = await page.content();
-    console.log('[captureWithDOM] HTML content captured, length:', html.length);
 
     if (placeholderMedia?.enabled) {
       await applyPlaceholderMedia(page, placeholderMedia);
-      console.log('[captureWithDOM] Placeholder media applied');
     }
 
-    console.log('[captureWithDOM] Taking screenshot...');
     const buffer = await page.screenshot({ fullPage });
-    console.log('[captureWithDOM] Screenshot taken, size:', buffer.length);
 
     const outputPath = join(outputDir, filename);
-    console.log('[captureWithDOM] Writing to:', outputPath);
     await Bun.write(outputPath, buffer);
-    console.log('[captureWithDOM] File written successfully');
 
     const domElements: DOMElement[] = elements.map((el) => ({
       tagName: el.tagName,
