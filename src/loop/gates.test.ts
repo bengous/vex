@@ -79,23 +79,22 @@ describe('evaluateGate', () => {
     expect(result.reasoning).toContain('high severity');
   });
 
-  test('medium confidence + low severity + single file → auto-fix', () => {
+  test('medium confidence + low severity + single file → human-review (default autoFix threshold is high)', () => {
     const issue = createIssue({ severity: 'low' });
     const locations = [createLocation({ confidence: 'medium', file: 'single.liquid' })];
 
     const result = evaluateGate(issue, locations);
 
-    expect(result.action).toBe('auto-fix');
+    expect(result.action).toBe('human-review');
   });
 
-  test('medium confidence + medium severity + single file → auto-fix (default threshold is high)', () => {
+  test('medium confidence + medium severity + single file → human-review (default autoFix threshold is high)', () => {
     const issue = createIssue({ severity: 'medium' });
     const locations = [createLocation({ confidence: 'medium', file: 'single.liquid' })];
 
     const result = evaluateGate(issue, locations);
 
-    // Default humanReviewSeverity is 'high', so medium severity passes through
-    expect(result.action).toBe('auto-fix');
+    expect(result.action).toBe('human-review');
   });
 
   test('multi-file → human-review (default config)', () => {
@@ -292,8 +291,8 @@ describe('Decision Matrix', () => {
     ['high', 'high', false, true, 'human-review'], // multi-file allowed but auto-fix paths require single file
 
     // Medium confidence
-    ['medium', 'low', true, false, 'auto-fix'],
-    ['medium', 'medium', true, false, 'auto-fix'], // default threshold is high
+    ['medium', 'low', true, false, 'human-review'], // changed from auto-fix because default threshold is high
+    ['medium', 'medium', true, false, 'human-review'], // changed from auto-fix because default threshold is high
     ['medium', 'high', true, false, 'human-review'], // high severity blocks
     ['medium', 'high', false, false, 'human-review'],
 

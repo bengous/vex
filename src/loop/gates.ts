@@ -18,7 +18,7 @@
  */
 
 import type { CodeLocation, Issue, Severity } from '../core/types.js';
-import type { GateAction, GateConfig, GateDecision } from './types.js';
+import type { AutoFixThreshold, GateAction, GateConfig, GateDecision } from './types.js';
 import { DEFAULT_GATE_CONFIG } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -33,6 +33,23 @@ const SEVERITY_RANK: Record<Severity, number> = {
 
 function isSeverityAtLeast(actual: Severity, threshold: Severity): boolean {
   return SEVERITY_RANK[actual] <= SEVERITY_RANK[threshold];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Confidence Ordering
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CONFIDENCE_RANK: Record<CodeLocation['confidence'], number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+function isConfidenceAtLeast(actual: CodeLocation['confidence'], threshold: AutoFixThreshold): boolean {
+  if (threshold === 'none') {
+    return false;
+  }
+  return CONFIDENCE_RANK[actual] <= CONFIDENCE_RANK[threshold as CodeLocation['confidence']];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -127,16 +144,12 @@ export function evaluateGate(
   else if (confidence === 'low') {
     action = 'human-review';
   }
-  // High confidence, single file = auto-fix
-  else if (confidence === 'high' && scope.isSingleFile) {
-    action = 'auto-fix';
-  }
   // Medium confidence with high severity = review
   else if (confidence === 'medium' && isSeverityAtLeast(severity, opts.humanReviewSeverity)) {
     action = 'human-review';
   }
-  // Medium confidence with lower severity = auto-fix
-  else if (confidence === 'medium' && scope.isSingleFile) {
+  // Auto-fix if threshold is met
+  else if (isConfidenceAtLeast(confidence, opts.autoFixConfidence) && scope.isSingleFile) {
     action = 'auto-fix';
   }
   // Default to review
