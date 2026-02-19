@@ -151,7 +151,7 @@ export interface HumanResponse {
  */
 export interface GateConfig {
   /** Confidence threshold for auto-fix */
-  readonly autoFixConfidence: CodeLocation['confidence'];
+  readonly autoFixConfidence: AutoFixThreshold;
 
   /** Severity threshold for human review */
   readonly humanReviewSeverity: Issue['severity'];
