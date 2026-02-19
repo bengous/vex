@@ -93,7 +93,17 @@ export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<V
             };
           }).pipe(Effect.mapError((err) => mapSubprocessError(name, err as SubprocessError))),
 
-        isAvailable: () => subprocess.commandExists(command),
+        isAvailable: () =>
+          Effect.gen(function* () {
+            const exists = yield* subprocess.commandExists(command);
+            if (!exists) return false;
+
+            const codexEnvOption = yield* Effect.serviceOption(CodexEnv);
+            const env = Option.isSome(codexEnvOption) ? { CODEX_HOME: codexEnvOption.value.codexHome } : buildEnv?.();
+
+            yield* subprocess.exec(command, ['--help'], 5000, env);
+            return true;
+          }).pipe(Effect.catchAll(() => Effect.succeed(false))),
 
         listModels: () => Effect.succeed(knownModels ?? ([] as readonly string[])),
 
