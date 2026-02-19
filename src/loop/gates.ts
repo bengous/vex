@@ -1,20 +1,12 @@
 /**
  * Gates module - human-in-the-loop decision making for issue resolution.
  *
- * Decision matrix:
- * ┌────────────┬──────────┬─────────────┬───────────────────┐
- * │ Confidence │ Severity │    Scope    │      Action       │
- * ├────────────┼──────────┼─────────────┼───────────────────┤
- * │ High       │ Any      │ Single file │ auto-fix          │
- * ├────────────┼──────────┼─────────────┼───────────────────┤
- * │ Medium     │ Low/Med  │ Single file │ auto-fix with log │
- * ├────────────┼──────────┼─────────────┼───────────────────┤
- * │ Medium     │ High     │ Any         │ human-review      │
- * ├────────────┼──────────┼─────────────┼───────────────────┤
- * │ Low        │ Any      │ Any         │ human-review      │
- * ├────────────┼──────────┼─────────────┼───────────────────┤
- * │ Any        │ Any      │ Multi-file  │ human-review      │
- * └────────────┴──────────┴─────────────┴───────────────────┘
+ * Decision matrix (ordered):
+ * 1. Multi-file + !allowMultiFileAutoFix -> human-review
+ * 2. low confidence -> human-review
+ * 3. medium confidence + severity >= humanReviewSeverity -> human-review
+ * 4. single-file + confidence >= autoFixConfidence -> auto-fix
+ * 5. otherwise -> human-review
  */
 
 import type { CodeLocation, Issue, Severity } from '../core/types.js';
