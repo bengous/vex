@@ -8,7 +8,7 @@
  *   vex scan <url> --preset <name>
  *   vex loop <url> --preset <name> --project <path>
  */
-import { defineConfig } from './vex/config/index.js';
+import { defineConfig } from './src/config/index.js';
 
 export default defineConfig({
   // Required: where to save session output
