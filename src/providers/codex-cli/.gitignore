@@ -4,3 +4,5 @@ models_cache.json
 sessions/
 skills/
 tmp/
+
+shell_snapshots/
