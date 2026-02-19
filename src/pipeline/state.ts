@@ -70,6 +70,7 @@ export function initializePipelineState(definition: PipelineDefinition, sessionD
     artifacts: {},
     data: {},
     issues: [],
+    semanticNames: {},
   };
 }
 
@@ -114,6 +115,19 @@ export function storeArtifact(state: PipelineState, artifact: Artifact): Pipelin
     artifacts: {
       ...state.artifacts,
       [artifact.id]: artifact,
+    },
+  };
+}
+
+/**
+ * Store a semantic name mapping in the state.
+ */
+export function storeSemanticName(state: PipelineState, name: string, artifactId: string): PipelineState {
+  return {
+    ...state,
+    semanticNames: {
+      ...state.semanticNames,
+      [name]: artifactId,
     },
   };
 }
