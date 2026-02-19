@@ -45,6 +45,7 @@ function createPipelineState(overrides: Partial<PipelineState> = {}): PipelineSt
     artifacts: {},
     data: {},
     issues: [],
+    semanticNames: {},
     ...overrides,
   };
 }

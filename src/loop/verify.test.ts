@@ -45,6 +45,7 @@ function createPipelineState(issues: Issue[]): PipelineState {
     artifacts: {},
     data: {},
     issues,
+    semanticNames: {},
   };
 }
 
