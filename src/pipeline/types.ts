@@ -229,6 +229,8 @@ export interface PipelineState {
   /** Non-artifact data passed between operations (e.g., AnalysisResult, ToolCall[]) */
   readonly data: Record<string, unknown>;
   readonly issues: Issue[];
+  /** Map of semantic keys (e.g. nodeId:key) to physical artifact IDs to allow cross-node resolution */
+  readonly semanticNames: Record<string, string>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

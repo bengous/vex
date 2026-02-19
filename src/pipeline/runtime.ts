@@ -25,6 +25,7 @@ import {
   savePipelineState,
   storeArtifact,
   storeData,
+  storeSemanticName,
   updateNodeState,
 } from './state.js';
 import {
@@ -99,6 +100,12 @@ function createContext(
   }
 
   const semanticNames = new Map<string, Artifact>();
+  for (const [key, artifactId] of Object.entries(state.semanticNames)) {
+    const artifact = state.artifacts[artifactId];
+    if (artifact) {
+      semanticNames.set(key, artifact);
+    }
+  }
 
   // Non-artifact data channel (e.g., AnalysisResult, ToolCall[])
   const dataMap = new Map<string, unknown>();
@@ -208,6 +215,7 @@ function executeNode(
         // This is an artifact - store in artifacts channel
         const artifact = value as Artifact;
         currentState = storeArtifact(currentState, artifact);
+        currentState = storeSemanticName(currentState, `${nodeId}:${key}`, artifact.id);
         outputArtifacts.push(artifact.id);
         ctx._mapSemanticName(`${nodeId}:${key}`, artifact);
       } else if (value !== undefined) {
@@ -276,6 +284,20 @@ export function runPipeline(
       // Execute ready nodes (could be parallelized in future)
       for (const nodeId of readyNodes) {
         const result = yield* executeNode(state, nodeId, ctx).pipe(
+          Effect.catchAll((e) =>
+            Effect.gen(function* () {
+              const failedState = updateNodeState(state, nodeId, {
+                status: 'failed',
+                error: e,
+              });
+              yield* savePipelineState({
+                ...failedState,
+                status: 'failed',
+                completedAt: new Date().toISOString(),
+              }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
+              return yield* Effect.fail(e);
+            }),
+          ),
           Effect.mapError((e) => makeError('execution', `Node ${nodeId} failed: ${e.message}`, e)),
         );
         state = result.state;
@@ -331,6 +353,20 @@ export function resumePipeline(sessionDir: string): Effect.Effect<PipelineState,
 
       for (const nodeId of readyNodes) {
         const result = yield* executeNode(state, nodeId, ctx).pipe(
+          Effect.catchAll((e) =>
+            Effect.gen(function* () {
+              const failedState = updateNodeState(state, nodeId, {
+                status: 'failed',
+                error: e,
+              });
+              yield* savePipelineState({
+                ...failedState,
+                status: 'failed',
+                completedAt: new Date().toISOString(),
+              }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
+              return yield* Effect.fail(e);
+            }),
+          ),
           Effect.mapError((e) => makeError('execution', `Node ${nodeId} failed: ${e.message}`, e)),
         );
         state = result.state;
