@@ -30,35 +30,82 @@ const sessionArg = Args.directory({ name: 'session' });
 // Helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
-function loadSessionIssues(sessionDir: string): Issue[] {
+type JsonObject = Record<string, unknown>;
+
+interface AnalysisArtifactRef {
+  readonly type?: string;
+  readonly path?: string;
+}
+
+export interface LocateSessionContext {
+  readonly issues: Issue[];
+  readonly domSessionDir: string;
+}
+
+function asObject(value: unknown): JsonObject | undefined {
+  return typeof value === 'object' && value !== null ? (value as JsonObject) : undefined;
+}
+
+function loadIssuesFromAnalysisArtifacts(artifacts: Record<string, AnalysisArtifactRef> | undefined): Issue[] {
+  const analysisArtifact = artifacts ? Object.values(artifacts).find((a) => a.type === 'analysis') : undefined;
+  if (!analysisArtifact?.path || !existsSync(analysisArtifact.path)) {
+    return [];
+  }
+
+  try {
+    const analysis = JSON.parse(readFileSync(analysisArtifact.path, 'utf-8')) as { issues?: unknown };
+    return Array.isArray(analysis.issues) ? (analysis.issues as Issue[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function loadLocateSessionContext(sessionDir: string): LocateSessionContext {
   const statePath = join(sessionDir, 'state.json');
   if (!existsSync(statePath)) {
     throw new Error(`Session state not found: ${statePath}`);
   }
 
-  const state = JSON.parse(readFileSync(statePath, 'utf-8'));
+  const state = JSON.parse(readFileSync(statePath, 'utf-8')) as unknown;
+  const stateObj = asObject(state);
+  if (!stateObj) {
+    return { issues: [], domSessionDir: sessionDir };
+  }
 
-  if (state.type === 'vex-loop') {
-    const loopIssues = state.iterationHistory?.at(-1)?.result?.state?.issues;
-    if (loopIssues && loopIssues.length > 0) {
-      return loopIssues;
+  let domSessionDir = sessionDir;
+
+  if (stateObj.type === 'vex-loop') {
+    const iterations = Array.isArray(stateObj.iterationHistory) ? stateObj.iterationHistory : [];
+    const latestIteration = asObject(iterations.at(-1));
+    const latestPipelineState = asObject(latestIteration?.pipelineState);
+
+    if (typeof latestPipelineState?.sessionDir === 'string') {
+      domSessionDir = latestPipelineState.sessionDir;
+    }
+
+    const loopIssues = latestIteration?.issuesFound;
+    if (Array.isArray(loopIssues) && loopIssues.length > 0) {
+      return { issues: loopIssues as Issue[], domSessionDir };
+    }
+
+    const pipelineIssues = latestPipelineState?.issues;
+    if (Array.isArray(pipelineIssues) && pipelineIssues.length > 0) {
+      return { issues: pipelineIssues as Issue[], domSessionDir };
+    }
+
+    const latestPipelineArtifacts = asObject(latestPipelineState?.artifacts) as Record<string, AnalysisArtifactRef> | undefined;
+    const latestPipelineAnalysisIssues = loadIssuesFromAnalysisArtifacts(latestPipelineArtifacts);
+    if (latestPipelineAnalysisIssues.length > 0) {
+      return { issues: latestPipelineAnalysisIssues, domSessionDir };
     }
   }
 
-  if (state.issues && state.issues.length > 0) {
-    return state.issues;
+  if (Array.isArray(stateObj.issues) && stateObj.issues.length > 0) {
+    return { issues: stateObj.issues as Issue[], domSessionDir };
   }
 
-  // Fall back to reading from analysis artifact
-  const artifacts = state.artifacts as Record<string, { type?: string; path?: string }> | undefined;
-  const analysisArtifact = artifacts ? Object.values(artifacts).find((a) => a.type === 'analysis') : undefined;
-
-  if (analysisArtifact?.path && existsSync(analysisArtifact.path)) {
-    const analysis = JSON.parse(readFileSync(analysisArtifact.path, 'utf-8'));
-    return analysis.issues ?? [];
-  }
-
-  return [];
+  const rootArtifacts = asObject(stateObj.artifacts) as Record<string, AnalysisArtifactRef> | undefined;
+  return { issues: loadIssuesFromAnalysisArtifacts(rootArtifacts), domSessionDir };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -87,7 +134,7 @@ export const locateCommand = Command.make(
       console.log(`Loading session from ${sessionDir}`);
       console.log(`Searching in ${projectRoot}`);
 
-      const issues = loadSessionIssues(sessionDir);
+      const { issues, domSessionDir } = loadLocateSessionContext(sessionDir);
       console.log(`Found ${issues.length} issues to locate`);
 
       if (issues.length === 0) {
@@ -95,8 +142,8 @@ export const locateCommand = Command.make(
         return;
       }
 
-      // Load DOM snapshot from session
-      const domResult = yield* Effect.promise(() => loadDOMSnapshot(sessionDir));
+      // Load DOM snapshot from pipeline session (for vex-loop, this is the latest iteration session)
+      const domResult = yield* Effect.promise(() => loadDOMSnapshot(domSessionDir));
       if (domResult.error) {
         console.warn(`DOM: ${domResult.error}`);
       }
