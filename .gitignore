@@ -1,0 +1,8 @@
+node_modules/
+vex-output/
+bun.lock
+.DS_Store
+.vscode/
+.idea/
+.env
+.env.local

@@ -6,23 +6,23 @@ Visual analysis tool for web layouts with VLM-powered issue detection and iterat
 
 ```bash
 # CLI commands (use --help for full options)
-bun vex/cli/index.ts scan <url>           # Capture and analyze URL
-bun vex/cli/index.ts analyze <image>      # Analyze existing screenshot
-bun vex/cli/index.ts locate <session>     # Find code for issues
-bun vex/cli/index.ts loop <url>           # Iterative improvement (--dry-run for safe mode)
-bun vex/cli/index.ts verify <session>     # Compare iterations
-bun vex/cli/index.ts providers            # List available VLM providers
+bun src/cli/index.ts scan <url>           # Capture and analyze URL
+bun src/cli/index.ts analyze <image>      # Analyze existing screenshot
+bun src/cli/index.ts locate <session>     # Find code for issues
+bun src/cli/index.ts loop <url>           # Iterative improvement (--dry-run for safe mode)
+bun src/cli/index.ts verify <session>     # Compare iterations
+bun src/cli/index.ts providers            # List available VLM providers
 
 # With presets (from vex.config.ts)
-bun vex/cli/index.ts scan <url> --preset quick
-bun vex/cli/index.ts loop <url> --preset safe --project .
+bun src/cli/index.ts scan <url> --preset quick
+bun src/cli/index.ts loop <url> --preset safe --project .
 
 # Direct options (override preset or use without config)
-bun vex/cli/index.ts scan <url> --device iphone-15-pro --provider codex-cli --reasoning low
-bun vex/cli/index.ts loop <url> --project . --max-iterations 3 --dry-run
+bun src/cli/index.ts scan <url> --device iphone-15-pro --provider codex-cli --reasoning low
+bun src/cli/index.ts loop <url> --project . --max-iterations 3 --dry-run
 
 # API usage (primary interface)
-import { runPipeline, presets } from './vex/index.js';
+import { runPipeline, presets } from './src/index.js';
 ```
 
 ## Configuration
@@ -35,7 +35,7 @@ cp vex.config.example.ts vex.config.ts
 
 ```typescript
 // vex.config.ts
-import { defineConfig } from './vex/config/index.js';
+import { defineConfig } from './src/config/index.js';
 
 export default defineConfig({
   outputDir: 'vex-output',
@@ -61,7 +61,7 @@ export default defineConfig({
 ## Architecture
 
 ```
-vex/
+src/
 ├── config/         # Configuration and schema
 │   ├── schema.ts   # Effect Schema definitions (DeviceId, ProviderSpec, presets)
 │   ├── loader.ts   # Load vex.config.ts with validation
@@ -208,7 +208,7 @@ Human-in-the-loop controls based on confidence × severity × scope:
 
 **Codex MCP startup overhead:** User codex configs with MCPs add 30-60s per call. Solved via colocated `config.toml` in `providers/codex-cli/` with CODEX_HOME env var (set by `buildEnv` in CliProviderConfig).
 
-**Provider initialization:** Providers self-register via `registerProvider()` at import time. `vex/providers/init.ts` centralizes these side-effect imports. CLI entry (`cli/index.ts`) imports init.ts once. The `sideEffects` field in package.json marks this file for bundlers.
+**Provider initialization:** Providers self-register via `registerProvider()` at import time. `src/providers/init.ts` centralizes these side-effect imports. CLI entry (`cli/index.ts`) imports init.ts once. The `sideEffects` field in package.json marks this file for bundlers.
 
 **Import patterns:** Internal modules use leaf imports directly (no barrels):
 
@@ -216,7 +216,7 @@ Human-in-the-loop controls based on confidence × severity × scope:
 - ✅ `import { VisionProvider } from '../providers/shared/service.js'`
 - ❌ `import { ... } from '../providers/index.js'` (barrel files removed)
 
-Public API: External consumers import from `vex/index.ts` only.
+Public API: External consumers import from `src/index.ts` only.
 
 **Effect Schema re-exports:** When a module exports both `const Foo = S.Literal(...)` and `type Foo = S.Schema.Type<typeof Foo>`, re-exporting just the value (`export { Foo }`) automatically includes the type. No need for separate `export type { Foo as FooType }`.
 
@@ -242,37 +242,37 @@ When modifying integration with external CLIs (codex, claude, etc.):
 bunx tsc --noEmit                    # Type check
 bunx biome check --write .           # Lint + format
 bun test                             # Run all tests
-bun test vex/                        # Run vex tests only
+bun test src/                        # Run vex tests only
 bun test --watch                     # Watch mode
 
 # Debug subprocess issues - logs are in providers/subprocess.ts
 # Look for [subprocess] prefixed console.log statements
 
 # Test CLI help
-bun vex/cli/index.ts --help
-bun vex/cli/index.ts scan --help
+bun src/cli/index.ts --help
+bun src/cli/index.ts scan --help
 
 # Test with preset
-bun vex/cli/index.ts scan <url> --preset quick
+bun src/cli/index.ts scan <url> --preset quick
 
 # Test with direct options
-bun vex/cli/index.ts scan <url> --provider codex-cli --model gpt-5.2 --reasoning low
-bun vex/cli/index.ts scan <url> --device iphone-15-pro --placeholder-media
+bun src/cli/index.ts scan <url> --provider codex-cli --model gpt-5.2 --reasoning low
+bun src/cli/index.ts scan <url> --device iphone-15-pro --placeholder-media
 
 # List available providers
-bun vex/cli/index.ts providers --json
+bun src/cli/index.ts providers --json
 ```
 
 ## E2E Test Setup
 
-The E2E test (`vex/e2e/pipeline.e2e.test.ts`) exercises the full pipeline with real VLM providers. It requires codex-cli authentication:
+The E2E test (`src/e2e/pipeline.e2e.test.ts`) exercises the full pipeline with real VLM providers. It requires codex-cli authentication:
 
 ```bash
 # Symlink your codex auth to the provider directory
-ln -sf ~/.codex/auth.json vex/providers/codex-cli/auth.json
+ln -sf ~/.codex/auth.json src/providers/codex-cli/auth.json
 
 # Run E2E test
-bun test vex/e2e/
+bun test src/e2e/
 ```
 
 **Why symlink?** The codex-cli provider uses `CODEX_HOME` override to disable MCPs (faster execution). This loses access to `~/.codex/auth.json`, so we symlink it.
@@ -293,7 +293,7 @@ assert(captured); // narrows to string, throws if undefined
 expect(existsSync(captured)).toBe(false); // no cast needed
 ```
 
-**Test helpers with ManagedRuntime:** Use `ManagedRuntime.make(BunContext.layer)` for test helpers instead of `any` type parameters. See `vex/testing/effect-helpers.ts` - provides type safety and runtime reuse across tests.
+**Test helpers with ManagedRuntime:** Use `ManagedRuntime.make(BunContext.layer)` for test helpers instead of `any` type parameters. See `src/testing/effect-helpers.ts` - provides type safety and runtime reuse across tests.
 
 **Fixture factories with spread overrides:**
 
@@ -353,11 +353,10 @@ writeFileSync(join(tempDir, 'test.liquid'), '<div class="hero">');
 
 - **[docs/EFFECT-PATTERNS.md](docs/EFFECT-PATTERNS.md)** - Comprehensive guide to Effect.js patterns used in this codebase with ASCII diagrams and real examples
 
-## Consolidation Note
+## Origin
 
-vex consolidates functionality from:
+vex was originally developed within the shopify-mpzinc project, consolidating:
 
 - `scripts/design-audit/` - Screenshot capture, device presets, overlays
 - `scripts/vision-audit/` - VLM integration, annotation system
 
-The design-audit CLAUDE.md documents the legacy tool interface.
