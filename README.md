@@ -54,6 +54,14 @@ bun run test         # Unit tests
 bun run test:e2e     # E2E tests (requires VLM auth)
 ```
 
+### E2E Smoke (Gemini CLI preset)
+
+Run the dedicated smoke test for CLI preset flow with `gemini-cli` + `gemini-2.5-flash-lite`:
+
+```bash
+RUN_E2E=1 bun test src/e2e/cli-gemini-smoke.e2e.test.ts
+```
+
 ## License
 
 Private
