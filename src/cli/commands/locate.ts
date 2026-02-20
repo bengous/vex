@@ -1,20 +1,20 @@
 /**
- * locate command - Find code locations for issues in a session.
+ * locate command - Find code locations for issues in a session or scan audit.
  *
- * Usage: vex locate <session> [options]
+ * Usage: vex locate <session-or-audit> [options]
  *
  * Migrated to @effect/cli with Effect Schema validation.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { Args, Command } from '@effect/cli';
 import { Effect, Option } from 'effect';
 import { loadDOMSnapshot } from '../../core/dom-snapshot-loader.js';
 import type { Issue } from '../../core/types.js';
 import { createResolverWithStrategies } from '../../locator/resolver.js';
 import { domTracerStrategy } from '../../locator/strategies/dom-tracer.js';
-import type { LocatorContext } from '../../locator/types.js';
+import type { BatchResolutionResult, LocatorContext } from '../../locator/types.js';
 import { jsonOption, patternsOption, projectOption } from '../options.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -42,6 +42,17 @@ export interface LocateSessionContext {
   readonly domSessionDir: string;
 }
 
+export interface LocateTargetContext {
+  readonly source: string;
+  readonly issues: Issue[];
+  readonly domSessionDir: string;
+}
+
+export interface LocateTargetSet {
+  readonly kind: 'session' | 'audit';
+  readonly targets: readonly LocateTargetContext[];
+}
+
 function asObject(value: unknown): JsonObject | undefined {
   return typeof value === 'object' && value !== null ? (value as JsonObject) : undefined;
 }
@@ -58,6 +69,28 @@ function loadIssuesFromAnalysisArtifacts(artifacts: Record<string, AnalysisArtif
   } catch {
     return [];
   }
+}
+
+function collectStateFilesRecursive(rootDir: string): string[] {
+  const stack = [rootDir];
+  const files: string[] = [];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) continue;
+    const entries = readdirSync(current, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+      } else if (entry.isFile() && entry.name === 'state.json') {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  files.sort();
+  return files;
 }
 
 export function loadLocateSessionContext(sessionDir: string): LocateSessionContext {
@@ -108,6 +141,38 @@ export function loadLocateSessionContext(sessionDir: string): LocateSessionConte
   return { issues: loadIssuesFromAnalysisArtifacts(rootArtifacts), domSessionDir };
 }
 
+export function loadLocateTargetSet(targetDir: string): LocateTargetSet {
+  const auditPath = join(targetDir, 'audit.json');
+  const pagesDir = join(targetDir, 'pages');
+
+  if (existsSync(auditPath) && existsSync(pagesDir)) {
+    const statePaths = collectStateFilesRecursive(pagesDir);
+    const targets = statePaths.map((statePath) => {
+      const sessionDir = dirname(statePath);
+      const context = loadLocateSessionContext(sessionDir);
+      return {
+        source: relative(targetDir, sessionDir),
+        issues: context.issues,
+        domSessionDir: context.domSessionDir,
+      } satisfies LocateTargetContext;
+    });
+    return {
+      kind: 'audit',
+      targets,
+    };
+  }
+
+  return {
+    kind: 'session',
+    targets: [
+      {
+        source: targetDir,
+        ...loadLocateSessionContext(targetDir),
+      },
+    ],
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Locate Command
 // ═══════════════════════════════════════════════════════════════════════════
@@ -131,48 +196,125 @@ export const locateCommand = Command.make(
       const filePatterns = patternsStr ? patternsStr.split(',') : ['*.liquid', '*.css', '*.scss'];
       const jsonOutput = args.json;
 
-      console.log(`Loading session from ${sessionDir}`);
+      console.log(`Loading target from ${sessionDir}`);
       console.log(`Searching in ${projectRoot}`);
 
-      const { issues, domSessionDir } = loadLocateSessionContext(sessionDir);
-      console.log(`Found ${issues.length} issues to locate`);
+      const resolver = createResolverWithStrategies([domTracerStrategy]);
+      const targetSet = loadLocateTargetSet(sessionDir);
 
-      if (issues.length === 0) {
-        console.log('No issues to locate');
+      if (targetSet.kind === 'session') {
+        const [target] = targetSet.targets;
+        if (!target) {
+          console.log('No issues to locate');
+          return;
+        }
+
+        console.log(`Found ${target.issues.length} issues to locate`);
+        if (target.issues.length === 0) {
+          console.log('No issues to locate');
+          return;
+        }
+
+        const domResult = yield* Effect.promise(() => loadDOMSnapshot(target.domSessionDir));
+        if (domResult.error) {
+          console.warn(`DOM: ${domResult.error}`);
+        }
+
+        const ctx: LocatorContext = {
+          projectRoot,
+          filePatterns,
+          domSnapshot: domResult.snapshot ?? undefined,
+        };
+
+        const result = yield* resolver.locateAll(target.issues, ctx);
+
+        if (jsonOutput) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          console.log(`\nLocated ${result.summary.issuesWithLocations}/${result.summary.issuesProcessed} issues`);
+          console.log(`Total locations: ${result.summary.totalLocations}`);
+          console.log(
+            `By confidence: high=${result.summary.byConfidence.high}, medium=${result.summary.byConfidence.medium}, low=${result.summary.byConfidence.low}`,
+          );
+
+          for (const r of result.results) {
+            console.log(`\n[Issue ${r.issue.id}] ${r.issue.description}`);
+            for (const loc of r.locations) {
+              console.log(`  ${loc.file}:${loc.lineNumber ?? 0} (${loc.confidence})`);
+              console.log(`    ${loc.reasoning}`);
+            }
+          }
+        }
         return;
       }
 
-      // Load DOM snapshot from pipeline session (for vex-loop, this is the latest iteration session)
-      const domResult = yield* Effect.promise(() => loadDOMSnapshot(domSessionDir));
-      if (domResult.error) {
-        console.warn(`DOM: ${domResult.error}`);
+      console.log(`Audit mode: found ${targetSet.targets.length} page/viewport session(s)`);
+      const targetResults: Array<{ source: string; result: BatchResolutionResult }> = [];
+      const byConfidence: { high: number; medium: number; low: number } = { high: 0, medium: 0, low: 0 };
+      let issuesProcessed = 0;
+      let issuesWithLocations = 0;
+      let totalLocations = 0;
+
+      for (const target of targetSet.targets) {
+        if (target.issues.length === 0) {
+          continue;
+        }
+
+        const domResult = yield* Effect.promise(() => loadDOMSnapshot(target.domSessionDir));
+        if (domResult.error) {
+          console.warn(`DOM (${target.source}): ${domResult.error}`);
+        }
+
+        const ctx: LocatorContext = {
+          projectRoot,
+          filePatterns,
+          domSnapshot: domResult.snapshot ?? undefined,
+        };
+
+        const result = yield* resolver.locateAll(target.issues, ctx);
+        targetResults.push({ source: target.source, result });
+        issuesProcessed += result.summary.issuesProcessed;
+        issuesWithLocations += result.summary.issuesWithLocations;
+        totalLocations += result.summary.totalLocations;
+        byConfidence.high += result.summary.byConfidence.high;
+        byConfidence.medium += result.summary.byConfidence.medium;
+        byConfidence.low += result.summary.byConfidence.low;
       }
 
-      const resolver = createResolverWithStrategies([domTracerStrategy]);
-      const ctx: LocatorContext = {
-        projectRoot,
-        filePatterns,
-        domSnapshot: domResult.snapshot ?? undefined,
+      const auditResult = {
+        type: 'vex-locate-audit',
+        target: sessionDir,
+        summary: {
+          targetsProcessed: targetSet.targets.length,
+          targetsWithIssues: targetResults.length,
+          issuesProcessed,
+          issuesWithLocations,
+          totalLocations,
+          byConfidence,
+        },
+        results: targetResults,
       };
 
-      const result = yield* resolver.locateAll(issues, ctx);
-
       if (jsonOutput) {
-        console.log(JSON.stringify(result, null, 2));
+        console.log(JSON.stringify(auditResult, null, 2));
       } else {
-        console.log(`\nLocated ${result.summary.issuesWithLocations}/${result.summary.issuesProcessed} issues`);
-        console.log(`Total locations: ${result.summary.totalLocations}`);
+        console.log(`\nTargets with issues: ${auditResult.summary.targetsWithIssues}/${auditResult.summary.targetsProcessed}`);
+        console.log(`Issues located: ${issuesWithLocations}/${issuesProcessed}`);
+        console.log(`Total locations: ${totalLocations}`);
         console.log(
-          `By confidence: high=${result.summary.byConfidence.high}, medium=${result.summary.byConfidence.medium}, low=${result.summary.byConfidence.low}`,
+          `By confidence: high=${byConfidence.high}, medium=${byConfidence.medium}, low=${byConfidence.low}`,
         );
 
-        for (const r of result.results) {
-          console.log(`\n[Issue ${r.issue.id}] ${r.issue.description}`);
-          for (const loc of r.locations) {
-            console.log(`  ${loc.file}:${loc.lineNumber ?? 0} (${loc.confidence})`);
-            console.log(`    ${loc.reasoning}`);
+        for (const targetResult of targetResults) {
+          console.log(`\n[Target] ${targetResult.source}`);
+          for (const r of targetResult.result.results) {
+            console.log(`  [Issue ${r.issue.id}] ${r.issue.description}`);
+            for (const loc of r.locations) {
+              console.log(`    ${loc.file}:${loc.lineNumber ?? 0} (${loc.confidence})`);
+              console.log(`      ${loc.reasoning}`);
+            }
           }
         }
       }
     }),
-).pipe(Command.withDescription('Find code locations for issues in a session'));
+).pipe(Command.withDescription('Find code locations for issues in a session or scan audit'));
