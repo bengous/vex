@@ -4,7 +4,7 @@
  * Maps visual issues to code locations using multiple strategies.
  */
 
-import type { Effect } from 'effect';
+import { Data, type Effect } from 'effect';
 import type { BoundingBox, CodeLocation, DOMSnapshot, Issue } from '../core/types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -13,12 +13,19 @@ import type { BoundingBox, CodeLocation, DOMSnapshot, Issue } from '../core/type
 
 /**
  * Locator operation failed.
+ * Extends Data.TaggedError for proper Effect-TS integration:
+ * - Structural equality via Equal.equals()
+ * - Is an Error instance with stack trace
+ * - Works with Effect.catchTag()
  */
-export interface LocatorError {
-  readonly _tag: 'LocatorError';
+export class LocatorError extends Data.TaggedError('LocatorError')<{
   readonly strategy: string;
-  readonly message: string;
+  readonly detail: string;
   readonly cause?: unknown;
+}> {
+  override get message(): string {
+    return `[locator:${this.strategy}] ${this.detail}`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

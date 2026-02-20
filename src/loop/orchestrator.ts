@@ -20,27 +20,26 @@ import type { LocatorContext } from '../locator/types.js';
 import type { PipelineState } from '../pipeline/types.js';
 import { evaluateGates, filterByAction } from './gates.js';
 // Metrics can be calculated from iterationHistory using calculateLoopMetrics if needed
-import type {
-  AppliedFix,
-  GateConfig,
-  GateDecision,
-  HumanResponse,
-  IterationState,
+import {
+  type AppliedFix,DEFAULT_GATE_CONFIG, DEFAULT_LOOP_OPTIONS, 
+  type GateConfig,
+  type GateDecision,
+  type HumanResponse,
+  type IterationState,
   LoopError,
-  LoopOptions,
-  LoopResult,
-  LoopStatus,
-  VerificationResult,
+  type LoopOptions,
+  type LoopResult,
+  type LoopStatus,
+  type VerificationResult
 } from './types.js';
-import { DEFAULT_GATE_CONFIG, DEFAULT_LOOP_OPTIONS } from './types.js';
 import { verifyChanges } from './verify.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Error Construction
 // ═══════════════════════════════════════════════════════════════════════════
 
-function makeError(phase: LoopError['phase'], message: string, cause?: unknown): LoopError {
-  return { _tag: 'LoopError', phase, message, cause };
+function makeError(phase: LoopError['phase'], detail: string, cause?: unknown): LoopError {
+  return new LoopError({ phase, detail, cause });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

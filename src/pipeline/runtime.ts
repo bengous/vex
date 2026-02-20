@@ -36,7 +36,7 @@ import {
   OperationError,
   type PipelineContext,
   type PipelineDefinition,
-  type PipelineError,
+  PipelineError,
   type PipelineState,
 } from './types.js';
 
@@ -61,8 +61,8 @@ const OPERATIONS: Record<string, Operation<any, any, any>> = {
   diff: diffOperation,
 };
 
-function makeError(phase: PipelineError['phase'], message: string, cause?: OperationError): PipelineError {
-  return { _tag: 'PipelineError', phase, message, cause };
+function makeError(phase: PipelineError['phase'], detail: string, cause?: OperationError): PipelineError {
+  return new PipelineError({ phase, detail, cause });
 }
 
 /**

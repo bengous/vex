@@ -66,12 +66,19 @@ export class OperationError extends Data.TaggedError('OperationError')<{
 
 /**
  * Pipeline execution failed.
+ * Extends Data.TaggedError for proper Effect-TS integration:
+ * - Structural equality via Equal.equals()
+ * - Is an Error instance with stack trace
+ * - Works with Effect.catchTag()
  */
-export interface PipelineError {
-  readonly _tag: 'PipelineError';
+export class PipelineError extends Data.TaggedError('PipelineError')<{
   readonly phase: 'validation' | 'execution' | 'persistence';
-  readonly message: string;
+  readonly detail: string;
   readonly cause?: OperationError;
+}> {
+  override get message(): string {
+    return `[pipeline:${this.phase}] ${this.detail}`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
