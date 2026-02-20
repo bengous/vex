@@ -185,7 +185,7 @@ export { OperationError, PipelineError } from './pipeline/types.js';
 // Code locator (Layer 2)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { createResolver, createResolverWithStrategies, StrategyResolver } from './locator/resolver.js';
+export { createResolverWithStrategies, StrategyResolver } from './locator/resolver.js';
 export { domTracerStrategy, findElementMatch } from './locator/strategies/dom-tracer.js';
 export type {
   BatchResolutionResult,

@@ -199,17 +199,6 @@ export class StrategyResolver {
 }
 
 /**
- * Create a resolver with default strategies.
- */
-export function createResolver(): StrategyResolver {
-  const resolver = new StrategyResolver();
-
-  // Import and register default strategies
-  // This is done lazily to avoid circular dependencies
-  return resolver;
-}
-
-/**
  * Create a resolver with pre-registered strategies.
  */
 export function createResolverWithStrategies(strategies: LocatorStrategy[]): StrategyResolver {

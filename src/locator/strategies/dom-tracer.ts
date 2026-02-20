@@ -159,7 +159,7 @@ export function buildSelectors(element: DOMElement): string[] {
 // Ripgrep Search
 // ═══════════════════════════════════════════════════════════════════════════
 
-const FILE_PATTERNS = ['*.liquid', '*.css', '*.scss', '*.html', '*.jsx', '*.tsx', '*.vue', '*.svelte'];
+export const DEFAULT_FILE_PATTERNS = ['*.liquid', '*.css', '*.scss', '*.html', '*.jsx', '*.tsx', '*.vue', '*.svelte'];
 
 async function grepForSelector(
   selector: string,
@@ -331,7 +331,7 @@ export const domTracerStrategy: LocatorStrategy = {
         if (selectors.length === 0) continue;
 
         // 3. Grep for selectors
-        const patterns = filePatterns.length > 0 ? filePatterns : FILE_PATTERNS;
+        const patterns = filePatterns.length > 0 ? filePatterns : DEFAULT_FILE_PATTERNS;
         const grepResults = yield* Effect.tryPromise({
           try: () => grepForSelectors(selectors, projectRoot, patterns),
           catch: (e) => makeError('Grep failed', e),

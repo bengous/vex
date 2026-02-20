@@ -104,7 +104,7 @@ export interface VerificationResult {
   readonly unchanged: readonly Issue[];
 
   /** Pixel difference percentage */
-  readonly pixelDiffPercent: number;
+  readonly pixelDiffPercent?: number;
 
   /** Overall verdict */
   readonly verdict: VerificationVerdict;
