@@ -135,14 +135,10 @@ export function verifyChanges(
   const metrics = calculateMetrics(baselineIssues, currentIssues, resolved, introduced, unchanged);
   const verdict = determineVerdict(metrics);
 
-  // Pixel diff placeholder - would require image comparison in full implementation
-  const pixelDiffPercent = 0;
-
   return Effect.succeed({
     resolved,
     introduced,
     unchanged,
-    pixelDiffPercent,
     verdict,
     metrics,
   });
@@ -150,11 +146,29 @@ export function verifyChanges(
 
 /**
  * Quick check if current state is better than baseline.
+ *
+ * Uses fingerprint-based comparison (consistent with verifyChanges):
+ * returns true when more issues were resolved than introduced.
  */
 export function isImproved(baseline: PipelineState, current: PipelineState): boolean {
-  const baselineCount = baseline.issues.length;
-  const currentCount = current.issues.length;
-  return currentCount < baselineCount;
+  const baselineIssues = baseline.issues;
+  const currentIssues = current.issues;
+
+  let resolvedCount = 0;
+  for (const issue of baselineIssues) {
+    if (!findSimilarIssue(issue, currentIssues)) {
+      resolvedCount++;
+    }
+  }
+
+  let introducedCount = 0;
+  for (const issue of currentIssues) {
+    if (!findSimilarIssue(issue, baselineIssues)) {
+      introducedCount++;
+    }
+  }
+
+  return resolvedCount > introducedCount;
 }
 
 /**

@@ -134,7 +134,7 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
       });
 
       const artifact: AnalysisArtifact = {
-        id: `analysis_${Date.now()}`,
+        id: crypto.randomUUID(),
         type: 'analysis',
         path: outputPath,
         createdAt: new Date().toISOString(),

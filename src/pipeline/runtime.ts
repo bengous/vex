@@ -249,31 +249,18 @@ function executeNode(
 }
 
 /**
- * Run a pipeline definition.
+ * Shared DAG execution loop used by both runPipeline and resumePipeline.
+ *
+ * Executes nodes in topological order until complete or failed, saving state
+ * after each iteration. Returns the finalized pipeline state.
  */
-export function runPipeline(
-  definition: PipelineDefinition,
-  baseDir: string,
-  _inputs?: Record<string, unknown>,
+function executePipelineLoop(
+  initialState: PipelineState,
+  ctx: InternalPipelineContext,
 ): Effect.Effect<PipelineState, PipelineError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
-    if (definition.nodes.length === 0) {
-      return yield* Effect.fail(makeError('validation', 'Pipeline has no nodes'));
-    }
+    let state = initialState;
 
-    const sessionDir = yield* createSessionDir(baseDir).pipe(
-      Effect.mapError((e) => makeError('execution', `Failed to create session directory: ${e.message}`, undefined)),
-    );
-
-    const fs = yield* FileSystem.FileSystem;
-    let state = initializePipelineState(definition, sessionDir);
-    const viewport = extractViewport(definition);
-    const ctx = createContext(state, viewport, fs);
-
-    ctx.logger.info(`Starting pipeline: ${definition.name}`);
-    ctx.logger.info(`Session: ${sessionDir}`);
-
-    // Execute nodes in topological order
     while (!isComplete(state) && !hasFailed(state)) {
       const readyNodes = getReadyNodes(state);
 
@@ -318,9 +305,36 @@ export function runPipeline(
       Effect.mapError((e) => makeError('persistence', `Failed to save final state: ${e.message}`)),
     );
 
-    ctx.logger.info(`Pipeline ${state.status}: ${Object.keys(state.artifacts).length} artifacts`);
-
     return state;
+  });
+}
+
+/**
+ * Run a pipeline definition.
+ */
+export function runPipeline(
+  definition: PipelineDefinition,
+  baseDir: string,
+  _inputs?: Record<string, unknown>,
+): Effect.Effect<PipelineState, PipelineError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    if (definition.nodes.length === 0) {
+      return yield* Effect.fail(makeError('validation', 'Pipeline has no nodes'));
+    }
+
+    const sessionDir = yield* createSessionDir(baseDir).pipe(
+      Effect.mapError((e) => makeError('execution', `Failed to create session directory: ${e.message}`, undefined)),
+    );
+
+    const fs = yield* FileSystem.FileSystem;
+    const state = initializePipelineState(definition, sessionDir);
+    const viewport = extractViewport(definition);
+    const ctx = createContext(state, viewport, fs);
+
+    ctx.logger.info(`Starting pipeline: ${definition.name}`);
+    ctx.logger.info(`Session: ${sessionDir}`);
+
+    return yield* executePipelineLoop(state, ctx);
   });
 }
 
@@ -329,64 +343,21 @@ export function runPipeline(
  */
 export function resumePipeline(sessionDir: string): Effect.Effect<PipelineState, PipelineError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
-    let state = yield* loadPipelineState(sessionDir).pipe(
+    const loaded = yield* loadPipelineState(sessionDir).pipe(
       Effect.mapError((e) => makeError('execution', `Failed to load pipeline state: ${e.message}`)),
     );
 
-    if (state.status === 'completed' || state.status === 'failed') {
-      return state;
+    if (loaded.status === 'completed' || loaded.status === 'failed') {
+      return loaded;
     }
 
     const fs = yield* FileSystem.FileSystem;
-    const viewport = extractViewport(state.definition);
-    const ctx = createContext(state, viewport, fs);
+    const viewport = extractViewport(loaded.definition);
+    const ctx = createContext(loaded, viewport, fs);
     ctx.logger.info(`Resuming pipeline from ${sessionDir}`);
 
-    state = { ...state, status: 'running' };
+    const state = { ...loaded, status: 'running' as const };
 
-    while (!isComplete(state) && !hasFailed(state)) {
-      const readyNodes = getReadyNodes(state);
-
-      if (readyNodes.length === 0 && !isComplete(state)) {
-        return yield* Effect.fail(makeError('execution', 'Pipeline deadlock'));
-      }
-
-      for (const nodeId of readyNodes) {
-        const result = yield* executeNode(state, nodeId, ctx).pipe(
-          Effect.catchAll((e) =>
-            Effect.gen(function* () {
-              const failedState = updateNodeState(state, nodeId, {
-                status: 'failed',
-                error: e,
-              });
-              yield* savePipelineState({
-                ...failedState,
-                status: 'failed',
-                completedAt: new Date().toISOString(),
-              }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
-              return yield* Effect.fail(e);
-            }),
-          ),
-          Effect.mapError((e) => makeError('execution', `Node ${nodeId} failed: ${e.message}`, e)),
-        );
-        state = result.state;
-      }
-
-      yield* savePipelineState(state).pipe(
-        Effect.mapError((e) => makeError('persistence', `Failed to save state: ${e.message}`)),
-      );
-    }
-
-    state = {
-      ...state,
-      completedAt: new Date().toISOString(),
-      status: hasFailed(state) ? 'failed' : 'completed',
-    };
-
-    yield* savePipelineState(state).pipe(
-      Effect.mapError((e) => makeError('persistence', `Failed to save final state: ${e.message}`)),
-    );
-
-    return state;
+    return yield* executePipelineLoop(state, ctx);
   });
 }

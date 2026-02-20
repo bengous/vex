@@ -279,9 +279,12 @@ describe('verifyChanges', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('isImproved', () => {
-  test('less issues → true', () => {
-    const baseline = createPipelineState([createIssue({ id: 1 }), createIssue({ id: 2 })]);
-    const current = createPipelineState([createIssue({ id: 1 })]);
+  test('resolved > introduced → true', () => {
+    const baseline = createPipelineState([
+      createIssue({ id: 1, description: 'first issue' }),
+      createIssue({ id: 2, description: 'second issue' }),
+    ]);
+    const current = createPipelineState([createIssue({ id: 1, description: 'first issue' })]);
 
     expect(isImproved(baseline, current)).toBe(true);
   });
