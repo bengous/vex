@@ -5,6 +5,7 @@
  * capture → analyze → locate → fix → verify → repeat
  */
 
+import { Data } from 'effect';
 import type { CodeLocation, Issue, ViewportConfig } from '../core/types.js';
 import type { PipelineState } from '../pipeline/types.js';
 
@@ -14,12 +15,19 @@ import type { PipelineState } from '../pipeline/types.js';
 
 /**
  * Loop execution failed.
+ * Extends Data.TaggedError for proper Effect-TS integration:
+ * - Structural equality via Equal.equals()
+ * - Is an Error instance with stack trace
+ * - Works with Effect.catchTag()
  */
-export interface LoopError {
-  readonly _tag: 'LoopError';
+export class LoopError extends Data.TaggedError('LoopError')<{
   readonly phase: 'capture' | 'analyze' | 'locate' | 'fix' | 'verify';
-  readonly message: string;
+  readonly detail: string;
   readonly cause?: unknown;
+}> {
+  override get message(): string {
+    return `[loop:${this.phase}] ${this.detail}`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
