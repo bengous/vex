@@ -36,10 +36,33 @@ export default defineConfig({
 |---------|-------------|
 | `vex scan <url>` | Capture and analyze a URL |
 | `vex analyze <image>` | Analyze an existing screenshot |
-| `vex locate <session>` | Find code locations for detected issues |
+| `vex locate <session-or-audit>` | Find code locations for detected issues |
 | `vex loop <url>` | Run iterative improvement loop |
 | `vex verify <session>` | Compare iterations in a session |
 | `vex providers` | List available VLM providers |
+
+## Scan Output Layout
+
+Each `scan` command now creates a single audit directory under your configured `outputDir`:
+
+```text
+output/
+└── audit-YYYYMMDD-HHMM/
+    ├── audit.json
+    ├── config.used.json
+    ├── urls.txt
+    └── pages/<host>/<path>/_index/<viewport>/
+        ├── state.json
+        ├── 01-screenshot.png
+        ├── 02-dom.json
+        ├── 03-with-folds.png
+        ├── 04-with-grid.png
+        └── 05-analysis.json
+```
+
+- One audit folder per `scan` invocation
+- One page folder per URL
+- One viewport subfolder per page (desktop/mobile, etc.)
 
 ## Architecture
 
