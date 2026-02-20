@@ -87,17 +87,22 @@ export default defineConfig({
       expect(exitCode, stderr).toBe(0);
       expect(stdout).toContain('Scanning https://example.com/');
       expect(stdout).toContain('Provider: gemini-cli (model: gemini-2.5-flash-lite)');
+      expect(stdout).toContain('Audit:');
 
-      const sessions = readdirSync(outputDir, { withFileTypes: true })
+      const auditDirs = readdirSync(outputDir, { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)
+        .filter((name) => name.startsWith('audit-'))
         .sort();
-      expect(sessions.length).toBeGreaterThanOrEqual(1);
+      expect(auditDirs.length).toBeGreaterThanOrEqual(1);
 
-      const sessionDir = join(outputDir, sessions[sessions.length - 1] ?? '');
-      const statePath = join(sessionDir, 'state.json');
-      const viewportDir = join(sessionDir, getViewportDirName(VIEWPORT));
+      const auditDir = join(outputDir, auditDirs[auditDirs.length - 1] ?? '');
+      const statePath = join(auditDir, 'pages', 'example.com', '_index', getViewportDirName(VIEWPORT), 'state.json');
+      const viewportDir = join(auditDir, 'pages', 'example.com', '_index', getViewportDirName(VIEWPORT));
 
+      assert(existsSync(join(auditDir, 'audit.json')));
+      assert(existsSync(join(auditDir, 'config.used.json')));
+      assert(existsSync(join(auditDir, 'urls.txt')));
       assert(existsSync(statePath));
       assert(existsSync(join(viewportDir, ARTIFACT_NAMES.screenshot)));
       assert(existsSync(join(viewportDir, ARTIFACT_NAMES.withFolds)));
@@ -107,6 +112,11 @@ export default defineConfig({
       const state = await Bun.file(statePath).json();
       expect(state.status).toBe('completed');
       expect(state.issues).toBeArray();
+
+      const audit = await Bun.file(join(auditDir, 'audit.json')).json();
+      expect(audit.type).toBe('vex-audit');
+      expect(audit.status).toBe('completed');
+      expect(audit.completedRuns).toBe(1);
 
       const analysis = await Bun.file(join(viewportDir, ARTIFACT_NAMES.analysis)).json();
       expect(analysis.provider).toBe('gemini-cli');

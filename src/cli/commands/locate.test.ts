@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Issue } from '../../core/types.js';
-import { loadLocateSessionContext } from './locate.js';
+import { loadLocateSessionContext, loadLocateTargetSet } from './locate.js';
 
 const tempDirs: string[] = [];
 
@@ -158,5 +158,39 @@ describe('loadLocateSessionContext', () => {
     expect(result.issues).toHaveLength(1);
     expect(result.issues[0]?.id).toBe(6);
     expect(result.domSessionDir).toBe(latestPipelineSessionDir);
+  });
+});
+
+describe('loadLocateTargetSet', () => {
+  test('returns session mode for non-audit directory', () => {
+    const sessionDir = makeTempDir();
+    writeJson(join(sessionDir, 'state.json'), { issues: [createIssue(1)] });
+
+    const result = loadLocateTargetSet(sessionDir);
+
+    expect(result.kind).toBe('session');
+    expect(result.targets).toHaveLength(1);
+    expect(result.targets[0]?.source).toBe(sessionDir);
+    expect(result.targets[0]?.issues).toHaveLength(1);
+  });
+
+  test('returns audit mode and collects nested page viewport sessions', () => {
+    const auditDir = makeTempDir();
+    writeJson(join(auditDir, 'audit.json'), { type: 'vex-audit' });
+
+    const firstStateDir = join(auditDir, 'pages', 'example.com', 'fr', '_index', 'desktop-1920x1080');
+    writeJson(join(firstStateDir, 'state.json'), { issues: [createIssue(10)] });
+
+    const secondStateDir = join(auditDir, 'pages', 'example.com', 'fr', 'about', '_index', 'desktop-1920x1080');
+    writeJson(join(secondStateDir, 'state.json'), { issues: [createIssue(20)] });
+
+    const result = loadLocateTargetSet(auditDir);
+
+    expect(result.kind).toBe('audit');
+    expect(result.targets).toHaveLength(2);
+    expect(result.targets[0]?.source).toBe('pages/example.com/fr/_index/desktop-1920x1080');
+    expect(result.targets[1]?.source).toBe('pages/example.com/fr/about/_index/desktop-1920x1080');
+    expect(result.targets[0]?.issues[0]?.id).toBe(10);
+    expect(result.targets[1]?.issues[0]?.id).toBe(20);
   });
 });

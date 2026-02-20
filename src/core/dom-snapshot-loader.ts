@@ -21,6 +21,12 @@ export interface LoadDOMSnapshotResult {
  * Auto-detects viewport directory if not specified.
  */
 export async function loadDOMSnapshot(sessionDir: string, viewport?: ViewportConfig): Promise<LoadDOMSnapshotResult> {
+  const directDomPath = join(sessionDir, ARTIFACT_NAMES.dom);
+
+  if (existsSync(directDomPath)) {
+    return loadDOMSnapshotFromPath(directDomPath);
+  }
+
   let viewportDir: string;
 
   if (viewport) {
