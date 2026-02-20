@@ -12,14 +12,15 @@ import { $ } from 'bun';
 import { Effect } from 'effect';
 import type { BoundingBox, CodeLocation, DOMElement, DOMSnapshot, GridRef, Issue, Region } from '../../core/types.js';
 import { GRID_CONFIG } from '../../core/types.js';
-import type { ElementMatch, GrepMatch, LocatorContext, LocatorError, LocatorStrategy } from '../types.js';
+import type { ElementMatch, GrepMatch, LocatorContext, LocatorStrategy } from '../types.js';
+import { LocatorError } from '../types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Error Construction
 // ═══════════════════════════════════════════════════════════════════════════
 
-function makeError(message: string, cause?: unknown): LocatorError {
-  return { _tag: 'LocatorError', strategy: 'dom-tracer', message, cause };
+function makeError(detail: string, cause?: unknown): LocatorError {
+  return new LocatorError({ strategy: 'dom-tracer', detail, cause });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

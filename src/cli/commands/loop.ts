@@ -15,14 +15,14 @@ import { Url } from '../../config/schema.js';
 import { listDevices, lookupDevice } from '../../core/devices.js';
 import type { CodeLocation, Issue, ViewportConfig } from '../../core/types.js';
 import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from '../../loop/orchestrator.js';
-import type {
-  AppliedFix,
-  GateConfig,
-  GateDecision,
-  HumanResponse,
+import {
+  type AppliedFix,
+  type GateConfig,
+  type GateDecision,
+  type HumanResponse,
   LoopError,
-  LoopOptions,
-  LoopResult,
+  type LoopOptions,
+  type LoopResult,
 } from '../../loop/types.js';
 import { simpleAnalysis } from '../../pipeline/presets.js';
 import { runPipeline } from '../../pipeline/runtime.js';
@@ -56,8 +56,8 @@ const urlArg = Args.text({ name: 'url' }).pipe(Args.withSchema(Url), Args.option
 // Loop Helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
-function makeLoopError(phase: LoopError['phase'], message: string, cause?: unknown): LoopError {
-  return { _tag: 'LoopError', phase, message, cause };
+function makeLoopError(phase: LoopError['phase'], detail: string, cause?: unknown): LoopError {
+  return new LoopError({ phase, detail, cause });
 }
 
 function createCaptureCallback(
@@ -290,9 +290,8 @@ export const loopCommand = Command.make(
       const needsScopedEnv = resolved.provider === 'codex-cli' && resolved.profile !== 'minimal';
       const runOrchestrator = orchestrator.run().pipe(
         Effect.catchAll((err) => {
-          if (typeof err === 'object' && err !== null && '_tag' in err && err._tag === 'LoopError') {
-            const e = err as LoopError;
-            console.error(`\nLoop failed at ${e.phase}: ${e.message}`);
+          if (err instanceof LoopError) {
+            console.error(`\nLoop failed at ${err.phase}: ${err.message}`);
           } else {
             console.error('\nLoop failed:', err);
           }
