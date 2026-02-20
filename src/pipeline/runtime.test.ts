@@ -6,7 +6,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -118,6 +118,16 @@ describe('runPipeline', () => {
           expect(cause.error.phase).toBe('validation');
         }
       }
+    });
+
+    test('uses provided sessionId when run options specify one', async () => {
+      const definition = createPipelineWithUnknownOperation();
+      const sessionId = 'custom-session-id';
+
+      const exit = await runEffectExit(runPipeline(definition, testDir, undefined, { sessionId }));
+
+      expect(Exit.isFailure(exit)).toBe(true);
+      expect(existsSync(join(testDir, sessionId))).toBe(true);
     });
   });
 });

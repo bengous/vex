@@ -49,6 +49,13 @@ interface InternalPipelineContext extends PipelineContext {
   _mapData: (name: string, value: unknown) => void;
 }
 
+export type ArtifactLayout = 'viewport-subdir' | 'session-root';
+
+export interface RunPipelineOptions {
+  readonly sessionId?: string;
+  readonly artifactLayout?: ArtifactLayout;
+}
+
 // Operation registry - use any to avoid complex generic constraints
 // biome-ignore lint/suspicious/noExplicitAny: Operations have varying signatures
 const OPERATIONS: Record<string, Operation<any, any, any>> = {
@@ -93,6 +100,7 @@ function createContext(
   state: PipelineState,
   viewport: ViewportConfig | undefined,
   fs: FileSystem.FileSystem,
+  artifactLayout: ArtifactLayout = 'viewport-subdir',
 ): InternalPipelineContext {
   const artifacts = new Map<string, Artifact>();
   for (const [id, artifact] of Object.entries(state.artifacts)) {
@@ -116,6 +124,10 @@ function createContext(
   const createdDirs = new Set<string>();
 
   const getViewportDir = (): Effect.Effect<string, PlatformError> => {
+    if (artifactLayout === 'session-root') {
+      return Effect.succeed(state.sessionDir);
+    }
+
     if (!viewport) {
       return Effect.succeed(state.sessionDir);
     }
@@ -316,20 +328,21 @@ export function runPipeline(
   definition: PipelineDefinition,
   baseDir: string,
   _inputs?: Record<string, unknown>,
+  options?: RunPipelineOptions,
 ): Effect.Effect<PipelineState, PipelineError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     if (definition.nodes.length === 0) {
       return yield* Effect.fail(makeError('validation', 'Pipeline has no nodes'));
     }
 
-    const sessionDir = yield* createSessionDir(baseDir).pipe(
+    const sessionDir = yield* createSessionDir(baseDir, options?.sessionId).pipe(
       Effect.mapError((e) => makeError('execution', `Failed to create session directory: ${e.message}`, undefined)),
     );
 
     const fs = yield* FileSystem.FileSystem;
     const state = initializePipelineState(definition, sessionDir);
     const viewport = extractViewport(definition);
-    const ctx = createContext(state, viewport, fs);
+    const ctx = createContext(state, viewport, fs, options?.artifactLayout ?? 'viewport-subdir');
 
     ctx.logger.info(`Starting pipeline: ${definition.name}`);
     ctx.logger.info(`Session: ${sessionDir}`);
