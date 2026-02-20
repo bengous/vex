@@ -58,7 +58,7 @@ export const renderOperation: Operation<RenderInput, RenderOutput, RenderConfig>
       });
 
       const artifact: ImageArtifact = {
-        id: `img_${Date.now()}`,
+        id: crypto.randomUUID(),
         type: 'annotated-image',
         path: outputPath,
         createdAt: new Date().toISOString(),

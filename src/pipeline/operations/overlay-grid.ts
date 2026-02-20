@@ -56,7 +56,7 @@ export const overlayGridOperation: Operation<OverlayGridInput, OverlayGridOutput
       });
 
       const artifact: ImageArtifact = {
-        id: `img_${Date.now()}`,
+        id: crypto.randomUUID(),
         type: 'image',
         path: outputPath,
         createdAt: new Date().toISOString(),
