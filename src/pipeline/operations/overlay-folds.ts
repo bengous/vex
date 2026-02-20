@@ -59,7 +59,7 @@ export const overlayFoldsOperation: Operation<OverlayFoldsInput, OverlayFoldsOut
       });
 
       const artifact: ImageArtifact = {
-        id: `img_${Date.now()}`,
+        id: crypto.randomUUID(),
         type: 'image',
         path: outputPath,
         createdAt: new Date().toISOString(),
