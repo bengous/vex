@@ -165,23 +165,21 @@ export {
   storeArtifact,
   updateNodeState,
 } from './pipeline/state.js';
-
-// Types
 export type {
   Logger,
   NodeState,
   NodeStatus,
   Operation,
-  OperationError,
   OperationRegistry,
   PipelineBuilder,
   PipelineContext,
   PipelineDefinition,
   PipelineEdge,
-  PipelineError,
   PipelineNode,
   PipelineState,
 } from './pipeline/types.js';
+// Types
+export { OperationError, PipelineError } from './pipeline/types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Code locator (Layer 2)
@@ -195,14 +193,13 @@ export type {
   GrepMatch,
   HintConfig,
   LocatorContext,
-  LocatorError,
   LocatorStrategy,
   ResolutionResult,
   ResolverOptions,
   SourceMapEntry,
   SourceMapIndex,
 } from './locator/types.js';
-export { DEFAULT_RESOLVER_OPTIONS } from './locator/types.js';
+export { DEFAULT_RESOLVER_OPTIONS, LocatorError } from './locator/types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Feedback loop (Layer 3)
@@ -228,7 +225,6 @@ export type {
   HumanResponse,
   IterationMetrics,
   IterationState,
-  LoopError,
   LoopMetrics,
   LoopOptions,
   LoopResult,
@@ -237,7 +233,7 @@ export type {
   VerificationResult,
   VerificationVerdict,
 } from './loop/types.js';
-export { DEFAULT_GATE_CONFIG, DEFAULT_LOOP_OPTIONS } from './loop/types.js';
+export { DEFAULT_GATE_CONFIG, DEFAULT_LOOP_OPTIONS, LoopError } from './loop/types.js';
 export { isImproved, isResolved, verifyChanges } from './loop/verify.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
