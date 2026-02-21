@@ -6,8 +6,8 @@ Visual analysis tool for web layouts with VLM-powered issue detection and iterat
 
 ```bash
 bun install
-bun vex scan <url>
-bun vex --help
+bun src/cli/index.ts scan <url>
+bun src/cli/index.ts --help
 ```
 
 ## Configuration
@@ -34,12 +34,12 @@ export default defineConfig({
 
 | Command | Description |
 |---------|-------------|
-| `vex scan <url>` | Capture and analyze a URL |
-| `vex analyze <image>` | Analyze an existing screenshot |
-| `vex locate <session-or-audit>` | Find code locations for detected issues |
-| `vex loop <url>` | Run iterative improvement loop |
-| `vex verify <session>` | Compare iterations in a session |
-| `vex providers` | List available VLM providers |
+| `bun src/cli/index.ts scan <url>` | Capture and analyze a URL |
+| `bun src/cli/index.ts analyze <image>` | Analyze an existing screenshot |
+| `bun src/cli/index.ts locate <session-or-audit>` | Find code locations for detected issues |
+| `bun src/cli/index.ts loop <url>` | Run iterative improvement loop |
+| `bun src/cli/index.ts verify <session>` | Compare iterations in a session |
+| `bun src/cli/index.ts providers` | List available VLM providers |
 
 ## Scan Output Layout
 
@@ -66,7 +66,7 @@ output/
 
 ## Architecture
 
-See [src/CLAUDE.md](src/CLAUDE.md) for detailed architecture, patterns, and development guide.
+See [AI.md](AI.md) for detailed architecture, patterns, and development guide.
 
 ## Development
 
