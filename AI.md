@@ -68,14 +68,21 @@ src/
 │   └── index.ts    # Public exports, defineConfig()
 │
 ├── core/           # Layer 0: Pure functions
+│   ├── schema.ts   # Runtime-validation schemas (single source of truth)
 │   ├── types.ts    # Unified types (Artifact, Issue, DOMSnapshot, etc.)
+│   ├── analysis.ts # Parse provider output into structured issues
 │   ├── capture.ts  # Playwright screenshot + DOM capture
-│   └── overlays.ts # Grid overlay, fold lines, annotation rendering
+│   ├── devices.ts  # Device presets and viewport definitions
+│   ├── dom-snapshot-loader.ts # Load persisted DOM snapshots safely
+│   ├── overlays.ts # Grid overlay, fold lines, annotation rendering
+│   └── validation.ts # Shared runtime validation helpers
 │
 ├── pipeline/       # Layer 1: Composable operations
 │   ├── operations/ # 7 atomic ops (capture, overlay-*, analyze, annotate, render, diff)
+│   ├── preflight.ts # Session and environment checks before execution
 │   ├── runtime.ts  # DAG executor with topological ordering
 │   ├── state.ts    # Session persistence, artifact storage
+│   ├── types.ts    # Pipeline contracts and tagged errors
 │   └── presets.ts  # simpleAnalysis, fullAnnotation, responsiveComparison
 │
 ├── locator/        # Layer 2: Code location
@@ -87,19 +94,28 @@ src/
 │   ├── orchestrator.ts  # capture→analyze→locate→fix→verify cycle
 │   ├── gates.ts    # Human-in-the-loop decision matrix
 │   ├── verify.ts   # Regression detection
-│   └── metrics.ts  # Iteration tracking
+│   ├── metrics.ts  # Iteration tracking
+│   └── types.ts    # Loop contracts and callback interfaces
 │
 ├── providers/      # VLM backends (directory-per-provider)
 │   ├── codex-cli/  # index.ts + config.toml (colocated via CODEX_HOME)
 │   ├── claude-cli/, gemini-cli/, ollama/
 │   ├── shared/     # cli-factory, subprocess, service, registry, introspection
-│   └── index.ts    # Re-exports shared, imports providers for registration
+│   └── init.ts     # Side-effect imports that register providers
 │
-└── cli/            # @effect/cli based interface
-    ├── commands/   # scan, analyze, locate, loop, verify, providers
-    ├── options.ts  # Shared CLI options with schema validation
-    ├── resolve.ts  # Merge CLI args + preset + defaults
-    └── index.ts    # Entry point (run with bun)
+├── cli/            # @effect/cli based interface
+│   ├── commands/   # scan, analyze, locate, loop, verify, providers
+│   ├── options.ts  # Shared CLI options with schema validation
+│   ├── scan-layout.ts # Shared terminal layout for scan output
+│   ├── resolve.ts  # Merge CLI args + preset + defaults
+│   └── index.ts    # Entry point (run with bun)
+│
+├── testing/        # Shared test helpers and mocks
+├── fixtures/       # Stable fixture data used by tests
+├── docs/           # In-repo technical docs
+├── e2e/            # End-to-end tests for CLI and pipeline
+├── IDEAS.md        # Working notes and backlog
+└── index.ts        # Public API entry point
 ```
 
 ## Type Architecture
@@ -200,7 +216,7 @@ Human-in-the-loop controls based on confidence × severity × scope:
 
 ## Known Issues
 
-**@effect/platform subprocess constraints:** `providers/subprocess.ts` uses `@effect/platform` Command module. Critical patterns:
+**@effect/platform subprocess constraints:** `providers/shared/subprocess.ts` uses `@effect/platform` Command module. Critical patterns:
 
 - Drain stdout/stderr in parallel (sequential can deadlock if buffer fills)
 - Read `exitCode` AFTER streams complete (concurrent read hangs in Bun)
@@ -245,7 +261,7 @@ bun test                             # Run all tests
 bun test src/                        # Run vex tests only
 bun test --watch                     # Watch mode
 
-# Debug subprocess issues - logs are in providers/subprocess.ts
+# Debug subprocess issues - logs are in providers/shared/subprocess.ts
 # Look for [subprocess] prefixed console.log statements
 
 # Test CLI help
@@ -351,7 +367,7 @@ writeFileSync(join(tempDir, 'test.liquid'), '<div class="hero">');
 
 ## Learning Resources
 
-- **[docs/EFFECT-PATTERNS.md](docs/EFFECT-PATTERNS.md)** - Comprehensive guide to Effect.js patterns used in this codebase with ASCII diagrams and real examples
+- **[src/docs/EFFECT-PATTERNS.md](src/docs/EFFECT-PATTERNS.md)** - Comprehensive guide to Effect.js patterns used in this codebase with ASCII diagrams and real examples
 
 ## Origin
 
@@ -359,4 +375,3 @@ vex was originally developed within the shopify-mpzinc project, consolidating:
 
 - `scripts/design-audit/` - Screenshot capture, device presets, overlays
 - `scripts/vision-audit/` - VLM integration, annotation system
-
