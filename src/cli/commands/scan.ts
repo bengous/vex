@@ -31,7 +31,7 @@ import {
 } from '../options.js';
 import type { ScanCliArgs } from '../resolve.js';
 import { resolveScanOptions } from '../resolve.js';
-import { type AuditManifest, type AuditRunRecord, buildAuditId, getAuditPageDir } from '../scan-layout.js';
+import { type AuditManifest, type AuditRunRecord, buildAuditId, getAuditPageDir, getAuditViewportDir } from '../scan-layout.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // URL Argument
@@ -203,8 +203,8 @@ export const scanCommand = Command.make(
 
             const viewport: ViewportConfig = deviceResult.preset.viewport;
             const pageDir = getAuditPageDir(auditDir, url);
-            const viewportDirName = getViewportDirName(viewport);
-            const viewportDir = join(pageDir, viewportDirName);
+            const viewportDirName = getViewportDirName(viewport, deviceId);
+            const viewportDir = getAuditViewportDir(auditDir, url, viewport, deviceId);
 
             const run: AuditRunRecord = {
               url,
