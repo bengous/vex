@@ -105,6 +105,11 @@ export function getAuditPageDir(auditDir: string, rawUrl: string): string {
 /**
  * Absolute viewport directory path for URL+viewport under an audit directory.
  */
-export function getAuditViewportDir(auditDir: string, rawUrl: string, viewport: ViewportConfig): string {
-  return join(getAuditPageDir(auditDir, rawUrl), getViewportDirName(viewport));
+export function getAuditViewportDir(
+  auditDir: string,
+  rawUrl: string,
+  viewport: ViewportConfig,
+  deviceId?: string,
+): string {
+  return join(getAuditPageDir(auditDir, rawUrl), getViewportDirName(viewport, deviceId));
 }

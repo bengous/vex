@@ -408,13 +408,17 @@ export type ArtifactName = keyof typeof ARTIFACT_NAMES;
 
 /**
  * Generate viewport directory name from config.
- * Format: {deviceType}-{width}x{height}
+ * Format:
+ * - default: {deviceType}-{width}x{height}
+ * - with deviceId: {deviceId}-{width}x{height}
  *
  * @example
  * getViewportDirName({ width: 1920, height: 1080, isMobile: false, ... }) // "desktop-1920x1080"
  * getViewportDirName({ width: 375, height: 812, isMobile: true, ... }) // "mobile-375x812"
+ * getViewportDirName({ width: 375, height: 812, isMobile: true, ... }, "iphone-15-pro") // "iphone-15-pro-375x812"
  */
-export function getViewportDirName(viewport: ViewportConfig): string {
+export function getViewportDirName(viewport: ViewportConfig, deviceId?: string): string {
   const deviceType = viewport.isMobile ? 'mobile' : 'desktop';
-  return `${deviceType}-${viewport.width}x${viewport.height}`;
+  const baseName = deviceId?.trim() ? deviceId.trim().toLowerCase() : deviceType;
+  return `${baseName}-${viewport.width}x${viewport.height}`;
 }
