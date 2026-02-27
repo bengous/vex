@@ -179,7 +179,13 @@ export function responsiveComparison(
 /**
  * Capture only pipeline - just take screenshots.
  */
-export function captureOnly(url: string, viewport: ViewportConfig, withFolds = true): PipelineDefinition {
+export function captureOnly(
+  url: string,
+  viewport: ViewportConfig,
+  withFolds = true,
+  placeholderMedia?: PlaceholderMediaOptions,
+  fullPageScrollFix?: FullPageScrollFixOptions,
+): PipelineDefinition {
   if (withFolds) {
     return {
       name: 'capture-only',
@@ -190,7 +196,7 @@ export function captureOnly(url: string, viewport: ViewportConfig, withFolds = t
         {
           id: 'capture',
           operation: 'capture',
-          config: { url, viewport, filename: 'screenshot.png' },
+          config: { url, viewport, filename: 'screenshot.png', placeholderMedia, fullPageScrollFix },
           inputs: [],
           outputs: ['image'],
         },
@@ -215,7 +221,7 @@ export function captureOnly(url: string, viewport: ViewportConfig, withFolds = t
       {
         id: 'capture',
         operation: 'capture',
-        config: { url, viewport, filename: 'screenshot.png' },
+        config: { url, viewport, filename: 'screenshot.png', placeholderMedia, fullPageScrollFix },
         inputs: [],
         outputs: ['image'],
       },

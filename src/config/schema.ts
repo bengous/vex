@@ -68,6 +68,12 @@ export const AutoFixThreshold = S.Literal('high', 'medium', 'none');
 export type AutoFixThreshold = S.Schema.Type<typeof AutoFixThreshold>;
 
 /**
+ * Scan execution mode.
+ */
+export const ScanMode = S.Literal('analyze', 'capture-only');
+export type ScanMode = S.Schema.Type<typeof ScanMode>;
+
+/**
  * Positive integer (for maxIterations, etc.).
  */
 export const PositiveInt = S.Number.pipe(
@@ -198,6 +204,8 @@ export const ScanPreset = S.Struct({
   provider: S.optional(ProviderSpec),
   /** Run full annotation pipeline */
   full: S.optional(S.Boolean),
+  /** Pipeline mode: analyze (default) or capture-only (no model call) */
+  mode: S.optional(ScanMode),
   /** Replace images/videos with placeholder boxes (true for defaults, or object for custom) */
   placeholderMedia: S.optional(PlaceholderMediaSpec),
   /** Expand internal scroll container(s) for true full-page screenshots */
