@@ -120,6 +120,7 @@ export const scanCommand = Command.make(
         devices: resolved.devices,
         full: resolved.full,
         placeholderMedia: resolved.placeholderMedia !== undefined,
+        fullPageScrollFix: resolved.fullPageScrollFix !== undefined,
         totalRuns,
         completedRuns: 0,
         failedRuns: 0,
@@ -227,6 +228,9 @@ export const scanCommand = Command.make(
             if (resolved.placeholderMedia) {
               console.log('Placeholder media: enabled');
             }
+            if (resolved.fullPageScrollFix) {
+              console.log('Full-page scroll fix: enabled');
+            }
             console.log(`Output: ${viewportDir}`);
             console.log('');
 
@@ -238,6 +242,7 @@ export const scanCommand = Command.make(
                   resolved.model,
                   resolved.reasoning,
                   resolved.placeholderMedia,
+                  resolved.fullPageScrollFix,
                 )
               : simpleAnalysis(
                   url,
@@ -246,6 +251,7 @@ export const scanCommand = Command.make(
                   resolved.model,
                   resolved.reasoning,
                   resolved.placeholderMedia,
+                  resolved.fullPageScrollFix,
                 );
 
             const runOptions = {

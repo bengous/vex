@@ -38,6 +38,7 @@ export interface AuditManifest {
   devices: readonly string[];
   full: boolean;
   placeholderMedia: boolean;
+  fullPageScrollFix: boolean;
   totalRuns: number;
   completedRuns: number;
   failedRuns: number;

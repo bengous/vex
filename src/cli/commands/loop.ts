@@ -43,7 +43,7 @@ import {
   providerOption,
   providerProfileOption,
 } from '../options.js';
-import type { LoopCliArgs, ResolvedPlaceholderMedia } from '../resolve.js';
+import type { LoopCliArgs, ResolvedFullPageScrollFix, ResolvedPlaceholderMedia } from '../resolve.js';
 import { resolveLoopOptions } from '../resolve.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -65,10 +65,11 @@ function createCaptureCallback(
   provider: string,
   model?: string,
   placeholderMedia?: ResolvedPlaceholderMedia,
+  fullPageScrollFix?: ResolvedFullPageScrollFix,
 ): LoopCallbacks['capture'] {
   return (url, viewport) =>
     Effect.gen(function* () {
-      const pipeline = simpleAnalysis(url, viewport, provider, model, undefined, placeholderMedia);
+      const pipeline = simpleAnalysis(url, viewport, provider, model, undefined, placeholderMedia, fullPageScrollFix);
       const state = yield* runPipeline(pipeline, loopSessionDir).pipe(
         Effect.mapError((e) => makeLoopError('capture', e.message, e)),
       );
@@ -263,6 +264,9 @@ export const loopCommand = Command.make(
       if (resolved.placeholderMedia) {
         console.log('Placeholder media: enabled');
       }
+      if (resolved.fullPageScrollFix) {
+        console.log('Full-page scroll fix: enabled');
+      }
       console.log('');
       console.log('[Phase 1] Dry-run mode: applyFix disabled (no code changes)');
       console.log('[Phase 1] Interactive mode: disabled (promptHuman returns skip)');
@@ -274,7 +278,13 @@ export const loopCommand = Command.make(
       }
 
       const callbacks: LoopCallbacks = {
-        capture: createCaptureCallback(sessionDir, loopOptions.provider, loopOptions.model, resolved.placeholderMedia),
+        capture: createCaptureCallback(
+          sessionDir,
+          loopOptions.provider,
+          loopOptions.model,
+          resolved.placeholderMedia,
+          resolved.fullPageScrollFix,
+        ),
         applyFix: createDryRunApplyFix(),
         promptHuman: createDryRunPromptHuman(),
         onIterationComplete: createIterationLogger(),
