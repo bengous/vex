@@ -49,6 +49,12 @@ export default defineConfig({
       full: false,
     },
 
+    // Capture only (no model/API calls)
+    'capture-only': {
+      devices: 'desktop-1920',
+      mode: 'capture-only',
+    },
+
     // Responsive audit (multiple devices)
     responsive: {
       devices: ['desktop-1920', 'iphone-15-pro', 'ipad-pro-11'],
