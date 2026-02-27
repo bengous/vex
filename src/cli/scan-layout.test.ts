@@ -59,5 +59,15 @@ describe('audit path helpers', () => {
     expect(pageDir).toBe('/tmp/audit-20260220-1730/pages/example.com/fr/about/_index');
     expect(viewportDir).toBe('/tmp/audit-20260220-1730/pages/example.com/fr/about/_index/desktop-1920x1080');
   });
-});
 
+  test('uses device id in viewport directory when provided', () => {
+    const viewportDir = getAuditViewportDir(
+      '/tmp/audit-20260220-1730',
+      'https://example.com/fr/about',
+      VIEWPORT,
+      'desktop-1920',
+    );
+
+    expect(viewportDir).toBe('/tmp/audit-20260220-1730/pages/example.com/fr/about/_index/desktop-1920-1920x1080');
+  });
+});
