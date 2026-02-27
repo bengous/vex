@@ -12,7 +12,7 @@ import { Args, Command } from '@effect/cli';
 import { Effect, Option } from 'effect';
 import { loadCodexProfile, loadConfigOptional } from '../../config/loader.js';
 import { Url } from '../../config/schema.js';
-import { listDevices, lookupDevice } from '../../core/devices.js';
+import { getAllDeviceIds, listDevices, lookupDevice } from '../../core/devices.js';
 import { type AnalysisResult, getViewportDirName, type ViewportConfig } from '../../core/types.js';
 import { captureOnly, fullAnnotation, simpleAnalysis } from '../../pipeline/presets.js';
 import { runPipeline } from '../../pipeline/runtime.js';
@@ -184,6 +184,10 @@ export const scanCommand = Command.make(
 
             const deviceResult = lookupDevice(deviceId);
             if (!deviceResult) {
+              const validDevices = getAllDeviceIds().join(', ');
+              const unknownDeviceMessage = `Unknown device: ${deviceId}.
+Use explicit device IDs (e.g., iphone-se-2016 or iphone-se-2022).
+Valid devices: ${validDevices}`;
               const failedRun: AuditRunRecord = {
                 url,
                 deviceId,
@@ -192,13 +196,12 @@ export const scanCommand = Command.make(
                 status: 'failed',
                 startedAt: runStartedAt,
                 completedAt: new Date().toISOString(),
-                error: `Unknown device: ${deviceId}`,
+                error: unknownDeviceMessage,
               };
               manifest.runs.push(failedRun);
               manifest.failedRuns += 1;
               yield* saveManifest();
-              console.error(`Unknown device: ${deviceId}`);
-              continue;
+              return yield* Effect.fail(new Error(unknownDeviceMessage));
             }
 
             const viewport: ViewportConfig = deviceResult.preset.viewport;

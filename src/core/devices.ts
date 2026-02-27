@@ -87,7 +87,8 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
 export const PLAYWRIGHT_DEVICE_ALIASES: Record<string, { name: string; category: 'phone' | 'tablet' }> = {
   'iphone-15-pro-max': { name: 'iPhone 15 Pro Max', category: 'phone' },
   'iphone-15-pro': { name: 'iPhone 15 Pro', category: 'phone' },
-  'iphone-se': { name: 'iPhone SE', category: 'phone' },
+  'iphone-se-2022': { name: 'iPhone SE (3rd gen)', category: 'phone' },
+  'iphone-se-2016': { name: 'iPhone SE', category: 'phone' },
   'pixel-7': { name: 'Pixel 7', category: 'phone' },
   'ipad-pro-11': { name: 'iPad Pro 11', category: 'tablet' },
 };
