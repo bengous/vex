@@ -119,6 +119,8 @@ export const FullPageScrollFixConfig = S.Struct({
   selectors: S.optional(S.Array(CssSelector)),
   /** Wait time after style injection before screenshot (ms, default: 500) */
   settleMs: S.optional(PositiveInt),
+  /** Preserve horizontal overflow when expanding container(s) (default: false) */
+  preserveHorizontalOverflow: S.optional(S.Boolean),
 });
 export type FullPageScrollFixConfig = S.Schema.Type<typeof FullPageScrollFixConfig>;
 
