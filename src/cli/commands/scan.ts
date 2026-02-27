@@ -243,7 +243,7 @@ export const scanCommand = Command.make(
 
             const pipeline =
               resolved.mode === 'capture-only'
-                ? captureOnly(url, viewport, true, resolved.placeholderMedia, resolved.fullPageScrollFix)
+                ? captureOnly(url, viewport, true, true, resolved.placeholderMedia, resolved.fullPageScrollFix)
                 : resolved.full
                   ? fullAnnotation(
                       url,
