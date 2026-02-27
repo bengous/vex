@@ -2,7 +2,7 @@
  * Pipeline presets - common pipeline configurations.
  */
 
-import type { PlaceholderMediaOptions } from '../core/capture.js';
+import type { FullPageScrollFixOptions, PlaceholderMediaOptions } from '../core/capture.js';
 import type { ViewportConfig } from '../core/types.js';
 import type { PipelineDefinition } from './types.js';
 
@@ -16,6 +16,7 @@ export function simpleAnalysis(
   model?: string,
   reasoning?: string,
   placeholderMedia?: PlaceholderMediaOptions,
+  fullPageScrollFix?: FullPageScrollFixOptions,
 ): PipelineDefinition {
   return {
     name: 'simple-analysis',
@@ -26,7 +27,7 @@ export function simpleAnalysis(
       {
         id: 'capture',
         operation: 'capture',
-        config: { url, viewport, filename: 'screenshot.png', withDOM: true, placeholderMedia },
+        config: { url, viewport, filename: 'screenshot.png', withDOM: true, placeholderMedia, fullPageScrollFix },
         inputs: [],
         outputs: ['image'],
       },
@@ -70,6 +71,7 @@ export function fullAnnotation(
   model?: string,
   reasoning?: string,
   placeholderMedia?: PlaceholderMediaOptions,
+  fullPageScrollFix?: FullPageScrollFixOptions,
 ): PipelineDefinition {
   return {
     name: 'full-annotation',
@@ -80,7 +82,7 @@ export function fullAnnotation(
       {
         id: 'capture',
         operation: 'capture',
-        config: { url, viewport, filename: 'screenshot.png', withDOM: true, placeholderMedia },
+        config: { url, viewport, filename: 'screenshot.png', withDOM: true, placeholderMedia, fullPageScrollFix },
         inputs: [],
         outputs: ['image'],
       },
