@@ -17,6 +17,7 @@ import type {
   ScanPreset,
   VexConfig,
 } from '../config/schema.js';
+import { getAllDeviceIds, lookupDevice } from '../core/devices.js';
 import { BUILTIN_PROFILES } from '../providers/codex-cli/schema.js';
 import { ProfileNotFoundError } from '../providers/shared/errors.js';
 import { getProviderMetadata } from '../providers/shared/registry.js';
@@ -263,6 +264,27 @@ function normalizeDevices(spec: DeviceSpec | undefined): readonly string[] | und
 }
 
 /**
+ * Validate that resolved device IDs exist in runtime registry.
+ * This catches config/schema drift and enforces explicit device IDs only.
+ */
+function validateResolvedDevices(devices: readonly string[]): Effect.Effect<void, ConfigError> {
+  const unknown = devices.filter((device) => !lookupDevice(device));
+  if (unknown.length === 0) {
+    return Effect.void;
+  }
+
+  const valid = getAllDeviceIds().join(', ');
+  return Effect.fail(
+    new ConfigError({
+      kind: 'invalid_schema',
+      message: `Unknown device preset(s): ${unknown.join(', ')}.
+Use explicit device IDs (e.g., iphone-se-2016 or iphone-se-2022).
+Valid devices: ${valid}`,
+    }),
+  );
+}
+
+/**
  * Extract provider name and model from ProviderSpec.
  */
 function extractProviderInfo(spec: ProviderSpec | undefined): {
@@ -357,6 +379,7 @@ Either provide a URL argument or add 'urls' field to the preset.`,
     const presetDevices = normalizeDevices(preset?.devices);
 
     const devices = Option.isSome(cliArgs.device) ? [cliArgs.device.value] : (presetDevices ?? DEFAULTS.devices);
+    yield* validateResolvedDevices(devices);
 
     // Resolve provider: CLI > preset > default
     const provider = Option.isSome(cliArgs.provider)
@@ -495,6 +518,7 @@ Either provide a URL argument or add 'urls' field to the preset.`,
     const presetDevices = normalizeDevices(preset?.devices);
 
     const devices = Option.isSome(cliArgs.device) ? [cliArgs.device.value] : (presetDevices ?? DEFAULTS.devices);
+    yield* validateResolvedDevices(devices);
 
     // Resolve provider: CLI > preset > default
     const provider = Option.isSome(cliArgs.provider)
