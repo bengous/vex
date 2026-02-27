@@ -287,10 +287,10 @@ export interface GridStyleConfig {
 // Default Configurations
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Default grid configuration: 200x200 cells, A-J columns, 1-99 rows */
+/** Default grid configuration: 200x200 cells, A-Z columns, 1-99 rows */
 export const GRID_CONFIG: GridConfig = {
   cellSize: 200,
-  maxColumns: 10,
+  maxColumns: 26,
   maxRows: 99,
 };
 
