@@ -31,7 +31,7 @@ export const overlayFoldsOperation: Operation<OverlayFoldsInput, OverlayFoldsOut
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
       const foldConfig = config.foldConfig ?? DEFAULT_FOLD_CONFIG;
-      const viewportHeight = config.viewportHeight ?? input.image.metadata.viewport?.height ?? 900;
+      const cssViewportHeight = config.viewportHeight ?? input.image.metadata.viewport?.height ?? 900;
 
       ctx.logger.info(`Adding fold lines to ${input.image.path}`);
 
@@ -40,8 +40,23 @@ export const overlayFoldsOperation: Operation<OverlayFoldsInput, OverlayFoldsOut
         catch: (e) => new OperationError({ operation: 'overlay-folds', detail: 'Failed to read image', cause: e }),
       });
 
+      const imageMetadata = yield* Effect.tryPromise({
+        try: () => sharp(imageBuffer).metadata(),
+        catch: (e) => new OperationError({ operation: 'overlay-folds', detail: 'Failed to read image metadata', cause: e }),
+      });
+
+      const cssViewportWidth = input.image.metadata.viewport?.width;
+      const deviceScaleFactor = input.image.metadata.viewport?.deviceScaleFactor ?? 1;
+      const expectedDeviceWidth =
+        cssViewportWidth !== undefined ? Math.round(cssViewportWidth * deviceScaleFactor) : undefined;
+      const isDeviceScale =
+        expectedDeviceWidth !== undefined &&
+        imageMetadata.width !== undefined &&
+        Math.abs(imageMetadata.width - expectedDeviceWidth) <= 2;
+      const viewportHeight = isDeviceScale ? Math.round(cssViewportHeight * deviceScaleFactor) : cssViewportHeight;
+
       const foldBuffer = yield* Effect.tryPromise({
-        try: () => addFoldOverlay(imageBuffer, viewportHeight, foldConfig),
+        try: () => addFoldOverlay(imageBuffer, viewportHeight, foldConfig, cssViewportHeight),
         catch: (e) => new OperationError({ operation: 'overlay-folds', detail: 'Failed to add fold lines', cause: e }),
       });
 

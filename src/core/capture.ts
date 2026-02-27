@@ -8,6 +8,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { BrowserContext, chromium, Page, Route } from 'playwright';
+import sharp from 'sharp';
 import type { BoundingBox, DOMElement, DOMSnapshot, FoldConfig, ImageArtifact, ViewportConfig } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -139,6 +140,7 @@ export interface FullPageScrollFixOptions {
   readonly enabled: boolean;
   readonly selectors: readonly string[];
   readonly settleMs: number;
+  readonly preserveHorizontalOverflow: boolean;
 }
 
 function getPlaceholderCSS(): string {
@@ -275,24 +277,27 @@ async function applyFullPageScrollFix(page: Page, options: FullPageScrollFixOpti
 
   const selectors = options.selectors.filter((selector) => selector.trim().length > 0);
   const containerSelectors = selectors.length > 0 ? selectors.join(', ') : '';
+  const horizontalOverflow = options.preserveHorizontalOverflow ? 'visible' : 'hidden';
 
   const css = `
     html, body {
       height: auto !important;
       min-height: 100vh !important;
-      overflow: visible !important;
+      overflow-y: visible !important;
+      overflow-x: ${horizontalOverflow} !important;
       width: 100% !important;
-      overflow-x: hidden !important;
+      max-width: 100% !important;
     }
     ${
       containerSelectors.length > 0
         ? `${containerSelectors} {
       height: auto !important;
-      overflow: visible !important;
       overflow-y: visible !important;
+      overflow-x: ${horizontalOverflow} !important;
       flex: none !important;
       width: 100% !important;
       max-height: none !important;
+      max-width: 100% !important;
     }`
         : ''
     }
@@ -300,6 +305,62 @@ async function applyFullPageScrollFix(page: Page, options: FullPageScrollFixOpti
 
   await page.addStyleTag({ content: css });
   await page.waitForTimeout(options.settleMs);
+}
+
+async function enforceHorizontalOverflowClamp(page: Page, selectors: readonly string[]): Promise<void> {
+  const filtered = selectors.filter((selector) => selector.trim().length > 0);
+  const containerSelectors = filtered.length > 0 ? filtered.join(', ') : '';
+  const css = `
+    html, body {
+      overflow-x: hidden !important;
+      max-width: 100% !important;
+    }
+    ${
+      containerSelectors.length > 0
+        ? `${containerSelectors} {
+      overflow-x: hidden !important;
+      max-width: 100% !important;
+    }`
+        : ''
+    }
+  `;
+  await page.addStyleTag({ content: css });
+}
+
+export async function getImageDimensionsFromBuffer(
+  buffer: Buffer,
+  fallback: Pick<ViewportConfig, 'width' | 'height'>,
+): Promise<{ width: number; height: number }> {
+  const metadata = await sharp(buffer).metadata();
+  return {
+    width: metadata.width ?? fallback.width,
+    height: metadata.height ?? fallback.height,
+  };
+}
+
+export async function cropScreenshotToViewportWidth(
+  buffer: Buffer,
+  viewport: Pick<ViewportConfig, 'width' | 'deviceScaleFactor'>,
+): Promise<Buffer> {
+  const metadata = await sharp(buffer).metadata();
+  if (!metadata.width || !metadata.height) {
+    return buffer;
+  }
+
+  const expectedDeviceWidth = Math.max(1, Math.round(viewport.width * viewport.deviceScaleFactor));
+  const expectedCssWidth = Math.max(1, Math.round(viewport.width));
+  const targetWidth =
+    Math.abs(metadata.width - expectedDeviceWidth) <= Math.abs(metadata.width - expectedCssWidth)
+      ? expectedDeviceWidth
+      : expectedCssWidth;
+
+  if (metadata.width <= targetWidth) {
+    return buffer;
+  }
+
+  return sharp(buffer)
+    .extract({ left: 0, top: 0, width: targetWidth, height: metadata.height })
+    .toBuffer();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -379,7 +440,15 @@ export async function captureScreenshot(
       await applyPlaceholderMedia(page, placeholderMedia);
     }
 
-    const buffer = await page.screenshot({ fullPage });
+    if (fullPageScrollFix?.enabled && !fullPageScrollFix.preserveHorizontalOverflow) {
+      await enforceHorizontalOverflowClamp(page, fullPageScrollFix.selectors);
+    }
+
+    let buffer = await page.screenshot({ fullPage });
+    if (fullPageScrollFix?.enabled && !fullPageScrollFix.preserveHorizontalOverflow) {
+      buffer = await cropScreenshotToViewportWidth(buffer, viewport);
+    }
+    const dimensions = await getImageDimensionsFromBuffer(buffer, viewport);
     const outputPath = join(outputDir, filename);
     await Bun.write(outputPath, buffer);
 
@@ -390,8 +459,8 @@ export async function captureScreenshot(
       createdAt: new Date().toISOString(),
       createdBy: 'capture',
       metadata: {
-        width: viewport.width,
-        height: viewport.height,
+        width: dimensions.width,
+        height: dimensions.height,
         url,
         viewport,
         hasGrid: false,
@@ -530,7 +599,15 @@ export async function captureWithDOM(
       await applyPlaceholderMedia(page, placeholderMedia);
     }
 
-    const buffer = await page.screenshot({ fullPage });
+    if (fullPageScrollFix?.enabled && !fullPageScrollFix.preserveHorizontalOverflow) {
+      await enforceHorizontalOverflowClamp(page, fullPageScrollFix.selectors);
+    }
+
+    let buffer = await page.screenshot({ fullPage });
+    if (fullPageScrollFix?.enabled && !fullPageScrollFix.preserveHorizontalOverflow) {
+      buffer = await cropScreenshotToViewportWidth(buffer, viewport);
+    }
+    const dimensions = await getImageDimensionsFromBuffer(buffer, viewport);
 
     const outputPath = join(outputDir, filename);
     await Bun.write(outputPath, buffer);
@@ -559,8 +636,8 @@ export async function captureWithDOM(
       createdAt: new Date().toISOString(),
       createdBy: 'capture-with-dom',
       metadata: {
-        width: viewport.width,
-        height: viewport.height,
+        width: dimensions.width,
+        height: dimensions.height,
         url,
         viewport,
         hasGrid: false,

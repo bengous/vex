@@ -48,13 +48,14 @@ export interface ResolvedPlaceholderMedia {
  *
  * Type hierarchy:
  * - FullPageScrollFixSpec (schema) = boolean | FullPageScrollFixConfig
- * - FullPageScrollFixConfig (schema) = { selectors?, settleMs? }
- * - ResolvedFullPageScrollFix (CLI) = { enabled: true, selectors, settleMs } | undefined
+ * - FullPageScrollFixConfig (schema) = { selectors?, settleMs?, preserveHorizontalOverflow? }
+ * - ResolvedFullPageScrollFix (CLI) = { enabled: true, selectors, settleMs, preserveHorizontalOverflow } | undefined
  */
 export interface ResolvedFullPageScrollFix {
   readonly enabled: true;
   readonly selectors: readonly string[];
   readonly settleMs: number;
+  readonly preserveHorizontalOverflow: boolean;
 }
 
 export type ResolvedScanMode = 'analyze' | 'capture-only';
@@ -152,6 +153,7 @@ const DEFAULTS = {
   fullPageScrollFix: {
     selectors: ['#page-scroll-container'] as readonly string[],
     settleMs: 500,
+    preserveHorizontalOverflow: false,
   },
 };
 
@@ -212,6 +214,8 @@ function normalizeFullPageScrollFix(
     enabled: true,
     selectors: presetSpec.selectors ?? DEFAULTS.fullPageScrollFix.selectors,
     settleMs: presetSpec.settleMs ?? DEFAULTS.fullPageScrollFix.settleMs,
+    preserveHorizontalOverflow:
+      presetSpec.preserveHorizontalOverflow ?? DEFAULTS.fullPageScrollFix.preserveHorizontalOverflow,
   };
 }
 

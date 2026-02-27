@@ -61,8 +61,8 @@ function createDOMSnapshot(elements: DOMElement[] = []): DOMSnapshot {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('regionToCenter', () => {
-  // Grid calculation: GRID_CONFIG.cellSize=200, maxColumns=10, maxRows=99
-  // For 1920x1080: cols = min(10, ceil(1920/200)) = 10, rows = min(99, ceil(1080/200)) = 6
+  // Grid calculation: GRID_CONFIG.cellSize=200, maxColumns=26, maxRows=99
+  // For 1920x1080: cols = min(26, ceil(1920/200)) = 10, rows = min(99, ceil(1080/200)) = 6
   // cellWidth = 1920/10 = 192, cellHeight = 1080/6 = 180
 
   test('converts grid ref A1 to top-left area center', () => {
@@ -107,7 +107,7 @@ describe('regionToCenter', () => {
   });
 
   test('invalid grid ref returns image center', () => {
-    const center = regionToCenter('Z99', 1920, 1080);
+    const center = regionToCenter('AA99', 1920, 1080);
     expect(center.x).toBe(960);
     expect(center.y).toBe(540);
   });
