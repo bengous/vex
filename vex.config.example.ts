@@ -58,6 +58,8 @@ export default defineConfig({
       },
       full: true,
       placeholderMedia: true,
+      // For apps that use internal scroll containers instead of window scroll
+      // fullPageScrollFix: { selectors: ['#page-scroll-container'], settleMs: 500 },
     },
 
     // Batch scan multiple pages

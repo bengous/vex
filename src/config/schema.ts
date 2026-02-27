@@ -103,6 +103,26 @@ export const PlaceholderMediaSpec = S.Union(S.Boolean, PlaceholderMediaConfig);
 export type PlaceholderMediaSpec = S.Schema.Type<typeof PlaceholderMediaSpec>;
 
 /**
+ * Full-page scroll fix configuration for apps using internal scroll containers.
+ *
+ * When enabled, capture can temporarily force root/container overflow to visible
+ * so Playwright fullPage includes full content.
+ */
+export const FullPageScrollFixConfig = S.Struct({
+  /** CSS selectors for scroll container(s) to expand */
+  selectors: S.optional(S.Array(CssSelector)),
+  /** Wait time after style injection before screenshot (ms, default: 500) */
+  settleMs: S.optional(PositiveInt),
+});
+export type FullPageScrollFixConfig = S.Schema.Type<typeof FullPageScrollFixConfig>;
+
+/**
+ * Full-page scroll fix specification: boolean (use defaults) or detailed config.
+ */
+export const FullPageScrollFixSpec = S.Union(S.Boolean, FullPageScrollFixConfig);
+export type FullPageScrollFixSpec = S.Schema.Type<typeof FullPageScrollFixSpec>;
+
+/**
  * Profile name: alphanumeric with hyphens/underscores, no colons.
  * Used for both built-in and user-defined profiles.
  */
@@ -180,6 +200,8 @@ export const ScanPreset = S.Struct({
   full: S.optional(S.Boolean),
   /** Replace images/videos with placeholder boxes (true for defaults, or object for custom) */
   placeholderMedia: S.optional(PlaceholderMediaSpec),
+  /** Expand internal scroll container(s) for true full-page screenshots */
+  fullPageScrollFix: S.optional(FullPageScrollFixSpec),
 });
 export type ScanPreset = S.Schema.Type<typeof ScanPreset>;
 
@@ -201,6 +223,8 @@ export const LoopPreset = S.Struct({
   dryRun: S.optional(S.Boolean),
   /** Replace images/videos with placeholder boxes (true for defaults, or object for custom) */
   placeholderMedia: S.optional(PlaceholderMediaSpec),
+  /** Expand internal scroll container(s) for true full-page screenshots */
+  fullPageScrollFix: S.optional(FullPageScrollFixSpec),
 });
 export type LoopPreset = S.Schema.Type<typeof LoopPreset>;
 

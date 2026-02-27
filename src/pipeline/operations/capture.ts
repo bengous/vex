@@ -5,7 +5,12 @@
 import { dirname } from 'node:path';
 import { Effect } from 'effect';
 import { chromium } from 'playwright';
-import { captureScreenshot, captureWithDOM, type PlaceholderMediaOptions } from '../../core/capture.js';
+import {
+  captureScreenshot,
+  captureWithDOM,
+  type FullPageScrollFixOptions,
+  type PlaceholderMediaOptions,
+} from '../../core/capture.js';
 import type { DOMSnapshotArtifact, ImageArtifact, ViewportConfig } from '../../core/types.js';
 import { type Operation, OperationError } from '../types.js';
 
@@ -15,6 +20,8 @@ export interface CaptureConfig {
   readonly withDOM?: boolean;
   /** Resolved placeholder media options (undefined = disabled) */
   readonly placeholderMedia?: PlaceholderMediaOptions;
+  /** Expand internal scroll container(s) before fullPage capture */
+  readonly fullPageScrollFix?: FullPageScrollFixOptions;
 }
 
 export interface CaptureOutput {
@@ -30,7 +37,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
   outputTypes: ['image'],
 
   execute: (_, config, ctx) => {
-    const { url, viewport, withDOM = false, placeholderMedia } = config;
+    const { url, viewport, withDOM = false, placeholderMedia, fullPageScrollFix } = config;
 
     ctx.logger.info(`Capturing ${url} at ${viewport.width}x${viewport.height}`);
 
@@ -69,6 +76,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
                   outputDir: dirname(screenshotPath),
                   filename: '01-screenshot.png',
                   placeholderMedia,
+                  fullPageScrollFix,
                 }),
               catch: (e) => new OperationError({ operation: 'capture', detail: 'Failed to capture with DOM', cause: e }),
             });
@@ -112,6 +120,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
                 outputDir: dirname(screenshotPath),
                 filename: '01-screenshot.png',
                 placeholderMedia,
+                fullPageScrollFix,
               }),
             catch: (e) =>
               new OperationError({ operation: 'capture', detail: 'Failed to capture screenshot', cause: e }),
