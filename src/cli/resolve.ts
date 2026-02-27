@@ -57,6 +57,8 @@ export interface ResolvedFullPageScrollFix {
   readonly settleMs: number;
 }
 
+export type ResolvedScanMode = 'analyze' | 'capture-only';
+
 /**
  * Fully resolved scan options ready for pipeline execution.
  */
@@ -67,6 +69,7 @@ export interface ResolvedScanOptions {
   readonly model: string | undefined;
   readonly reasoning: string | undefined;
   readonly profile: string;
+  readonly mode: ResolvedScanMode;
   readonly full: boolean;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
@@ -137,6 +140,7 @@ const DEFAULTS = {
   devices: ['desktop-1920'] as readonly string[],
   provider: 'ollama',
   profile: 'minimal',
+  mode: 'analyze' as ResolvedScanMode,
   full: false,
   maxIterations: 5,
   autoFix: 'high' as const,
@@ -412,6 +416,9 @@ Known: ${providerMeta.knownModels.join(', ')}`,
       }
     }
 
+    // Resolve mode: preset > default
+    const mode = (preset?.mode ?? DEFAULTS.mode) as ResolvedScanMode;
+
     // Resolve boolean flags: CLI true overrides preset, otherwise use preset or default
     const full = cliArgs.full || preset?.full || DEFAULTS.full;
     const placeholderMedia = normalizePlaceholderMedia(cliArgs.placeholderMedia, preset?.placeholderMedia);
@@ -426,6 +433,7 @@ Known: ${providerMeta.knownModels.join(', ')}`,
       model,
       reasoning,
       profile,
+      mode,
       full,
       placeholderMedia,
       fullPageScrollFix,

@@ -36,6 +36,7 @@ export interface AuditManifest {
   preset?: string;
   urls: readonly string[];
   devices: readonly string[];
+  mode?: 'analyze' | 'capture-only';
   full: boolean;
   placeholderMedia: boolean;
   fullPageScrollFix: boolean;

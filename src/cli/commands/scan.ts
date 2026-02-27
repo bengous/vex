@@ -14,7 +14,7 @@ import { loadCodexProfile, loadConfigOptional } from '../../config/loader.js';
 import { Url } from '../../config/schema.js';
 import { listDevices, lookupDevice } from '../../core/devices.js';
 import { type AnalysisResult, getViewportDirName, type ViewportConfig } from '../../core/types.js';
-import { fullAnnotation, simpleAnalysis } from '../../pipeline/presets.js';
+import { captureOnly, fullAnnotation, simpleAnalysis } from '../../pipeline/presets.js';
 import { runPipeline } from '../../pipeline/runtime.js';
 import { CodexEnv, makeCodexEnvResource } from '../../providers/codex-cli/environment.js';
 import {
@@ -118,6 +118,7 @@ export const scanCommand = Command.make(
         preset: Option.getOrUndefined(args.preset),
         urls: resolved.urls,
         devices: resolved.devices,
+        mode: resolved.mode,
         full: resolved.full,
         placeholderMedia: resolved.placeholderMedia !== undefined,
         fullPageScrollFix: resolved.fullPageScrollFix !== undefined,
@@ -219,11 +220,17 @@ export const scanCommand = Command.make(
 
             console.log(`Scanning ${url}`);
             console.log(`Viewport: ${viewport.width}x${viewport.height} (${deviceId})`);
-            console.log(
-              `Provider: ${resolved.provider}${resolved.model ? ` (model: ${resolved.model})` : ''}${resolved.reasoning ? ` (reasoning: ${resolved.reasoning})` : ''}${resolved.profile !== 'minimal' ? ` (profile: ${resolved.profile})` : ''}`,
-            );
-            if (resolved.full) {
-              console.log('Pipeline: full-annotation (analyze + annotate + render)');
+            if (resolved.mode === 'capture-only') {
+              console.log('Pipeline: capture-only (no model call)');
+            } else {
+              console.log(
+                `Provider: ${resolved.provider}${resolved.model ? ` (model: ${resolved.model})` : ''}${resolved.reasoning ? ` (reasoning: ${resolved.reasoning})` : ''}${resolved.profile !== 'minimal' ? ` (profile: ${resolved.profile})` : ''}`,
+              );
+              if (resolved.full) {
+                console.log('Pipeline: full-annotation (analyze + annotate + render)');
+              } else {
+                console.log('Pipeline: simple-analysis (capture + analyze)');
+              }
             }
             if (resolved.placeholderMedia) {
               console.log('Placeholder media: enabled');
@@ -234,25 +241,28 @@ export const scanCommand = Command.make(
             console.log(`Output: ${viewportDir}`);
             console.log('');
 
-            const pipeline = resolved.full
-              ? fullAnnotation(
-                  url,
-                  viewport,
-                  resolved.provider,
-                  resolved.model,
-                  resolved.reasoning,
-                  resolved.placeholderMedia,
-                  resolved.fullPageScrollFix,
-                )
-              : simpleAnalysis(
-                  url,
-                  viewport,
-                  resolved.provider,
-                  resolved.model,
-                  resolved.reasoning,
-                  resolved.placeholderMedia,
-                  resolved.fullPageScrollFix,
-                );
+            const pipeline =
+              resolved.mode === 'capture-only'
+                ? captureOnly(url, viewport, true, resolved.placeholderMedia, resolved.fullPageScrollFix)
+                : resolved.full
+                  ? fullAnnotation(
+                      url,
+                      viewport,
+                      resolved.provider,
+                      resolved.model,
+                      resolved.reasoning,
+                      resolved.placeholderMedia,
+                      resolved.fullPageScrollFix,
+                    )
+                  : simpleAnalysis(
+                      url,
+                      viewport,
+                      resolved.provider,
+                      resolved.model,
+                      resolved.reasoning,
+                      resolved.placeholderMedia,
+                      resolved.fullPageScrollFix,
+                    );
 
             const runOptions = {
               sessionId: viewportDirName,
@@ -315,6 +325,8 @@ export const scanCommand = Command.make(
                 } else {
                   console.log('\nNo issues found.');
                 }
+              } else if (resolved.mode === 'capture-only') {
+                console.log('\nAnalysis skipped (capture-only mode).');
               }
 
               console.log('');
