@@ -20,6 +20,7 @@ import { getProviderInfo } from '../providers/shared/introspection.js';
 import '../providers/init.js';
 
 const PRESET_NAME = 'smokeExampleGeminiLite';
+const DEVICE_ID = 'desktop-1920';
 const VIEWPORT: ViewportConfig = {
   width: 1920,
   height: 1080,
@@ -44,7 +45,7 @@ export default defineConfig({
   scanPresets: {
     ${PRESET_NAME}: {
       urls: ['https://example.com/'],
-      devices: 'desktop-1920',
+      devices: '${DEVICE_ID}',
       provider: { name: 'gemini-cli', model: 'gemini-2.5-flash-lite' },
       full: false,
     },
@@ -97,8 +98,9 @@ export default defineConfig({
       expect(auditDirs.length).toBeGreaterThanOrEqual(1);
 
       const auditDir = join(outputDir, auditDirs[auditDirs.length - 1] ?? '');
-      const statePath = join(auditDir, 'pages', 'example.com', '_index', getViewportDirName(VIEWPORT), 'state.json');
-      const viewportDir = join(auditDir, 'pages', 'example.com', '_index', getViewportDirName(VIEWPORT));
+      const viewportDirName = getViewportDirName(VIEWPORT, DEVICE_ID);
+      const statePath = join(auditDir, 'pages', 'example.com', '_index', viewportDirName, 'state.json');
+      const viewportDir = join(auditDir, 'pages', 'example.com', '_index', viewportDirName);
 
       assert(existsSync(join(auditDir, 'audit.json')));
       assert(existsSync(join(auditDir, 'config.used.json')));
