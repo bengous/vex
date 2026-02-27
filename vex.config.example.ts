@@ -49,7 +49,7 @@ export default defineConfig({
       full: false,
     },
 
-    // Capture only (no model/API calls)
+    // Capture only (no model/API calls, includes folds + grid overlays)
     'capture-only': {
       devices: 'desktop-1920',
       mode: 'capture-only',
