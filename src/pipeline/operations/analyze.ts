@@ -45,11 +45,11 @@ function buildAnalysisPrompt(viewport?: ViewportConfig): string {
 Grid: Each cell (A1, B2, etc.) is ${GRID_CONFIG.cellSize}×${GRID_CONFIG.cellSize} pixels.\n`
     : '';
 
-  return `Analyze this web page screenshot for visual and layout issues.${viewportContext}
+ return `Analyze this web page screenshot for visual and layout issues.${viewportContext}
 For each issue found, provide:
 1. A clear description of the problem
 2. The severity (high, medium, low)
-3. The approximate location using grid cell references (A1-J99) or pixel coordinates
+3. The approximate location using grid cell references (A1-Z99) or pixel coordinates
 4. A suggested fix
 
 Format your response as JSON:

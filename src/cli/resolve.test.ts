@@ -3,6 +3,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Option } from 'effect';
 import { runEffect, runEffectExit } from '../testing/effect-helpers.js';
 import type { LoopCliArgs, ScanCliArgs } from './resolve.js';
@@ -147,6 +150,76 @@ describe('resolveScanOptions', () => {
     const result = await runEffect(resolveScanOptions(args));
 
     expect(result.outputDir).toBe('/cli/output');
+  });
+
+  it('resolves fullPageScrollFix defaults from boolean preset', async () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'vex-resolve-'));
+    try {
+      writeFileSync(
+        join(projectRoot, 'vex.config.ts'),
+        `export default {
+  outputDir: 'vex-output',
+  scanPresets: {
+    capture: {
+      urls: ['https://example.com'],
+      fullPageScrollFix: true
+    }
+  }
+};`,
+      );
+
+      const args: ScanCliArgs = {
+        ...emptyScanArgs,
+        preset: Option.some('capture'),
+      };
+
+      const result = await runEffect(resolveScanOptions(args, projectRoot));
+      expect(result.fullPageScrollFix).toEqual({
+        enabled: true,
+        selectors: ['#page-scroll-container'],
+        settleMs: 500,
+        preserveHorizontalOverflow: false,
+      });
+    } finally {
+      rmSync(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('resolves fullPageScrollFix preserveHorizontalOverflow override from preset config', async () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'vex-resolve-'));
+    try {
+      writeFileSync(
+        join(projectRoot, 'vex.config.ts'),
+        `export default {
+  outputDir: 'vex-output',
+  scanPresets: {
+    capture: {
+      urls: ['https://example.com'],
+      fullPageScrollFix: {
+        selectors: ['#root-scroll'],
+        settleMs: 750,
+        preserveHorizontalOverflow: true
+      }
+    }
+  }
+};`,
+      );
+
+      const args: ScanCliArgs = {
+        ...emptyScanArgs,
+        preset: Option.some('capture'),
+      };
+
+      const result = await runEffect(resolveScanOptions(args, projectRoot));
+      expect(result.fullPageScrollFix).toEqual({
+        enabled: true,
+        selectors: ['#root-scroll'],
+        settleMs: 750,
+        preserveHorizontalOverflow: true,
+      });
+    } finally {
+      rmSync(projectRoot, { recursive: true, force: true });
+    }
   });
 });
 

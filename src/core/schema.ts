@@ -29,13 +29,13 @@ export const BoundingBox = S.mutable(
 export type BoundingBox = typeof BoundingBox.Type;
 
 /**
- * Grid reference pattern: A1-J99
- * - Columns: A-J (10 columns)
+ * Grid reference pattern: A1-Z99
+ * - Columns: A-Z (26 columns)
  * - Rows: 1-99
  */
 export const GridRef = S.String.pipe(
-  S.pattern(/^[A-J]\d{1,2}$/, {
-    message: () => 'Invalid grid reference (expected A1-J99)',
+  S.pattern(/^[A-Z]\d{1,2}$/, {
+    message: () => 'Invalid grid reference (expected A1-Z99)',
   }),
 );
 export type GridRef = typeof GridRef.Type;

@@ -2,7 +2,7 @@
  * Unit tests for grid math and overlay functions.
  *
  * Tests the coordinate system that maps visual regions to code locations
- * using a cell reference system (A1-J99).
+ * using a cell reference system (A1-Z99).
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -26,7 +26,7 @@ describe('calculateGrid', () => {
   test('standard viewport (1920x1080)', () => {
     const grid = calculateGrid(1920, 1080);
 
-    // 1920/200 = 9.6 → ceil = 10, but maxColumns = 10 → 10
+    // 1920/200 = 9.6 → ceil = 10, below maxColumns.
     expect(grid.cols).toBe(10);
     // 1080/200 = 5.4 → ceil = 6
     expect(grid.rows).toBe(6);
@@ -45,9 +45,9 @@ describe('calculateGrid', () => {
 
   test('large viewport respects maxColumns/maxRows', () => {
     // Very large viewport
-    const grid = calculateGrid(5000, 25000);
+    const grid = calculateGrid(6000, 25000);
 
-    // 5000/200 = 25 → clamped to maxColumns (10)
+    // 6000/200 = 30 → clamped to maxColumns
     expect(grid.cols).toBe(GRID_CONFIG.maxColumns);
     // 25000/200 = 125 → clamped to maxRows (99)
     expect(grid.rows).toBe(GRID_CONFIG.maxRows);
@@ -76,16 +76,16 @@ describe('isValidCellRef', () => {
     expect(isValidCellRef('A1')).toBe(true);
   });
 
-  test('valid: J99 (max valid)', () => {
-    expect(isValidCellRef('J99')).toBe(true);
+  test('valid: Z99 (max valid)', () => {
+    expect(isValidCellRef('Z99')).toBe(true);
   });
 
   test('valid: B10', () => {
     expect(isValidCellRef('B10')).toBe(true);
   });
 
-  test('invalid: K1 (column out of range)', () => {
-    expect(isValidCellRef('K1')).toBe(false);
+  test('invalid: AA1 (two-letter columns unsupported)', () => {
+    expect(isValidCellRef('AA1')).toBe(false);
   });
 
   test('invalid: A0 (row 0 not allowed)', () => {
@@ -122,8 +122,8 @@ describe('parseCellRef', () => {
     expect(parseCellRef('A1')).toEqual({ col: 0, row: 0 });
   });
 
-  test('J99 → {col: 9, row: 98}', () => {
-    expect(parseCellRef('J99')).toEqual({ col: 9, row: 98 });
+  test('Z99 → {col: 25, row: 98}', () => {
+    expect(parseCellRef('Z99')).toEqual({ col: 25, row: 98 });
   });
 
   test('B2 → {col: 1, row: 1}', () => {
@@ -136,7 +136,7 @@ describe('parseCellRef', () => {
 
   test('invalid throws with clear message', () => {
     expect(() => parseCellRef('invalid')).toThrow('Invalid cell reference');
-    expect(() => parseCellRef('K1')).toThrow('Invalid cell reference');
+    expect(() => parseCellRef('AA1')).toThrow('Invalid cell reference');
     // A0 matches pattern but row 0 - 1 = -1 fails row range check
     expect(() => parseCellRef('A0')).toThrow('Invalid row number');
     // A100 has 3 digits, doesn't match \d{1,2} pattern
@@ -171,10 +171,10 @@ describe('cellToPixels', () => {
     });
   });
 
-  test('J99 → far corner', () => {
-    const box = cellToPixels('J99');
+  test('Z99 → far corner', () => {
+    const box = cellToPixels('Z99');
     expect(box).toEqual({
-      x: 9 * cellSize, // col 9
+      x: 25 * cellSize, // col 25
       y: 98 * cellSize, // row 98
       width: cellSize,
       height: cellSize,
@@ -184,7 +184,7 @@ describe('cellToPixels', () => {
   test('custom config respected', () => {
     const customConfig: GridConfig = {
       cellSize: 100,
-      maxColumns: 10,
+      maxColumns: 26,
       maxRows: 99,
     };
     const box = cellToPixels('B2', customConfig);
@@ -302,12 +302,12 @@ describe('pixelsToCell', () => {
   });
 
   test('out of bounds → clamped to max', () => {
-    // Very large x → clamped to J (col 9)
-    expect(pixelsToCell(50000, 0)).toBe('J1');
+    // Very large x → clamped to Z (col 25)
+    expect(pixelsToCell(50000, 0)).toBe('Z1');
     // Very large y → clamped to row 99
     expect(pixelsToCell(0, 50000)).toBe('A99');
     // Both out of bounds
-    expect(pixelsToCell(50000, 50000)).toBe('J99');
+    expect(pixelsToCell(50000, 50000)).toBe('Z99');
   });
 
   test('negative coords produce invalid cell refs (undefined behavior)', () => {
@@ -354,7 +354,7 @@ describe('pixelsToCell', () => {
 
 describe('Edge Cases', () => {
   test('all valid column letters', () => {
-    const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    const columns = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
     for (const col of columns) {
       expect(isValidCellRef(`${col}1`)).toBe(true);
       expect(() => parseCellRef(`${col}1`)).not.toThrow();

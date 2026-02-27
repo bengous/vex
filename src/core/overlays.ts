@@ -26,7 +26,7 @@ import { GRID_CONFIG, GRID_STYLE, STYLE_MAP } from './types.js';
 // Grid Math
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CELL_REF_PATTERN = /^([A-J])(\d{1,2})$/;
+const CELL_REF_PATTERN = /^([A-Z])(\d{1,2})$/;
 
 /**
  * Calculate grid metadata for an image.
@@ -63,7 +63,7 @@ export function isValidCellRef(cell: string): boolean {
 export function parseCellRef(cell: string): { col: number; row: number } {
   const match = cell.match(CELL_REF_PATTERN);
   if (!match || match[1] === undefined || match[2] === undefined) {
-    throw new Error(`Invalid cell reference: ${cell}. Expected format: A1-J99`);
+    throw new Error(`Invalid cell reference: ${cell}. Expected format: A1-Z99`);
   }
 
   const col = match[1].charCodeAt(0) - 65;
@@ -282,13 +282,19 @@ export async function addFoldLines(imageBuffer: Buffer, options: FoldLineOptions
 /**
  * Add fold lines based on FoldConfig.
  */
-export async function addFoldOverlay(imageBuffer: Buffer, viewportHeight: number, config: FoldConfig): Promise<Buffer> {
+export async function addFoldOverlay(
+  imageBuffer: Buffer,
+  viewportHeight: number,
+  config: FoldConfig,
+  cssViewportHeight?: number,
+): Promise<Buffer> {
   if (!config.enabled) {
     return imageBuffer;
   }
 
   return addFoldLines(imageBuffer, {
     viewportHeight,
+    cssViewportHeight,
     lineColor: config.color,
     showLabels: config.showLabels,
   });

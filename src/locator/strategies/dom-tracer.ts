@@ -32,7 +32,7 @@ function isGridRef(region: Region): region is GridRef {
 }
 
 function gridRefToCenter(gridRef: GridRef, imageWidth: number, imageHeight: number): { x: number; y: number } {
-  const match = gridRef.match(/^([A-J])(\d{1,2})$/i);
+  const match = gridRef.match(/^([A-Z])(\d{1,2})$/i);
   if (!match || !match[1] || !match[2]) {
     return { x: imageWidth / 2, y: imageHeight / 2 };
   }

@@ -184,13 +184,13 @@ describe('GridRef', () => {
       }
     });
 
-    test('accepts "J99" (maximum)', () => {
-      const result = decode(GridRef)('J99');
+    test('accepts "Z99" (maximum)', () => {
+      const result = decode(GridRef)('Z99');
       expect(isSuccess(result)).toBe(true);
     });
 
-    test('accepts all valid column letters A-J', () => {
-      const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    test('accepts all valid column letters A-Z', () => {
+      const columns = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
       for (const col of columns) {
         const result = decode(GridRef)(`${col}1`);
         expect(isSuccess(result)).toBe(true);
@@ -214,13 +214,13 @@ describe('GridRef', () => {
   });
 
   describe('invalid references', () => {
-    test('rejects "K1" (column out of range)', () => {
-      const result = decode(GridRef)('K1');
+    test('rejects "AA1" (two-letter columns unsupported)', () => {
+      const result = decode(GridRef)('AA1');
       expect(isFailure(result)).toBe(true);
     });
 
-    test('rejects "Z1" (column far out of range)', () => {
-      const result = decode(GridRef)('Z1');
+    test('rejects "[1" (invalid column character)', () => {
+      const result = decode(GridRef)('[1');
       expect(isFailure(result)).toBe(true);
     });
 
@@ -272,7 +272,7 @@ describe('GridRef', () => {
     });
 
     test('error message contains hint', () => {
-      const result = decode(GridRef)('K1');
+      const result = decode(GridRef)('AA1');
       expect(isFailure(result)).toBe(true);
       // The schema defines a message for pattern failures
     });
@@ -310,7 +310,7 @@ describe('Region', () => {
   });
 
   test('rejects invalid GridRef', () => {
-    const result = decode(Region)('K1');
+    const result = decode(Region)('AA1');
     expect(isFailure(result)).toBe(true);
   });
 
