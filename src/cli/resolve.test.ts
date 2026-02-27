@@ -221,6 +221,34 @@ describe('resolveScanOptions', () => {
       rmSync(projectRoot, { recursive: true, force: true });
     }
   });
+
+  it('rejects ambiguous iphone-se device id in config (explicit ids required)', async () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'vex-resolve-'));
+    try {
+      writeFileSync(
+        join(projectRoot, 'vex.config.ts'),
+        `export default {
+  outputDir: 'vex-output',
+  scanPresets: {
+    capture: {
+      urls: ['https://example.com'],
+      devices: 'iphone-se'
+    }
+  }
+};`,
+      );
+
+      const args: ScanCliArgs = {
+        ...emptyScanArgs,
+        preset: Option.some('capture'),
+      };
+
+      const result = await runEffectExit(resolveScanOptions(args, projectRoot));
+      expect(result._tag).toBe('Failure');
+    } finally {
+      rmSync(projectRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
