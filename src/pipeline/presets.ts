@@ -183,9 +183,46 @@ export function captureOnly(
   url: string,
   viewport: ViewportConfig,
   withFolds = true,
+  withGrid = true,
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
 ): PipelineDefinition {
+  if (withFolds && withGrid) {
+    return {
+      name: 'capture-only',
+      description: 'Capture screenshot with fold lines and grid',
+      inputs: ['url', 'viewport'],
+      outputs: ['image-with-grid'],
+      nodes: [
+        {
+          id: 'capture',
+          operation: 'capture',
+          config: { url, viewport, filename: 'screenshot.png', placeholderMedia, fullPageScrollFix },
+          inputs: [],
+          outputs: ['image'],
+        },
+        {
+          id: 'folds',
+          operation: 'overlay-folds',
+          config: { viewportHeight: viewport.height },
+          inputs: ['image'],
+          outputs: ['image-with-folds'],
+        },
+        {
+          id: 'grid',
+          operation: 'overlay-grid',
+          config: { showLabels: true },
+          inputs: ['image-with-folds'],
+          outputs: ['image-with-grid'],
+        },
+      ],
+      edges: [
+        { from: 'capture', to: 'folds', artifact: 'image' },
+        { from: 'folds', to: 'grid', artifact: 'image' },
+      ],
+    };
+  }
+
   if (withFolds) {
     return {
       name: 'capture-only',
@@ -209,6 +246,32 @@ export function captureOnly(
         },
       ],
       edges: [{ from: 'capture', to: 'folds', artifact: 'image' }],
+    };
+  }
+
+  if (withGrid) {
+    return {
+      name: 'capture-only',
+      description: 'Capture screenshot with grid',
+      inputs: ['url', 'viewport'],
+      outputs: ['image-with-grid'],
+      nodes: [
+        {
+          id: 'capture',
+          operation: 'capture',
+          config: { url, viewport, filename: 'screenshot.png', placeholderMedia, fullPageScrollFix },
+          inputs: [],
+          outputs: ['image'],
+        },
+        {
+          id: 'grid',
+          operation: 'overlay-grid',
+          config: { showLabels: true },
+          inputs: ['image'],
+          outputs: ['image-with-grid'],
+        },
+      ],
+      edges: [{ from: 'capture', to: 'grid', artifact: 'image' }],
     };
   }
 
