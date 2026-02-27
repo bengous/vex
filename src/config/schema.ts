@@ -33,7 +33,8 @@ export const DeviceId = S.Literal(
   // iPhones
   'iphone-15-pro-max',
   'iphone-15-pro',
-  'iphone-se',
+  'iphone-se-2022',
+  'iphone-se-2016',
   // Android
   'pixel-7',
   'galaxy-s24',

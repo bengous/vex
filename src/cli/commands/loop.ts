@@ -12,7 +12,7 @@ import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
 import { loadCodexProfile, loadConfigOptional } from '../../config/loader.js';
 import { Url } from '../../config/schema.js';
-import { listDevices, lookupDevice } from '../../core/devices.js';
+import { getAllDeviceIds, listDevices, lookupDevice } from '../../core/devices.js';
 import type { CodeLocation, Issue, ViewportConfig } from '../../core/types.js';
 import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from '../../loop/orchestrator.js';
 import {
@@ -231,8 +231,12 @@ export const loopCommand = Command.make(
 
       const deviceResult = lookupDevice(resolved.devices[0] as string);
       if (!deviceResult) {
-        console.error(`Unknown device: ${resolved.devices[0]}`);
-        return;
+        const validDevices = getAllDeviceIds().join(', ');
+        return yield* Effect.fail(
+          new Error(`Unknown device: ${resolved.devices[0]}.
+Use explicit device IDs (e.g., iphone-se-2016 or iphone-se-2022).
+Valid devices: ${validDevices}`),
+        );
       }
       const viewport: ViewportConfig = deviceResult.preset.viewport;
 
