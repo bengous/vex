@@ -132,6 +132,15 @@ export interface PlaceholderMediaOptions {
   readonly preserve: readonly string[];
 }
 
+/**
+ * Full-page scroll fix for apps that scroll inside an internal container.
+ */
+export interface FullPageScrollFixOptions {
+  readonly enabled: boolean;
+  readonly selectors: readonly string[];
+  readonly settleMs: number;
+}
+
 function getPlaceholderCSS(): string {
   return `
     .placeholder-media-box {
@@ -257,6 +266,42 @@ export async function applyPlaceholderMedia(page: Page, options: PlaceholderMedi
   await page.waitForTimeout(100);
 }
 
+/**
+ * Expand root + internal scroll container to make fullPage screenshots include
+ * content that normally lives inside overflow:auto containers.
+ */
+async function applyFullPageScrollFix(page: Page, options: FullPageScrollFixOptions): Promise<void> {
+  if (!options.enabled) return;
+
+  const selectors = options.selectors.filter((selector) => selector.trim().length > 0);
+  const containerSelectors = selectors.length > 0 ? selectors.join(', ') : '';
+
+  const css = `
+    html, body {
+      height: auto !important;
+      min-height: 100vh !important;
+      overflow: visible !important;
+      width: 100% !important;
+      overflow-x: hidden !important;
+    }
+    ${
+      containerSelectors.length > 0
+        ? `${containerSelectors} {
+      height: auto !important;
+      overflow: visible !important;
+      overflow-y: visible !important;
+      flex: none !important;
+      width: 100% !important;
+      max-height: none !important;
+    }`
+        : ''
+    }
+  `;
+
+  await page.addStyleTag({ content: css });
+  await page.waitForTimeout(options.settleMs);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Screenshot Capture
 // ═══════════════════════════════════════════════════════════════════════════
@@ -269,6 +314,7 @@ export interface CaptureOptions {
   readonly fullPage?: boolean;
   readonly foldConfig?: FoldConfig;
   readonly placeholderMedia?: PlaceholderMediaOptions;
+  readonly fullPageScrollFix?: FullPageScrollFixOptions;
   readonly navigationTimeout?: number;
   readonly loadStateTimeout?: number;
 }
@@ -292,6 +338,7 @@ export async function captureScreenshot(
     filename,
     fullPage = true,
     placeholderMedia,
+    fullPageScrollFix,
     navigationTimeout = 30000,
     loadStateTimeout = 10000,
   } = options;
@@ -324,6 +371,9 @@ export async function captureScreenshot(
     });
 
     await cleanupOverlays(page);
+    if (fullPageScrollFix?.enabled) {
+      await applyFullPageScrollFix(page, fullPageScrollFix);
+    }
 
     if (placeholderMedia?.enabled) {
       await applyPlaceholderMedia(page, placeholderMedia);
@@ -382,6 +432,7 @@ export async function captureWithDOM(
     filename,
     fullPage = true,
     placeholderMedia,
+    fullPageScrollFix,
     navigationTimeout = 30000,
     loadStateTimeout = 10000,
     captureStyles = ['display', 'position', 'width', 'height', 'margin', 'padding'],
@@ -415,6 +466,9 @@ export async function captureWithDOM(
 
     // Clean overlays BEFORE DOM capture for accurate code locator mapping
     await cleanupOverlays(page);
+    if (fullPageScrollFix?.enabled) {
+      await applyFullPageScrollFix(page, fullPageScrollFix);
+    }
 
     // Capture DOM after cleanup - ensures DOM matches screenshot for locator accuracy
     const elements = await page.evaluate(

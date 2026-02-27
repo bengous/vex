@@ -10,6 +10,7 @@ import { Effect, Option } from 'effect';
 import { ConfigError, getLoopPreset, getScanPreset, loadCodexProfile, loadConfigOptional } from '../config/loader.js';
 import type {
   DeviceSpec,
+  FullPageScrollFixSpec,
   LoopPreset,
   PlaceholderMediaSpec,
   ProviderSpec,
@@ -43,6 +44,20 @@ export interface ResolvedPlaceholderMedia {
 }
 
 /**
+ * Fully resolved full-page scroll fix options.
+ *
+ * Type hierarchy:
+ * - FullPageScrollFixSpec (schema) = boolean | FullPageScrollFixConfig
+ * - FullPageScrollFixConfig (schema) = { selectors?, settleMs? }
+ * - ResolvedFullPageScrollFix (CLI) = { enabled: true, selectors, settleMs } | undefined
+ */
+export interface ResolvedFullPageScrollFix {
+  readonly enabled: true;
+  readonly selectors: readonly string[];
+  readonly settleMs: number;
+}
+
+/**
  * Fully resolved scan options ready for pipeline execution.
  */
 export interface ResolvedScanOptions {
@@ -54,6 +69,7 @@ export interface ResolvedScanOptions {
   readonly profile: string;
   readonly full: boolean;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
+  readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
   readonly outputDir: string;
 }
 
@@ -70,6 +86,7 @@ export interface ResolvedLoopOptions {
   readonly autoFix: 'high' | 'medium' | 'none';
   readonly dryRun: boolean;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
+  readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
   readonly outputDir: string;
   readonly projectRoot: string;
 }
@@ -128,6 +145,10 @@ const DEFAULTS = {
     svgMinSize: 100,
     preserve: [] as readonly string[],
   },
+  fullPageScrollFix: {
+    selectors: ['#page-scroll-container'] as readonly string[],
+    settleMs: 500,
+  },
 };
 
 /**
@@ -162,6 +183,31 @@ function normalizePlaceholderMedia(
     enabled: true,
     svgMinSize: presetSpec.svgMinSize ?? DEFAULTS.placeholderMedia.svgMinSize,
     preserve: presetSpec.preserve ?? DEFAULTS.placeholderMedia.preserve,
+  };
+}
+
+/**
+ * Normalize full-page scroll fix spec to resolved format.
+ *
+ * - false / undefined → undefined (disabled)
+ * - true → defaults
+ * - object → merge with defaults
+ */
+function normalizeFullPageScrollFix(
+  presetSpec: FullPageScrollFixSpec | undefined,
+): ResolvedFullPageScrollFix | undefined {
+  if (presetSpec === undefined || presetSpec === false) {
+    return undefined;
+  }
+
+  if (presetSpec === true) {
+    return { enabled: true, ...DEFAULTS.fullPageScrollFix };
+  }
+
+  return {
+    enabled: true,
+    selectors: presetSpec.selectors ?? DEFAULTS.fullPageScrollFix.selectors,
+    settleMs: presetSpec.settleMs ?? DEFAULTS.fullPageScrollFix.settleMs,
   };
 }
 
@@ -369,6 +415,7 @@ Known: ${providerMeta.knownModels.join(', ')}`,
     // Resolve boolean flags: CLI true overrides preset, otherwise use preset or default
     const full = cliArgs.full || preset?.full || DEFAULTS.full;
     const placeholderMedia = normalizePlaceholderMedia(cliArgs.placeholderMedia, preset?.placeholderMedia);
+    const fullPageScrollFix = normalizeFullPageScrollFix(preset?.fullPageScrollFix);
 
     const outputDir = yield* resolveOutputDir(cliArgs.output, config);
 
@@ -381,6 +428,7 @@ Known: ${providerMeta.knownModels.join(', ')}`,
       profile,
       full,
       placeholderMedia,
+      fullPageScrollFix,
       outputDir,
     };
   });
@@ -508,6 +556,7 @@ Known: ${providerMeta.knownModels.join(', ')}`,
 
     const dryRun = cliArgs.dryRun || preset?.dryRun || DEFAULTS.dryRun;
     const placeholderMedia = normalizePlaceholderMedia(cliArgs.placeholderMedia, preset?.placeholderMedia);
+    const fullPageScrollFix = normalizeFullPageScrollFix(preset?.fullPageScrollFix);
 
     const outputDir = yield* resolveOutputDir(cliArgs.output, config);
 
@@ -524,6 +573,7 @@ Known: ${providerMeta.knownModels.join(', ')}`,
       autoFix,
       dryRun,
       placeholderMedia,
+      fullPageScrollFix,
       outputDir,
       projectRoot: projectRootResolved,
     };
