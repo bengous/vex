@@ -96,6 +96,7 @@ export type ArtifactType =
  * Base artifact - all pipeline outputs inherit from this.
  */
 export interface Artifact {
+  readonly _kind: 'artifact';
   readonly id: string;
   readonly type: ArtifactType;
   readonly path: string;

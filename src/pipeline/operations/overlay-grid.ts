@@ -56,6 +56,7 @@ export const overlayGridOperation: Operation<OverlayGridInput, OverlayGridOutput
       });
 
       const artifact: ImageArtifact = {
+        _kind: 'artifact',
         id: crypto.randomUUID(),
         type: 'image',
         path: outputPath,

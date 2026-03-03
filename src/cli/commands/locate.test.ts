@@ -52,6 +52,7 @@ describe('loadLocateSessionContext', () => {
     writeJson(join(sessionDir, 'state.json'), {
       artifacts: {
         analysis_1: {
+          _kind: 'artifact',
           type: 'analysis',
           path: analysisPath,
         },
@@ -122,6 +123,7 @@ describe('loadLocateSessionContext', () => {
             sessionDir: latestPipelineSessionDir,
             artifacts: {
               analysis_1: {
+                _kind: 'artifact',
                 type: 'analysis',
                 path: analysisPath,
               },
