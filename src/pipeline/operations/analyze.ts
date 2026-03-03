@@ -11,9 +11,9 @@ import {
   type ImageArtifact,
   type ViewportConfig,
 } from '../../core/types.js';
-import { resolveProviderLayer } from '../../providers/shared/registry.js';
 import { VisionProvider } from '../../providers/shared/service.js';
 import { type Operation, OperationError } from '../types.js';
+import { resolveProviderForOperation } from './resolve-provider.js';
 
 export interface AnalyzeConfig {
   readonly provider: string;
@@ -90,11 +90,7 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
 
       ctx.logger.info(`Analyzing ${input.image.path} with ${provider}`);
 
-      const providerLayer = yield* resolveProviderLayer(provider).pipe(
-        Effect.mapError(
-          (e) => new OperationError({ operation: 'analyze', detail: `Provider error: ${e.reason}`, cause: e }),
-        ),
-      );
+      const providerLayer = yield* resolveProviderForOperation(provider, 'analyze');
 
       // Create analyze callback pre-composed with provider layer
       const analyze = (analysisPrompt: string) =>
