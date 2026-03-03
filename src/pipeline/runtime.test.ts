@@ -170,7 +170,7 @@ describe('syncContextFromState', () => {
       semanticNames: { 'capture:image': 'test-art' },
     };
 
-    syncContextFromState(state, artifacts, semanticNames, dataMap);
+    syncContextFromState(state, { artifacts, _semanticNames: semanticNames, _dataMap: dataMap });
 
     expect(artifacts.get('test-art')).toBe(artifact);
     expect(semanticNames.get('capture:image')).toBe(artifact);

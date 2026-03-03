@@ -203,6 +203,13 @@ export function getReadyNodes(state: PipelineState): string[] {
   return ready;
 }
 
+/** Result from a single node execution, used by mergeNodeResults. */
+export interface NodeResult {
+  readonly nodeId: string;
+  readonly artifacts: Artifact[];
+  readonly state: PipelineState;
+}
+
 /**
  * Merge results from parallel node executions into a single state.
  *
@@ -219,22 +226,18 @@ export function getReadyNodes(state: PipelineState): string[] {
  */
 export function mergeNodeResults(
   base: PipelineState,
-  results: ReadonlyArray<{ artifacts: Artifact[]; state: PipelineState }>,
+  results: ReadonlyArray<NodeResult>,
 ): PipelineState {
-  if (results.length === 1) return results[0].state;
+  const [only] = results;
+  if (only && results.length === 1) return only.state;
 
   let merged = base;
   for (const result of results) {
-    const changedNodes: PipelineState['nodes'] = {};
-    for (const [id, nodeState] of Object.entries(result.state.nodes)) {
-      if (nodeState.status !== base.nodes[id]?.status) {
-        changedNodes[id] = nodeState;
-      }
-    }
+    const changedNode = result.state.nodes[result.nodeId];
 
     merged = {
       ...merged,
-      nodes: { ...merged.nodes, ...changedNodes },
+      nodes: { ...merged.nodes, ...(changedNode ? { [result.nodeId]: changedNode } : {}) },
       artifacts: { ...merged.artifacts, ...result.state.artifacts },
       semanticNames: { ...merged.semanticNames, ...result.state.semanticNames },
       data: { ...merged.data, ...result.state.data },

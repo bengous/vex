@@ -4,7 +4,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import type { Artifact, Issue } from '../core/types.js';
-import { mergeNodeResults } from './state.js';
+import { mergeNodeResults, type NodeResult } from './state.js';
 import type { PipelineDefinition, PipelineState } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -75,7 +75,8 @@ describe('mergeNodeResults', () => {
 		const artA = createImageArtifact('art-a');
 		const artB = createImageArtifact('art-b');
 
-		const resultA: { artifacts: Artifact[]; state: PipelineState } = {
+		const resultA: NodeResult = {
+			nodeId: 'a',
 			artifacts: [artA],
 			state: {
 				...base,
@@ -86,7 +87,8 @@ describe('mergeNodeResults', () => {
 			},
 		};
 
-		const resultB: { artifacts: Artifact[]; state: PipelineState } = {
+		const resultB: NodeResult = {
+			nodeId: 'b',
 			artifacts: [artB],
 			state: {
 				...base,
@@ -116,7 +118,8 @@ describe('mergeNodeResults', () => {
 		const base = createBaseState();
 		const artA = createImageArtifact('art-a');
 
-		const result: { artifacts: Artifact[]; state: PipelineState } = {
+		const result: NodeResult = {
+			nodeId: 'a',
 			artifacts: [artA],
 			state: {
 				...base,
@@ -137,7 +140,8 @@ describe('mergeNodeResults', () => {
 			startedAt: '2026-01-01T00:00:00Z',
 		});
 
-		const result: { artifacts: Artifact[]; state: PipelineState } = {
+		const result: NodeResult = {
+			nodeId: 'a',
 			artifacts: [],
 			state: {
 				...base,
@@ -155,7 +159,8 @@ describe('mergeNodeResults', () => {
 		const base = createBaseState();
 		const issues: Issue[] = [createIssue()];
 
-		const resultA: { artifacts: Artifact[]; state: PipelineState } = {
+		const resultA: NodeResult = {
+			nodeId: 'a',
 			artifacts: [],
 			state: {
 				...base,
@@ -164,7 +169,8 @@ describe('mergeNodeResults', () => {
 			},
 		};
 
-		const resultB: { artifacts: Artifact[]; state: PipelineState } = {
+		const resultB: NodeResult = {
+			nodeId: 'b',
 			artifacts: [],
 			state: {
 				...base,
@@ -181,7 +187,8 @@ describe('mergeNodeResults', () => {
 		const issueA = createIssue({ id: 1, description: 'Issue from A' });
 		const issueB = createIssue({ id: 2, description: 'Issue from B' });
 
-		const resultA: { artifacts: Artifact[]; state: PipelineState } = {
+		const resultA: NodeResult = {
+			nodeId: 'a',
 			artifacts: [],
 			state: {
 				...base,
@@ -190,7 +197,8 @@ describe('mergeNodeResults', () => {
 			},
 		};
 
-		const resultB: { artifacts: Artifact[]; state: PipelineState } = {
+		const resultB: NodeResult = {
+			nodeId: 'b',
 			artifacts: [],
 			state: {
 				...base,

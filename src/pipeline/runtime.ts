@@ -23,6 +23,7 @@ import {
   isComplete,
   loadPipelineState,
   mergeNodeResults,
+  type NodeResult,
   savePipelineState,
   storeArtifact,
   storeData,
@@ -46,8 +47,6 @@ import {
  * Used by the runtime to wire operation outputs to edges.
  */
 interface InternalPipelineContext extends PipelineContext {
-  _mapSemanticName: (name: string, artifact: Artifact) => void;
-  _mapData: (name: string, value: unknown) => void;
   readonly _semanticNames: Map<string, Artifact>;
   readonly _dataMap: Map<string, unknown>;
 }
@@ -108,6 +107,30 @@ function createLogger(): Logger {
 }
 
 /**
+ * Populate context Maps from pipeline state records.
+ * Used by createContext (initial population) and after parallel merges (resync).
+ */
+function populateContextMaps(
+  state: PipelineState,
+  artifacts: Map<string, Artifact>,
+  semanticNames: Map<string, Artifact>,
+  dataMap: Map<string, unknown>,
+): void {
+  for (const [id, artifact] of Object.entries(state.artifacts)) {
+    artifacts.set(id, artifact);
+  }
+  for (const [key, artifactId] of Object.entries(state.semanticNames)) {
+    const artifact = state.artifacts[artifactId];
+    if (artifact) {
+      semanticNames.set(key, artifact);
+    }
+  }
+  for (const [key, value] of Object.entries(state.data)) {
+    dataMap.set(key, value);
+  }
+}
+
+/**
  * Create pipeline context for operation execution.
  */
 function createContext(
@@ -117,23 +140,9 @@ function createContext(
   artifactLayout: ArtifactLayout = 'viewport-subdir',
 ): InternalPipelineContext {
   const artifacts = new Map<string, Artifact>();
-  for (const [id, artifact] of Object.entries(state.artifacts)) {
-    artifacts.set(id, artifact);
-  }
-
   const semanticNames = new Map<string, Artifact>();
-  for (const [key, artifactId] of Object.entries(state.semanticNames)) {
-    const artifact = state.artifacts[artifactId];
-    if (artifact) {
-      semanticNames.set(key, artifact);
-    }
-  }
-
-  // Non-artifact data channel (e.g., AnalysisResult, ToolCall[])
   const dataMap = new Map<string, unknown>();
-  for (const [key, value] of Object.entries(state.data)) {
-    dataMap.set(key, value);
-  }
+  populateContextMaps(state, artifacts, semanticNames, dataMap);
 
   const createdDirs = new Set<string>();
 
@@ -177,12 +186,6 @@ function createContext(
     getDataRaw: (key) => dataMap.get(key),
     getViewportDir,
     getArtifactPath,
-    _mapSemanticName: (name: string, artifact: Artifact) => {
-      semanticNames.set(name, artifact);
-    },
-    _mapData: (name: string, value: unknown) => {
-      dataMap.set(name, value);
-    },
     _semanticNames: semanticNames,
     _dataMap: dataMap,
   };
@@ -195,7 +198,7 @@ function executeNode(
   state: PipelineState,
   nodeId: string,
   ctx: InternalPipelineContext,
-): Effect.Effect<{ artifacts: Artifact[]; state: PipelineState }, OperationError> {
+): Effect.Effect<NodeResult, OperationError> {
   return Effect.gen(function* () {
     const node = state.definition.nodes.find((n) => n.id === nodeId);
     if (!node) {
@@ -249,12 +252,12 @@ function executeNode(
         currentState = storeArtifact(currentState, artifact);
         currentState = storeSemanticName(currentState, `${nodeId}:${key}`, artifact.id);
         outputArtifacts.push(artifact.id);
-        ctx._mapSemanticName(`${nodeId}:${key}`, artifact);
+        ctx._semanticNames.set(`${nodeId}:${key}`, artifact);
       } else if (value !== undefined) {
         // Non-artifact data - store in data channel
         const dataKey = `${nodeId}:${key}`;
         currentState = storeData(currentState, dataKey, value);
-        ctx._mapData(dataKey, value);
+        ctx._dataMap.set(dataKey, value);
       }
     }
 
@@ -274,34 +277,19 @@ function executeNode(
     });
 
     return {
+      nodeId,
       artifacts: outputArtifacts.map((id) => currentState.artifacts[id]).filter((a): a is Artifact => a !== undefined),
       state: currentState,
     };
   });
 }
 
-/**
- * Sync context Maps from pipeline state after parallel execution.
- * Ensures downstream nodes can resolve artifacts/data from parallel predecessors.
- */
+/** @internal Exported for testing only. */
 export function syncContextFromState(
   state: PipelineState,
-  artifacts: Map<string, Artifact>,
-  semanticNames: Map<string, Artifact>,
-  dataMap: Map<string, unknown>,
+  ctx: { artifacts: Map<string, Artifact>; _semanticNames: Map<string, Artifact>; _dataMap: Map<string, unknown> },
 ): void {
-  for (const [id, artifact] of Object.entries(state.artifacts)) {
-    artifacts.set(id, artifact);
-  }
-  for (const [key, artifactId] of Object.entries(state.semanticNames)) {
-    const artifact = state.artifacts[artifactId];
-    if (artifact) {
-      semanticNames.set(key, artifact);
-    }
-  }
-  for (const [key, value] of Object.entries(state.data)) {
-    dataMap.set(key, value);
-  }
+  populateContextMaps(state, ctx.artifacts, ctx._semanticNames, ctx._dataMap);
 }
 
 /**
@@ -353,7 +341,7 @@ function executePipelineLoop(
       );
 
       state = mergeNodeResults(baseState, results);
-      syncContextFromState(state, ctx.artifacts, ctx._semanticNames, ctx._dataMap);
+      syncContextFromState(state, ctx);
 
       yield* savePipelineState(state).pipe(
         Effect.mapError((e) => makeError('persistence', `Failed to save state: ${e.message}`)),
