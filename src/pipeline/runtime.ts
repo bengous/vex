@@ -261,6 +261,30 @@ function executeNode(
 }
 
 /**
+ * Sync context Maps from pipeline state after parallel execution.
+ * Ensures downstream nodes can resolve artifacts/data from parallel predecessors.
+ */
+export function syncContextFromState(
+  state: PipelineState,
+  artifacts: Map<string, Artifact>,
+  semanticNames: Map<string, Artifact>,
+  dataMap: Map<string, unknown>,
+): void {
+  for (const [id, artifact] of Object.entries(state.artifacts)) {
+    artifacts.set(id, artifact);
+  }
+  for (const [key, artifactId] of Object.entries(state.semanticNames)) {
+    const artifact = state.artifacts[artifactId];
+    if (artifact) {
+      semanticNames.set(key, artifact);
+    }
+  }
+  for (const [key, value] of Object.entries(state.data)) {
+    dataMap.set(key, value);
+  }
+}
+
+/**
  * Shared DAG execution loop used by both runPipeline and resumePipeline.
  *
  * Executes nodes in topological order until complete or failed, saving state

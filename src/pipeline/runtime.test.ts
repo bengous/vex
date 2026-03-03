@@ -11,9 +11,10 @@ import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Exit } from 'effect';
+import type { Artifact } from '../core/types.js';
 import { runEffectExit } from '../testing/effect-helpers.js';
-import { runPipeline } from './runtime.js';
-import type { PipelineDefinition } from './types.js';
+import { runPipeline, syncContextFromState } from './runtime.js';
+import type { PipelineDefinition, PipelineState } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Fixtures
@@ -129,5 +130,39 @@ describe('runPipeline', () => {
       expect(Exit.isFailure(exit)).toBe(true);
       expect(existsSync(join(testDir, sessionId))).toBe(true);
     });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Context Sync Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('syncContextFromState', () => {
+  test('populates context maps from state', () => {
+    const artifact: Artifact = {
+      _kind: 'artifact',
+      id: 'test-art',
+      type: 'image',
+      path: '/tmp/test.png',
+      createdAt: new Date().toISOString(),
+      createdBy: 'test',
+      metadata: { width: 1920, height: 1080 },
+    };
+
+    const artifacts = new Map<string, Artifact>();
+    const semanticNames = new Map<string, Artifact>();
+    const dataMap = new Map<string, unknown>();
+
+    const state = {
+      artifacts: { 'test-art': artifact },
+      semanticNames: { 'capture:image': 'test-art' },
+      data: { 'capture:meta': { width: 1920 } },
+    } as unknown as PipelineState;
+
+    syncContextFromState(state, artifacts, semanticNames, dataMap);
+
+    expect(artifacts.get('test-art')).toBe(artifact);
+    expect(semanticNames.get('capture:image')).toBe(artifact);
+    expect(dataMap.get('capture:meta')).toEqual({ width: 1920 });
   });
 });
