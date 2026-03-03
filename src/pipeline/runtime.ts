@@ -71,6 +71,15 @@ const OPERATIONS: Record<string, Operation<any, any, any>> = {
   diff: diffOperation,
 };
 
+// biome-ignore lint/suspicious/noExplicitAny: Test operations have varying signatures
+export function registerTestOperation(name: string, operation: Operation<any, any, any>): void {
+  OPERATIONS[name] = operation;
+}
+
+export function unregisterTestOperation(name: string): void {
+  delete OPERATIONS[name];
+}
+
 function makeError(phase: PipelineError['phase'], detail: string, cause?: OperationError): PipelineError {
   return new PipelineError({ phase, detail, cause });
 }
