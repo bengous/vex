@@ -175,4 +175,33 @@ describe('mergeNodeResults', () => {
 		const merged = mergeNodeResults(base, [resultA, resultB]);
 		expect(merged.issues).toEqual(issues);
 	});
+
+	test('concatenates issues from multiple results', () => {
+		const base = createBaseState();
+		const issueA = createIssue({ id: 1, description: 'Issue from A' });
+		const issueB = createIssue({ id: 2, description: 'Issue from B' });
+
+		const resultA: { artifacts: Artifact[]; state: PipelineState } = {
+			artifacts: [],
+			state: {
+				...base,
+				issues: [issueA],
+				nodes: { ...base.nodes, a: { id: 'a', status: 'completed', outputArtifacts: [] } },
+			},
+		};
+
+		const resultB: { artifacts: Artifact[]; state: PipelineState } = {
+			artifacts: [],
+			state: {
+				...base,
+				issues: [issueB],
+				nodes: { ...base.nodes, b: { id: 'b', status: 'completed', outputArtifacts: [] } },
+			},
+		};
+
+		const merged = mergeNodeResults(base, [resultA, resultB]);
+		expect(merged.issues).toHaveLength(2);
+		expect(merged.issues).toContainEqual(issueA);
+		expect(merged.issues).toContainEqual(issueB);
+	});
 });

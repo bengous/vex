@@ -238,7 +238,7 @@ export function mergeNodeResults(
       artifacts: { ...merged.artifacts, ...result.state.artifacts },
       semanticNames: { ...merged.semanticNames, ...result.state.semanticNames },
       data: { ...merged.data, ...result.state.data },
-      issues: result.state.issues.length > 0 ? result.state.issues : merged.issues,
+      issues: [...merged.issues, ...result.state.issues],
     };
   }
   return merged;
