@@ -101,36 +101,34 @@ export interface ResolvedLoopOptions {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Raw CLI args for scan command.
+ * CLI args shared between scan and loop commands.
  */
-export interface ScanCliArgs {
+export interface CommonCliArgs {
   readonly url: Option.Option<string>;
   readonly preset: Option.Option<string>;
   readonly device: Option.Option<string>;
   readonly provider: Option.Option<string>;
   readonly model: Option.Option<string>;
-  readonly reasoning: Option.Option<string>;
   readonly providerProfile: Option.Option<string>;
-  readonly full: boolean;
   readonly placeholderMedia: boolean;
   readonly output: Option.Option<string>;
 }
 
 /**
+ * Raw CLI args for scan command.
+ */
+export interface ScanCliArgs extends CommonCliArgs {
+  readonly reasoning: Option.Option<string>;
+  readonly full: boolean;
+}
+
+/**
  * Raw CLI args for loop command.
  */
-export interface LoopCliArgs {
-  readonly url: Option.Option<string>;
-  readonly preset: Option.Option<string>;
-  readonly device: Option.Option<string>;
-  readonly provider: Option.Option<string>;
-  readonly model: Option.Option<string>;
-  readonly providerProfile: Option.Option<string>;
+export interface LoopCliArgs extends CommonCliArgs {
   readonly maxIterations: Option.Option<number>;
   readonly autoFix: Option.Option<string>;
   readonly dryRun: boolean;
-  readonly placeholderMedia: boolean;
-  readonly output: Option.Option<string>;
   readonly project: string;
 }
 
