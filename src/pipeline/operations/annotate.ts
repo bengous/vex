@@ -4,9 +4,9 @@
 
 import { Effect } from 'effect';
 import type { AnalysisResult, AnnotationsArtifact, Issue, ToolCall } from '../../core/types.js';
-import { resolveProviderLayer } from '../../providers/shared/registry.js';
 import { VisionProvider } from '../../providers/shared/service.js';
 import { type Operation, OperationError, type PipelineContext } from '../types.js';
+import { resolveProviderForOperation } from './resolve-provider.js';
 
 export interface AnnotateConfig {
   readonly provider: string;
@@ -130,11 +130,7 @@ export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, Annotat
 
       const prompt = ANNOTATION_PROMPT.replace('{{ISSUES}}', formatIssuesForPrompt(issues));
 
-      const providerLayer = yield* resolveProviderLayer(provider).pipe(
-        Effect.mapError(
-          (e) => new OperationError({ operation: 'annotate', detail: `Provider error: ${e.reason}`, cause: e }),
-        ),
-      );
+      const providerLayer = yield* resolveProviderForOperation(provider, 'annotate');
 
       const visionResult = yield* Effect.gen(function* () {
         const visionProvider = yield* VisionProvider;
