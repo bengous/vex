@@ -93,6 +93,7 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
       });
 
       const artifact: DiffReportArtifact = {
+        _kind: 'artifact',
         id: crypto.randomUUID(),
         type: 'diff-report',
         path: reportPath,

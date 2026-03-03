@@ -223,7 +223,7 @@ function executeNode(
     const outputArtifacts: string[] = [];
     const resultObj = result as Record<string, unknown>;
     for (const [key, value] of Object.entries(resultObj)) {
-      if (value && typeof value === 'object' && 'id' in value && 'type' in value) {
+      if (value && typeof value === 'object' && '_kind' in value && value._kind === 'artifact') {
         // This is an artifact - store in artifacts channel
         const artifact = value as Artifact;
         currentState = storeArtifact(currentState, artifact);

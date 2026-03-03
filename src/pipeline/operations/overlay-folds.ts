@@ -74,6 +74,7 @@ export const overlayFoldsOperation: Operation<OverlayFoldsInput, OverlayFoldsOut
       });
 
       const artifact: ImageArtifact = {
+        _kind: 'artifact',
         id: crypto.randomUUID(),
         type: 'image',
         path: outputPath,

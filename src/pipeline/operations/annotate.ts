@@ -93,6 +93,7 @@ function createAnnotationsArtifact(toolCalls: readonly ToolCall[], issueCount: n
     });
 
     const artifact: AnnotationsArtifact = {
+      _kind: 'artifact',
       id: crypto.randomUUID(),
       type: 'annotations',
       path: outputPath,
