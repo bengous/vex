@@ -96,6 +96,32 @@ export interface ResolvedLoopOptions {
   readonly projectRoot: string;
 }
 
+/**
+ * Preset fields shared between ScanPreset and LoopPreset.
+ */
+export interface CommonPresetFields {
+  readonly urls?: readonly string[];
+  readonly devices?: DeviceSpec;
+  readonly provider?: ProviderSpec;
+  readonly placeholderMedia?: PlaceholderMediaSpec;
+  readonly fullPageScrollFix?: FullPageScrollFixSpec;
+}
+
+/**
+ * Resolved options shared between scan and loop.
+ */
+export interface ResolvedCommonOptions {
+  readonly urls: readonly string[];
+  readonly devices: readonly string[];
+  readonly provider: string;
+  readonly model: string | undefined;
+  readonly reasoning: string | undefined;
+  readonly profile: string;
+  readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
+  readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
+  readonly outputDir: string;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CLI Args Types (from @effect/cli parsing)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -326,6 +352,129 @@ function resolveOutputDir(
 Use --output flag, set VEX_OUTPUT_DIR env var, or create vex.config.ts`,
     }),
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Common Resolution
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Resolve options shared between scan and loop commands.
+ *
+ * Callers load config and preset themselves (type-specific), then delegate
+ * URL, device, provider, model, profile, placeholder, scrollfix, and
+ * output resolution to this function.
+ */
+export function resolveCommonOptions(
+  cliArgs: CommonCliArgs,
+  preset: CommonPresetFields | undefined,
+  config: VexConfig | undefined,
+  presetName: string | undefined,
+): Effect.Effect<ResolvedCommonOptions, ConfigError | ProfileNotFoundError> {
+  return Effect.gen(function* () {
+    // Resolve URLs: CLI > preset > error
+    let urls: readonly string[];
+    if (Option.isSome(cliArgs.url)) {
+      urls = [cliArgs.url.value];
+    } else if (preset?.urls && preset.urls.length > 0) {
+      urls = preset.urls;
+    } else {
+      const presetInfo = presetName ? ` Preset '${presetName}' has no 'urls' field.` : '';
+      return yield* Effect.fail(
+        new ConfigError({
+          kind: 'missing_required',
+          message: `URL required.${presetInfo}
+Either provide a URL argument or add 'urls' field to the preset.`,
+        }),
+      );
+    }
+
+    // Resolve devices: CLI > preset > default
+    const presetProviderInfo = extractProviderInfo(preset?.provider);
+    const presetDevices = normalizeDevices(preset?.devices);
+    const devices = Option.isSome(cliArgs.device) ? [cliArgs.device.value] : (presetDevices ?? DEFAULTS.devices);
+    yield* validateResolvedDevices(devices);
+
+    // Resolve provider: CLI > preset > default
+    const provider = Option.isSome(cliArgs.provider)
+      ? cliArgs.provider.value
+      : (presetProviderInfo.provider ?? DEFAULTS.provider);
+
+    // Resolve model: CLI > preset > undefined
+    const model = Option.isSome(cliArgs.model) ? cliArgs.model.value : presetProviderInfo.model;
+
+    // Resolve reasoning: CLI > preset > undefined (scan-only, absent for loop)
+    const cliReasoning = 'reasoning' in cliArgs ? (cliArgs.reasoning as Option.Option<string>) : undefined;
+    const reasoning =
+      cliReasoning && Option.isSome(cliReasoning) ? cliReasoning.value : presetProviderInfo.reasoning;
+
+    // Resolve profile: CLI > preset.provider.profile > 'minimal'
+    let profile = DEFAULTS.profile;
+    if (preset?.provider && typeof preset.provider === 'object' && 'profile' in preset.provider) {
+      profile = preset.provider.profile ?? profile;
+    }
+
+    // CLI override with validation
+    if (Option.isSome(cliArgs.providerProfile)) {
+      const [profileProvider, profileName] = yield* parseProviderProfile(cliArgs.providerProfile.value);
+      const expectedPrefix = PROVIDER_TO_PROFILE_PREFIX[provider];
+
+      if (!expectedPrefix || profileProvider !== expectedPrefix) {
+        return yield* Effect.fail(
+          new ConfigError({
+            kind: 'invalid_schema',
+            message: `Profile '${profileProvider}:${profileName}' doesn't match provider '${provider}'.
+Expected: ${expectedPrefix ?? 'unknown'}:${profileName}`,
+          }),
+        );
+      }
+      profile = profileName;
+
+      // Validate profile exists for codex-cli
+      if (provider === 'codex-cli') {
+        yield* loadCodexProfile(profile, config).pipe(
+          Effect.mapError(() => {
+            const builtinNames = Object.keys(BUILTIN_PROFILES);
+            const userNames = Object.keys(config?.providers?.codex ?? {});
+            return new ProfileNotFoundError({
+              profileName: profile,
+              availableProfiles: [...builtinNames, ...userNames],
+            });
+          }),
+        );
+      }
+    }
+
+    // Validate model against knownModels
+    if (model) {
+      const providerMeta = getProviderMetadata(provider);
+      if (providerMeta?.knownModels && !providerMeta.knownModels.includes(model)) {
+        return yield* Effect.fail(
+          new ConfigError({
+            kind: 'invalid_schema',
+            message: `Model '${model}' not in known models for '${provider}'.
+Known: ${providerMeta.knownModels.join(', ')}`,
+          }),
+        );
+      }
+    }
+
+    const placeholderMedia = normalizePlaceholderMedia(cliArgs.placeholderMedia, preset?.placeholderMedia);
+    const fullPageScrollFix = normalizeFullPageScrollFix(preset?.fullPageScrollFix);
+    const outputDir = yield* resolveOutputDir(cliArgs.output, config);
+
+    return {
+      urls,
+      devices,
+      provider,
+      model,
+      reasoning,
+      profile,
+      placeholderMedia,
+      fullPageScrollFix,
+      outputDir,
+    };
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
