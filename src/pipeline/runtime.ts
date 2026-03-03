@@ -22,6 +22,8 @@ import {
   initializePipelineState,
   isComplete,
   loadPipelineState,
+  mergeNodeResults,
+  type NodeResult,
   savePipelineState,
   storeArtifact,
   storeData,
@@ -45,8 +47,8 @@ import {
  * Used by the runtime to wire operation outputs to edges.
  */
 interface InternalPipelineContext extends PipelineContext {
-  _mapSemanticName: (name: string, artifact: Artifact) => void;
-  _mapData: (name: string, value: unknown) => void;
+  readonly _semanticNames: Map<string, Artifact>;
+  readonly _dataMap: Map<string, unknown>;
 }
 
 export type ArtifactLayout = 'viewport-subdir' | 'session-root';
@@ -67,6 +69,17 @@ const OPERATIONS: Record<string, Operation<any, any, any>> = {
   render: renderOperation,
   diff: diffOperation,
 };
+
+/** @internal Test-only: register a mock operation for unit tests. */
+// biome-ignore lint/suspicious/noExplicitAny: Test operations have varying signatures
+export function registerTestOperation(name: string, operation: Operation<any, any, any>): void {
+  OPERATIONS[name] = operation;
+}
+
+/** @internal Test-only: remove a mock operation registered by registerTestOperation. */
+export function unregisterTestOperation(name: string): void {
+  delete OPERATIONS[name];
+}
 
 function makeError(phase: PipelineError['phase'], detail: string, cause?: OperationError): PipelineError {
   return new PipelineError({ phase, detail, cause });
@@ -94,6 +107,30 @@ function createLogger(): Logger {
 }
 
 /**
+ * Populate context Maps from pipeline state records.
+ * Used by createContext (initial population) and after parallel merges (resync).
+ */
+function populateContextMaps(
+  state: PipelineState,
+  artifacts: Map<string, Artifact>,
+  semanticNames: Map<string, Artifact>,
+  dataMap: Map<string, unknown>,
+): void {
+  for (const [id, artifact] of Object.entries(state.artifacts)) {
+    artifacts.set(id, artifact);
+  }
+  for (const [key, artifactId] of Object.entries(state.semanticNames)) {
+    const artifact = state.artifacts[artifactId];
+    if (artifact) {
+      semanticNames.set(key, artifact);
+    }
+  }
+  for (const [key, value] of Object.entries(state.data)) {
+    dataMap.set(key, value);
+  }
+}
+
+/**
  * Create pipeline context for operation execution.
  */
 function createContext(
@@ -103,23 +140,9 @@ function createContext(
   artifactLayout: ArtifactLayout = 'viewport-subdir',
 ): InternalPipelineContext {
   const artifacts = new Map<string, Artifact>();
-  for (const [id, artifact] of Object.entries(state.artifacts)) {
-    artifacts.set(id, artifact);
-  }
-
   const semanticNames = new Map<string, Artifact>();
-  for (const [key, artifactId] of Object.entries(state.semanticNames)) {
-    const artifact = state.artifacts[artifactId];
-    if (artifact) {
-      semanticNames.set(key, artifact);
-    }
-  }
-
-  // Non-artifact data channel (e.g., AnalysisResult, ToolCall[])
   const dataMap = new Map<string, unknown>();
-  for (const [key, value] of Object.entries(state.data)) {
-    dataMap.set(key, value);
-  }
+  populateContextMaps(state, artifacts, semanticNames, dataMap);
 
   const createdDirs = new Set<string>();
 
@@ -163,12 +186,8 @@ function createContext(
     getDataRaw: (key) => dataMap.get(key),
     getViewportDir,
     getArtifactPath,
-    _mapSemanticName: (name: string, artifact: Artifact) => {
-      semanticNames.set(name, artifact);
-    },
-    _mapData: (name: string, value: unknown) => {
-      dataMap.set(name, value);
-    },
+    _semanticNames: semanticNames,
+    _dataMap: dataMap,
   };
 }
 
@@ -179,7 +198,7 @@ function executeNode(
   state: PipelineState,
   nodeId: string,
   ctx: InternalPipelineContext,
-): Effect.Effect<{ artifacts: Artifact[]; state: PipelineState }, OperationError> {
+): Effect.Effect<NodeResult, OperationError> {
   return Effect.gen(function* () {
     const node = state.definition.nodes.find((n) => n.id === nodeId);
     if (!node) {
@@ -220,6 +239,10 @@ function executeNode(
 
     const result = yield* operation.execute(inputs, node.config, ctx);
 
+    // Parallel-safe: keys are "${nodeId}:${key}" — no two concurrent nodes share a
+    // prefix, so sibling writes are disjoint. Inputs are gathered from frozen baseState
+    // edges above (lines 218-233) before any writes. syncContextFromState reconciles
+    // all Maps after the full parallel wave completes.
     const outputArtifacts: string[] = [];
     const resultObj = result as Record<string, unknown>;
     for (const [key, value] of Object.entries(resultObj)) {
@@ -229,12 +252,12 @@ function executeNode(
         currentState = storeArtifact(currentState, artifact);
         currentState = storeSemanticName(currentState, `${nodeId}:${key}`, artifact.id);
         outputArtifacts.push(artifact.id);
-        ctx._mapSemanticName(`${nodeId}:${key}`, artifact);
+        ctx._semanticNames.set(`${nodeId}:${key}`, artifact);
       } else if (value !== undefined) {
         // Non-artifact data - store in data channel
         const dataKey = `${nodeId}:${key}`;
         currentState = storeData(currentState, dataKey, value);
-        ctx._mapData(dataKey, value);
+        ctx._dataMap.set(dataKey, value);
       }
     }
 
@@ -254,10 +277,19 @@ function executeNode(
     });
 
     return {
+      nodeId,
       artifacts: outputArtifacts.map((id) => currentState.artifacts[id]).filter((a): a is Artifact => a !== undefined),
       state: currentState,
     };
   });
+}
+
+/** @internal Exported for testing only. */
+export function syncContextFromState(
+  state: PipelineState,
+  ctx: { artifacts: Map<string, Artifact>; _semanticNames: Map<string, Artifact>; _dataMap: Map<string, unknown> },
+): void {
+  populateContextMaps(state, ctx.artifacts, ctx._semanticNames, ctx._dataMap);
 }
 
 /**
@@ -280,27 +312,36 @@ function executePipelineLoop(
         return yield* Effect.fail(makeError('execution', 'Pipeline deadlock: no ready nodes but not complete'));
       }
 
-      // Execute ready nodes (could be parallelized in future)
-      for (const nodeId of readyNodes) {
-        const result = yield* executeNode(state, nodeId, ctx).pipe(
-          Effect.catchAll((e) =>
-            Effect.gen(function* () {
-              const failedState = updateNodeState(state, nodeId, {
-                status: 'failed',
-                error: e,
-              });
-              yield* savePipelineState({
-                ...failedState,
-                status: 'failed',
-                completedAt: new Date().toISOString(),
-              }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
-              return yield* Effect.fail(e);
-            }),
+      // Execute ready nodes in parallel — independent nodes at the same
+      // topological level have disjoint state writes (node-prefixed keys)
+      const baseState = state;
+      // Fail-fast: first node failure interrupts remaining fibers (no point continuing
+      // a doomed wave). Use { mode: 'either' } if partial results are ever needed.
+      const results = yield* Effect.all(
+        readyNodes.map((nodeId) =>
+          executeNode(baseState, nodeId, ctx).pipe(
+            Effect.catchAll((e) =>
+              Effect.gen(function* () {
+                const failedState = updateNodeState(baseState, nodeId, {
+                  status: 'failed',
+                  error: e,
+                });
+                yield* savePipelineState({
+                  ...failedState,
+                  status: 'failed',
+                  completedAt: new Date().toISOString(),
+                }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
+                return yield* Effect.fail(e);
+              }),
+            ),
+            Effect.mapError((e) => makeError('execution', `Node ${nodeId} failed: ${e.message}`, e)),
           ),
-          Effect.mapError((e) => makeError('execution', `Node ${nodeId} failed: ${e.message}`, e)),
-        );
-        state = result.state;
-      }
+        ),
+        { concurrency: 'unbounded' },
+      );
+
+      state = mergeNodeResults(baseState, results);
+      syncContextFromState(state, ctx);
 
       yield* savePipelineState(state).pipe(
         Effect.mapError((e) => makeError('persistence', `Failed to save state: ${e.message}`)),

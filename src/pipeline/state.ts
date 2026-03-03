@@ -202,3 +202,47 @@ export function getReadyNodes(state: PipelineState): string[] {
 
   return ready;
 }
+
+/** Result from a single node execution, used by mergeNodeResults. */
+export interface NodeResult {
+  readonly nodeId: string;
+  readonly artifacts: Artifact[];
+  readonly state: PipelineState;
+}
+
+/**
+ * Merge results from parallel node executions into a single state.
+ *
+ * Each parallel executeNode receives the base state, so each result contains
+ * the full nodes record with only its own entry updated. We detect changed
+ * nodes by comparing status against the base state to avoid later results
+ * overwriting earlier results' completed nodes back to pending.
+ *
+ * Safe because parallel nodes write to disjoint key spaces:
+ * - nodes[nodeId] — unique per node
+ * - artifacts[uuid] — unique IDs
+ * - semanticNames["nodeId:field"] — node-prefixed
+ * - data["nodeId:field"] — node-prefixed
+ */
+export function mergeNodeResults(
+  base: PipelineState,
+  results: ReadonlyArray<NodeResult>,
+): PipelineState {
+  const [only] = results;
+  if (only && results.length === 1) return only.state;
+
+  let merged = base;
+  for (const result of results) {
+    const changedNode = result.state.nodes[result.nodeId];
+
+    merged = {
+      ...merged,
+      nodes: { ...merged.nodes, ...(changedNode ? { [result.nodeId]: changedNode } : {}) },
+      artifacts: { ...merged.artifacts, ...result.state.artifacts },
+      semanticNames: { ...merged.semanticNames, ...result.state.semanticNames },
+      data: { ...merged.data, ...result.state.data },
+      issues: [...merged.issues, ...result.state.issues],
+    };
+  }
+  return merged;
+}
