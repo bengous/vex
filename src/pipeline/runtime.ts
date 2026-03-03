@@ -22,6 +22,7 @@ import {
   initializePipelineState,
   isComplete,
   loadPipelineState,
+  mergeNodeResults,
   savePipelineState,
   storeArtifact,
   storeData,
@@ -47,6 +48,8 @@ import {
 interface InternalPipelineContext extends PipelineContext {
   _mapSemanticName: (name: string, artifact: Artifact) => void;
   _mapData: (name: string, value: unknown) => void;
+  readonly _semanticNames: Map<string, Artifact>;
+  readonly _dataMap: Map<string, unknown>;
 }
 
 export type ArtifactLayout = 'viewport-subdir' | 'session-root';
@@ -169,6 +172,8 @@ function createContext(
     _mapData: (name: string, value: unknown) => {
       dataMap.set(name, value);
     },
+    _semanticNames: semanticNames,
+    _dataMap: dataMap,
   };
 }
 
@@ -304,27 +309,34 @@ function executePipelineLoop(
         return yield* Effect.fail(makeError('execution', 'Pipeline deadlock: no ready nodes but not complete'));
       }
 
-      // Execute ready nodes (could be parallelized in future)
-      for (const nodeId of readyNodes) {
-        const result = yield* executeNode(state, nodeId, ctx).pipe(
-          Effect.catchAll((e) =>
-            Effect.gen(function* () {
-              const failedState = updateNodeState(state, nodeId, {
-                status: 'failed',
-                error: e,
-              });
-              yield* savePipelineState({
-                ...failedState,
-                status: 'failed',
-                completedAt: new Date().toISOString(),
-              }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
-              return yield* Effect.fail(e);
-            }),
+      // Execute ready nodes in parallel — independent nodes at the same
+      // topological level have disjoint state writes (node-prefixed keys)
+      const baseState = state;
+      const results = yield* Effect.all(
+        readyNodes.map((nodeId) =>
+          executeNode(baseState, nodeId, ctx).pipe(
+            Effect.catchAll((e) =>
+              Effect.gen(function* () {
+                const failedState = updateNodeState(baseState, nodeId, {
+                  status: 'failed',
+                  error: e,
+                });
+                yield* savePipelineState({
+                  ...failedState,
+                  status: 'failed',
+                  completedAt: new Date().toISOString(),
+                }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
+                return yield* Effect.fail(e);
+              }),
+            ),
+            Effect.mapError((e) => makeError('execution', `Node ${nodeId} failed: ${e.message}`, e)),
           ),
-          Effect.mapError((e) => makeError('execution', `Node ${nodeId} failed: ${e.message}`, e)),
-        );
-        state = result.state;
-      }
+        ),
+        { concurrency: 'unbounded' },
+      );
+
+      state = mergeNodeResults(baseState, results);
+      syncContextFromState(state, ctx.artifacts, ctx._semanticNames, ctx._dataMap);
 
       yield* savePipelineState(state).pipe(
         Effect.mapError((e) => makeError('persistence', `Failed to save state: ${e.message}`)),
