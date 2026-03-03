@@ -8,8 +8,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Option } from 'effect';
 import { runEffect, runEffectExit } from '../testing/effect-helpers.js';
-import type { LoopCliArgs, ScanCliArgs } from './resolve.js';
-import { resolveLoopOptions, resolveScanOptions } from './resolve.js';
+import type { CommonCliArgs, LoopCliArgs, ScanCliArgs } from './resolve.js';
+import { resolveCommonOptions, resolveLoopOptions, resolveScanOptions } from './resolve.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Helpers
@@ -41,6 +41,17 @@ const emptyLoopArgs: LoopCliArgs = {
   placeholderMedia: false,
   output: Option.none(),
   project: '/test/project',
+};
+
+const emptyCommonArgs: CommonCliArgs = {
+  url: Option.none(),
+  preset: Option.none(),
+  device: Option.none(),
+  provider: Option.none(),
+  model: Option.none(),
+  providerProfile: Option.none(),
+  placeholderMedia: false,
+  output: Option.none(),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -422,5 +433,132 @@ describe('resolveScanOptions profile handling', () => {
       expect(exit.cause.error._tag).toBe('ProfileNotFoundError');
       expect((exit.cause.error as { availableProfiles: readonly string[] }).availableProfiles).toContain('fast');
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Common Resolution Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('resolveCommonOptions', () => {
+  let originalEnv: string | undefined;
+
+  beforeEach(() => {
+    originalEnv = process.env.VEX_OUTPUT_DIR;
+    process.env.VEX_OUTPUT_DIR = '/test/output';
+  });
+
+  afterEach(() => {
+    if (originalEnv !== undefined) {
+      process.env.VEX_OUTPUT_DIR = originalEnv;
+    } else {
+      delete process.env.VEX_OUTPUT_DIR;
+    }
+  });
+
+  it('resolves URL from CLI arg', async () => {
+    const args: CommonCliArgs = {
+      ...emptyCommonArgs,
+      url: Option.some('https://example.com'),
+    };
+
+    const result = await runEffect(resolveCommonOptions(args, undefined, undefined, undefined));
+
+    expect(result.urls).toEqual(['https://example.com']);
+  });
+
+  it('resolves URL from preset', async () => {
+    const preset = { urls: ['https://preset.com'] as readonly string[] };
+
+    const result = await runEffect(resolveCommonOptions(emptyCommonArgs, preset, undefined, 'mypreset'));
+
+    expect(result.urls).toEqual(['https://preset.com']);
+  });
+
+  it('errors when URL missing from both CLI and preset', async () => {
+    const result = await runEffectExit(resolveCommonOptions(emptyCommonArgs, undefined, undefined, undefined));
+
+    expect(result._tag).toBe('Failure');
+  });
+
+  it('includes preset name in URL error message', async () => {
+    const result = await runEffectExit(resolveCommonOptions(emptyCommonArgs, {}, undefined, 'mypreset'));
+
+    expect(result._tag).toBe('Failure');
+    if (result._tag === 'Failure' && result.cause._tag === 'Fail') {
+      expect((result.cause.error as { message: string }).message).toContain("Preset 'mypreset'");
+    }
+  });
+
+  it('resolves devices from CLI over preset', async () => {
+    const args: CommonCliArgs = {
+      ...emptyCommonArgs,
+      url: Option.some('https://example.com'),
+      device: Option.some('iphone-15-pro'),
+    };
+    const preset = { devices: 'desktop-1920' as const };
+
+    const result = await runEffect(resolveCommonOptions(args, preset, undefined, undefined));
+
+    expect(result.devices).toEqual(['iphone-15-pro']);
+  });
+
+  it('defaults devices to desktop-1920', async () => {
+    const args: CommonCliArgs = {
+      ...emptyCommonArgs,
+      url: Option.some('https://example.com'),
+    };
+
+    const result = await runEffect(resolveCommonOptions(args, undefined, undefined, undefined));
+
+    expect(result.devices).toEqual(['desktop-1920']);
+  });
+
+  it('resolves provider from CLI over preset', async () => {
+    const args: CommonCliArgs = {
+      ...emptyCommonArgs,
+      url: Option.some('https://example.com'),
+      provider: Option.some('claude-cli'),
+    };
+    const preset = { provider: { name: 'ollama' as const } };
+
+    const result = await runEffect(resolveCommonOptions(args, preset, undefined, undefined));
+
+    expect(result.provider).toBe('claude-cli');
+  });
+
+  it('defaults provider to ollama', async () => {
+    const args: CommonCliArgs = {
+      ...emptyCommonArgs,
+      url: Option.some('https://example.com'),
+    };
+
+    const result = await runEffect(resolveCommonOptions(args, undefined, undefined, undefined));
+
+    expect(result.provider).toBe('ollama');
+  });
+
+  it('resolves placeholderMedia from CLI flag', async () => {
+    const args: CommonCliArgs = {
+      ...emptyCommonArgs,
+      url: Option.some('https://example.com'),
+      placeholderMedia: true,
+    };
+
+    const result = await runEffect(resolveCommonOptions(args, undefined, undefined, undefined));
+
+    expect(result.placeholderMedia).toEqual({ enabled: true, svgMinSize: 100, preserve: [] });
+  });
+
+  it('resolves outputDir from CLI', async () => {
+    const args: CommonCliArgs = {
+      ...emptyCommonArgs,
+      url: Option.some('https://example.com'),
+      output: Option.some('/custom/output'),
+    };
+
+    const result = await runEffect(resolveCommonOptions(args, undefined, undefined, undefined));
+
+    expect(result.outputDir).toBe('/custom/output');
   });
 });
