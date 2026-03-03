@@ -551,121 +551,29 @@ Create a config file or remove the --preset flag.`,
       preset = yield* getLoopPreset(config, cliArgs.preset.value);
     }
 
-    let urls: readonly string[];
-    if (Option.isSome(cliArgs.url)) {
-      urls = [cliArgs.url.value];
-    } else if (preset?.urls && preset.urls.length > 0) {
-      urls = preset.urls;
-    } else {
-      const presetInfo = Option.isSome(cliArgs.preset) ? ` Preset '${cliArgs.preset.value}' has no 'urls' field.` : '';
-      return yield* Effect.fail(
-        new ConfigError({
-          kind: 'missing_required',
-          message: `URL required.${presetInfo}
-Either provide a URL argument or add 'urls' field to the preset.`,
-        }),
-      );
-    }
+    const { reasoning: _reasoning, ...commonBase } = yield* resolveCommonOptions(
+      cliArgs,
+      preset,
+      config,
+      Option.getOrUndefined(cliArgs.preset),
+    );
 
-    // Resolve devices: CLI > preset > default
-    const presetProviderInfo = extractProviderInfo(preset?.provider);
-    const presetDevices = normalizeDevices(preset?.devices);
-
-    const devices = Option.isSome(cliArgs.device) ? [cliArgs.device.value] : (presetDevices ?? DEFAULTS.devices);
-    yield* validateResolvedDevices(devices);
-
-    // Resolve provider: CLI > preset > default
-    const provider = Option.isSome(cliArgs.provider)
-      ? cliArgs.provider.value
-      : (presetProviderInfo.provider ?? DEFAULTS.provider);
-
-    // Resolve model: CLI > preset > undefined
-    const model = Option.isSome(cliArgs.model) ? cliArgs.model.value : presetProviderInfo.model;
-
-    // Resolve profile: CLI > preset.provider.profile > 'minimal'
-    let profile = DEFAULTS.profile;
-    if (preset?.provider && typeof preset.provider === 'object' && 'profile' in preset.provider) {
-      profile = preset.provider.profile ?? profile;
-    }
-
-    // CLI override with validation
-    if (Option.isSome(cliArgs.providerProfile)) {
-      const [profileProvider, profileName] = yield* parseProviderProfile(cliArgs.providerProfile.value);
-      const expectedPrefix = PROVIDER_TO_PROFILE_PREFIX[provider];
-
-      if (!expectedPrefix || profileProvider !== expectedPrefix) {
-        return yield* Effect.fail(
-          new ConfigError({
-            kind: 'invalid_schema',
-            message: `Profile '${profileProvider}:${profileName}' doesn't match provider '${provider}'.
-Expected: ${expectedPrefix ?? 'unknown'}:${profileName}`,
-          }),
-        );
-      }
-      profile = profileName;
-
-      // Validate profile exists for codex-cli
-      if (provider === 'codex-cli') {
-        yield* loadCodexProfile(profile, config).pipe(
-          Effect.mapError(() => {
-            const builtinNames = Object.keys(BUILTIN_PROFILES);
-            const userNames = Object.keys(config?.providers?.codex ?? {});
-            return new ProfileNotFoundError({
-              profileName: profile,
-              availableProfiles: [...builtinNames, ...userNames],
-            });
-          }),
-        );
-      }
-    }
-
-    // Validate model against knownModels
-    if (model) {
-      const providerMeta = getProviderMetadata(provider);
-      if (providerMeta?.knownModels && !providerMeta.knownModels.includes(model)) {
-        return yield* Effect.fail(
-          new ConfigError({
-            kind: 'invalid_schema',
-            message: `Model '${model}' not in known models for '${provider}'.
-Known: ${providerMeta.knownModels.join(', ')}`,
-          }),
-        );
-      }
-    }
-
-    // Resolve maxIterations: CLI > preset > default
     const maxIterations = Option.isSome(cliArgs.maxIterations)
       ? cliArgs.maxIterations.value
       : (preset?.maxIterations ?? DEFAULTS.maxIterations);
 
-    // Resolve autoFix: CLI > preset > default
-    const autoFix = (Option.isSome(cliArgs.autoFix) ? cliArgs.autoFix.value : (preset?.autoFix ?? DEFAULTS.autoFix)) as
-      | 'high'
-      | 'medium'
-      | 'none';
+    const autoFix = (Option.isSome(cliArgs.autoFix)
+      ? cliArgs.autoFix.value
+      : (preset?.autoFix ?? DEFAULTS.autoFix)) as 'high' | 'medium' | 'none';
 
     const dryRun = cliArgs.dryRun || preset?.dryRun || DEFAULTS.dryRun;
-    const placeholderMedia = normalizePlaceholderMedia(cliArgs.placeholderMedia, preset?.placeholderMedia);
-    const fullPageScrollFix = normalizeFullPageScrollFix(preset?.fullPageScrollFix);
-
-    const outputDir = yield* resolveOutputDir(cliArgs.output, config);
-
-    // Project is required and CLI-only
-    const projectRootResolved = cliArgs.project;
 
     return {
-      urls,
-      devices,
-      provider,
-      model,
-      profile,
+      ...commonBase,
       maxIterations,
       autoFix,
       dryRun,
-      placeholderMedia,
-      fullPageScrollFix,
-      outputDir,
-      projectRoot: projectRootResolved,
+      projectRoot: cliArgs.project,
     };
   });
 }
