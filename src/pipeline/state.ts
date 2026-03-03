@@ -221,7 +221,7 @@ export function mergeNodeResults(
   base: PipelineState,
   results: ReadonlyArray<{ artifacts: Artifact[]; state: PipelineState }>,
 ): PipelineState {
-  if (results.length === 1) return results[0]!.state;
+  if (results.length === 1) return results[0].state;
 
   let merged = base;
   for (const result of results) {

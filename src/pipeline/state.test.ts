@@ -4,8 +4,8 @@
 
 import { describe, expect, test } from 'bun:test';
 import type { Artifact, Issue } from '../core/types.js';
-import type { PipelineDefinition, PipelineState } from './types.js';
 import { mergeNodeResults } from './state.js';
+import type { PipelineDefinition, PipelineState } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Fixtures
