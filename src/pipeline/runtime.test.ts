@@ -158,11 +158,17 @@ describe('syncContextFromState', () => {
     const semanticNames = new Map<string, Artifact>();
     const dataMap = new Map<string, unknown>();
 
-    const state = {
+    const state: PipelineState = {
+      definition: { name: 'test', description: '', nodes: [], edges: [], inputs: [], outputs: [] },
+      sessionDir: '/tmp/test-session',
+      startedAt: new Date().toISOString(),
+      status: 'completed',
+      nodes: {},
       artifacts: { 'test-art': artifact },
-      semanticNames: { 'capture:image': 'test-art' },
       data: { 'capture:meta': { width: 1920 } },
-    } as unknown as PipelineState;
+      issues: [],
+      semanticNames: { 'capture:image': 'test-art' },
+    };
 
     syncContextFromState(state, artifacts, semanticNames, dataMap);
 

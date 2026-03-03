@@ -71,11 +71,13 @@ const OPERATIONS: Record<string, Operation<any, any, any>> = {
   diff: diffOperation,
 };
 
+/** @internal Test-only: register a mock operation for unit tests. */
 // biome-ignore lint/suspicious/noExplicitAny: Test operations have varying signatures
 export function registerTestOperation(name: string, operation: Operation<any, any, any>): void {
   OPERATIONS[name] = operation;
 }
 
+/** @internal Test-only: remove a mock operation registered by registerTestOperation. */
 export function unregisterTestOperation(name: string): void {
   delete OPERATIONS[name];
 }
@@ -234,6 +236,10 @@ function executeNode(
 
     const result = yield* operation.execute(inputs, node.config, ctx);
 
+    // Parallel-safe: keys are "${nodeId}:${key}" — no two concurrent nodes share a
+    // prefix, so sibling writes are disjoint. Inputs are gathered from frozen baseState
+    // edges above (lines 218-233) before any writes. syncContextFromState reconciles
+    // all Maps after the full parallel wave completes.
     const outputArtifacts: string[] = [];
     const resultObj = result as Record<string, unknown>;
     for (const [key, value] of Object.entries(resultObj)) {
@@ -321,6 +327,8 @@ function executePipelineLoop(
       // Execute ready nodes in parallel — independent nodes at the same
       // topological level have disjoint state writes (node-prefixed keys)
       const baseState = state;
+      // Fail-fast: first node failure interrupts remaining fibers (no point continuing
+      // a doomed wave). Use { mode: 'either' } if partial results are ever needed.
       const results = yield* Effect.all(
         readyNodes.map((nodeId) =>
           executeNode(baseState, nodeId, ctx).pipe(
