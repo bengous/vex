@@ -130,6 +130,7 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
       });
 
       const artifact: AnalysisArtifact = {
+        _kind: 'artifact',
         id: crypto.randomUUID(),
         type: 'analysis',
         path: outputPath,

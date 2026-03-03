@@ -99,6 +99,7 @@ export function createMockImageArtifact(options: MockImageArtifactOptions): Imag
   const { path, id = `img_${Date.now()}`, width = 1920, height = 1080, viewport } = options;
 
   return {
+    _kind: 'artifact',
     id,
     type: 'image',
     path,
