@@ -272,6 +272,63 @@ describe('verifyChanges', () => {
     expect(result.metrics.introducedCount).toBe(1);
     expect(result.metrics.unchangedCount).toBe(1);
   });
+
+  test('empty before and after → all arrays empty with improved verdict', async () => {
+    const baseline = createPipelineState([]);
+    const current = createPipelineState([]);
+
+    const result = await Effect.runPromise(verifyChanges(baseline, current));
+
+    expect(result.resolved).toEqual([]);
+    expect(result.introduced).toEqual([]);
+    expect(result.unchanged).toEqual([]);
+    expect(result.verdict).toBe('improved');
+    expect(result.metrics.baselineIssueCount).toBe(0);
+    expect(result.metrics.currentIssueCount).toBe(0);
+    expect(result.metrics.improvementPercent).toBe(100);
+  });
+
+  test('all issues resolved (perfect improvement)', async () => {
+    const issues = [
+      createIssue({ id: 1, description: 'layout overlap detected', severity: 'high' }),
+      createIssue({ id: 2, description: 'contrast ratio too low', severity: 'medium' }),
+      createIssue({ id: 3, description: 'missing alt text', severity: 'low' }),
+    ];
+    const baseline = createPipelineState(issues);
+    const current = createPipelineState([]);
+
+    const result = await Effect.runPromise(verifyChanges(baseline, current));
+
+    expect(result.resolved).toHaveLength(3);
+    expect(result.introduced).toEqual([]);
+    expect(result.unchanged).toEqual([]);
+    expect(result.verdict).toBe('improved');
+    expect(result.metrics.resolvedCount).toBe(3);
+    expect(result.metrics.improvementPercent).toBe(100);
+  });
+
+  test('similar but not identical descriptions → fingerprint near-miss', async () => {
+    // These share some words but differ in their first-5-word sorted set
+    const baseIssue = createIssue({
+      id: 1,
+      description: 'header font size inconsistent across breakpoints',
+    });
+    const currIssue = createIssue({
+      id: 2,
+      description: 'navigation menu alignment broken on mobile',
+    });
+    const baseline = createPipelineState([baseIssue]);
+    const current = createPipelineState([currIssue]);
+
+    const result = await Effect.runPromise(verifyChanges(baseline, current));
+
+    // Different first-5-word sets → different fingerprints → no match
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved[0]).toEqual(baseIssue);
+    expect(result.introduced).toHaveLength(1);
+    expect(result.introduced[0]).toEqual(currIssue);
+    expect(result.unchanged).toEqual([]);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
