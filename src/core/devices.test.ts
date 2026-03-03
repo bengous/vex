@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { lookupDevice } from './devices.js';
+import { getAllDeviceIds, lookupDevice } from './devices.js';
 
 describe('lookupDevice iPhone SE variants', () => {
   test('iphone-se-2016 maps to 320x568', () => {
