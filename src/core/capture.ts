@@ -453,6 +453,7 @@ export async function captureScreenshot(
     await Bun.write(outputPath, buffer);
 
     const artifact: ImageArtifact = {
+      _kind: 'artifact',
       id: `img_${Date.now()}`,
       type: 'image',
       path: outputPath,
@@ -630,6 +631,7 @@ export async function captureWithDOM(
     };
 
     const artifact: ImageArtifact = {
+      _kind: 'artifact',
       id: `img_${Date.now()}`,
       type: 'image',
       path: outputPath,

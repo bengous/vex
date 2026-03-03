@@ -95,6 +95,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
             ctx.storeArtifact(artifact);
 
             const domArtifact: DOMSnapshotArtifact = {
+              _kind: 'artifact',
               id: crypto.randomUUID(),
               type: 'dom-snapshot',
               path: domPath,
