@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { Issue } from '../../core/types.js';
+import { createIssue } from '../../testing/factories.js';
 import { loadLocateSessionContext, loadLocateTargetSet } from './locate.js';
 
 const tempDirs: string[] = [];
@@ -18,15 +18,6 @@ function writeJson(path: string, data: unknown): void {
   writeFileSync(path, JSON.stringify(data, null, 2), 'utf-8');
 }
 
-function createIssue(id: number): Issue {
-  return {
-    id,
-    description: `Issue ${id}`,
-    severity: 'medium',
-    region: 'A1',
-  };
-}
-
 afterEach(() => {
   for (const dir of tempDirs.splice(0, tempDirs.length)) {
     rmSync(dir, { recursive: true, force: true });
@@ -36,7 +27,7 @@ afterEach(() => {
 describe('loadLocateSessionContext', () => {
   test('loads issues directly from pipeline state and keeps root session as DOM source', () => {
     const sessionDir = makeTempDir();
-    writeJson(join(sessionDir, 'state.json'), { issues: [createIssue(1)] });
+    writeJson(join(sessionDir, 'state.json'), { issues: [createIssue({ id: 1 })] });
 
     const result = loadLocateSessionContext(sessionDir);
 
@@ -48,7 +39,7 @@ describe('loadLocateSessionContext', () => {
   test('falls back to analysis artifact for pipeline session', () => {
     const sessionDir = makeTempDir();
     const analysisPath = join(sessionDir, 'analysis.json');
-    writeJson(analysisPath, { issues: [createIssue(2)] });
+    writeJson(analysisPath, { issues: [createIssue({ id: 2 })] });
     writeJson(join(sessionDir, 'state.json'), {
       artifacts: {
         analysis_1: {
@@ -73,7 +64,7 @@ describe('loadLocateSessionContext', () => {
       type: 'vex-loop',
       iterationHistory: [
         {
-          issuesFound: [createIssue(3)],
+          issuesFound: [createIssue({ id: 3 })],
           pipelineState: {
             sessionDir: latestPipelineSessionDir,
           },
@@ -97,7 +88,7 @@ describe('loadLocateSessionContext', () => {
         {
           pipelineState: {
             sessionDir: latestPipelineSessionDir,
-            issues: [createIssue(4)],
+            issues: [createIssue({ id: 4 })],
           },
         },
       ],
@@ -114,7 +105,7 @@ describe('loadLocateSessionContext', () => {
     const sessionDir = makeTempDir();
     const latestPipelineSessionDir = join(sessionDir, '20260219-iteration');
     const analysisPath = join(latestPipelineSessionDir, 'analysis.json');
-    writeJson(analysisPath, { issues: [createIssue(5)] });
+    writeJson(analysisPath, { issues: [createIssue({ id: 5 })] });
     writeJson(join(sessionDir, 'state.json'), {
       type: 'vex-loop',
       iterationHistory: [
@@ -152,7 +143,7 @@ describe('loadLocateSessionContext', () => {
           },
         },
       ],
-      issues: [createIssue(6)],
+      issues: [createIssue({ id: 6 })],
     });
 
     const result = loadLocateSessionContext(sessionDir);
@@ -166,7 +157,7 @@ describe('loadLocateSessionContext', () => {
 describe('loadLocateTargetSet', () => {
   test('returns session mode for non-audit directory', () => {
     const sessionDir = makeTempDir();
-    writeJson(join(sessionDir, 'state.json'), { issues: [createIssue(1)] });
+    writeJson(join(sessionDir, 'state.json'), { issues: [createIssue({ id: 1 })] });
 
     const result = loadLocateTargetSet(sessionDir);
 
@@ -181,10 +172,10 @@ describe('loadLocateTargetSet', () => {
     writeJson(join(auditDir, 'audit.json'), { type: 'vex-audit' });
 
     const firstStateDir = join(auditDir, 'pages', 'example.com', 'fr', '_index', 'desktop-1920x1080');
-    writeJson(join(firstStateDir, 'state.json'), { issues: [createIssue(10)] });
+    writeJson(join(firstStateDir, 'state.json'), { issues: [createIssue({ id: 10 })] });
 
     const secondStateDir = join(auditDir, 'pages', 'example.com', 'fr', 'about', '_index', 'desktop-1920x1080');
-    writeJson(join(secondStateDir, 'state.json'), { issues: [createIssue(20)] });
+    writeJson(join(secondStateDir, 'state.json'), { issues: [createIssue({ id: 20 })] });
 
     const result = loadLocateTargetSet(auditDir);
 

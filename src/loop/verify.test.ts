@@ -8,46 +8,9 @@
 import { describe, expect, test } from 'bun:test';
 import { Effect } from 'effect';
 import type { Issue } from '../core/types.js';
-import type { PipelineDefinition, PipelineState } from '../pipeline/types.js';
+import { createIssue, createPipelineState } from '../testing/factories.js';
 import type { VerificationVerdict } from './types.js';
 import { isImproved, isResolved, verifyChanges } from './verify.js';
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Test Fixtures
-// ═══════════════════════════════════════════════════════════════════════════
-
-function createIssue(overrides: Partial<Issue> = {}): Issue {
-  return {
-    id: 1,
-    description: 'Test issue description',
-    severity: 'medium',
-    region: { x: 100, y: 200, width: 50, height: 50 },
-    ...overrides,
-  };
-}
-
-const stubDefinition: PipelineDefinition = {
-  name: 'test',
-  description: 'test pipeline',
-  nodes: [],
-  edges: [],
-  inputs: [],
-  outputs: [],
-};
-
-function createPipelineState(issues: Issue[]): PipelineState {
-  return {
-    definition: stubDefinition,
-    sessionDir: '/tmp/test-session',
-    startedAt: new Date().toISOString(),
-    status: 'completed',
-    nodes: {},
-    artifacts: {},
-    data: {},
-    issues,
-    semanticNames: {},
-  };
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Fingerprinting Tests (via verifyChanges)
@@ -56,8 +19,8 @@ function createPipelineState(issues: Issue[]): PipelineState {
 describe('issueFingerprint (via verifyChanges)', () => {
   test('same issue matches itself', async () => {
     const issue = createIssue({ description: 'Button too small' });
-    const baseline = createPipelineState([issue]);
-    const current = createPipelineState([issue]);
+    const baseline = createPipelineState({ issues: [issue] });
+    const current = createPipelineState({ issues: [issue] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -69,8 +32,8 @@ describe('issueFingerprint (via verifyChanges)', () => {
   test('different severity → different fingerprint → not matched', async () => {
     const baseIssue = createIssue({ id: 1, severity: 'high', description: 'Test issue' });
     const currIssue = createIssue({ id: 2, severity: 'low', description: 'Test issue' });
-    const baseline = createPipelineState([baseIssue]);
-    const current = createPipelineState([currIssue]);
+    const baseline = createPipelineState({ issues: [baseIssue] });
+    const current = createPipelineState({ issues: [currIssue] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -85,14 +48,14 @@ describe('issueFingerprint (via verifyChanges)', () => {
     const issueWithBox = createIssue({ region: { x: 0, y: 0, width: 200, height: 200 } });
 
     // String region should match itself
-    const baseline1 = createPipelineState([issueWithString]);
-    const current1 = createPipelineState([issueWithString]);
+    const baseline1 = createPipelineState({ issues: [issueWithString] });
+    const current1 = createPipelineState({ issues: [issueWithString] });
     const result1 = await Effect.runPromise(verifyChanges(baseline1, current1));
     expect(result1.unchanged.length).toBe(1);
 
     // Box region should match itself
-    const baseline2 = createPipelineState([issueWithBox]);
-    const current2 = createPipelineState([issueWithBox]);
+    const baseline2 = createPipelineState({ issues: [issueWithBox] });
+    const current2 = createPipelineState({ issues: [issueWithBox] });
     const result2 = await Effect.runPromise(verifyChanges(baseline2, current2));
     expect(result2.unchanged.length).toBe(1);
   });
@@ -101,8 +64,8 @@ describe('issueFingerprint (via verifyChanges)', () => {
     // Fingerprint uses first 5 words, sorted
     const issue1 = createIssue({ description: 'alpha beta gamma delta epsilon' });
     const issue2 = createIssue({ description: 'epsilon delta gamma beta alpha' });
-    const baseline = createPipelineState([issue1]);
-    const current = createPipelineState([issue2]);
+    const baseline = createPipelineState({ issues: [issue1] });
+    const current = createPipelineState({ issues: [issue2] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -114,8 +77,8 @@ describe('issueFingerprint (via verifyChanges)', () => {
   test('fingerprint uses only first 5 words', async () => {
     const issue1 = createIssue({ description: 'one two three four five extra words here' });
     const issue2 = createIssue({ description: 'one two three four five totally different' });
-    const baseline = createPipelineState([issue1]);
-    const current = createPipelineState([issue2]);
+    const baseline = createPipelineState({ issues: [issue1] });
+    const current = createPipelineState({ issues: [issue2] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -126,8 +89,8 @@ describe('issueFingerprint (via verifyChanges)', () => {
   test('fingerprint is case-insensitive', async () => {
     const issue1 = createIssue({ description: 'Button Too Small' });
     const issue2 = createIssue({ description: 'button too small' });
-    const baseline = createPipelineState([issue1]);
-    const current = createPipelineState([issue2]);
+    const baseline = createPipelineState({ issues: [issue1] });
+    const current = createPipelineState({ issues: [issue2] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -155,8 +118,8 @@ describe('issueFingerprint (via verifyChanges)', () => {
       region: { x: 180, y: 280, width: 50, height: 50 }, // also rounds to 2,3
     });
 
-    const baseline = createPipelineState([issueA]);
-    const current = createPipelineState([issueB]);
+    const baseline = createPipelineState({ issues: [issueA] });
+    const current = createPipelineState({ issues: [issueB] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -206,8 +169,8 @@ describe('determineVerdict (via verifyChanges)', () => {
   ];
 
   test.each(verdictCases)('%s', async (_desc, baselineIssues, currentIssues, expectedVerdict) => {
-    const baseline = createPipelineState(baselineIssues);
-    const current = createPipelineState(currentIssues);
+    const baseline = createPipelineState({ issues: baselineIssues });
+    const current = createPipelineState({ issues: currentIssues });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -222,8 +185,8 @@ describe('determineVerdict (via verifyChanges)', () => {
 describe('verifyChanges', () => {
   test('matching issues go to unchanged', async () => {
     const issue = createIssue({ description: 'persistent issue' });
-    const baseline = createPipelineState([issue]);
-    const current = createPipelineState([issue]);
+    const baseline = createPipelineState({ issues: [issue] });
+    const current = createPipelineState({ issues: [issue] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -234,8 +197,8 @@ describe('verifyChanges', () => {
 
   test('missing baseline issues go to resolved', async () => {
     const issue = createIssue({ description: 'was fixed' });
-    const baseline = createPipelineState([issue]);
-    const current = createPipelineState([]);
+    const baseline = createPipelineState({ issues: [issue] });
+    const current = createPipelineState({ issues: [] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -246,8 +209,8 @@ describe('verifyChanges', () => {
 
   test('new current issues go to introduced', async () => {
     const issue = createIssue({ description: 'new bug appeared' });
-    const baseline = createPipelineState([]);
-    const current = createPipelineState([issue]);
+    const baseline = createPipelineState({ issues: [] });
+    const current = createPipelineState({ issues: [issue] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -261,8 +224,8 @@ describe('verifyChanges', () => {
     const issue2 = createIssue({ id: 2, description: 'resolved issue' });
     const issue3 = createIssue({ id: 3, description: 'new introduced issue' });
 
-    const baseline = createPipelineState([issue1, issue2]);
-    const current = createPipelineState([issue1, issue3]);
+    const baseline = createPipelineState({ issues: [issue1, issue2] });
+    const current = createPipelineState({ issues: [issue1, issue3] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -274,8 +237,8 @@ describe('verifyChanges', () => {
   });
 
   test('empty before and after → all arrays empty with improved verdict', async () => {
-    const baseline = createPipelineState([]);
-    const current = createPipelineState([]);
+    const baseline = createPipelineState({ issues: [] });
+    const current = createPipelineState({ issues: [] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -294,8 +257,8 @@ describe('verifyChanges', () => {
       createIssue({ id: 2, description: 'contrast ratio too low', severity: 'medium' }),
       createIssue({ id: 3, description: 'missing alt text', severity: 'low' }),
     ];
-    const baseline = createPipelineState(issues);
-    const current = createPipelineState([]);
+    const baseline = createPipelineState({ issues });
+    const current = createPipelineState({ issues: [] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -317,8 +280,8 @@ describe('verifyChanges', () => {
       id: 2,
       description: 'navigation menu alignment broken on mobile',
     });
-    const baseline = createPipelineState([baseIssue]);
-    const current = createPipelineState([currIssue]);
+    const baseline = createPipelineState({ issues: [baseIssue] });
+    const current = createPipelineState({ issues: [currIssue] });
 
     const result = await Effect.runPromise(verifyChanges(baseline, current));
 
@@ -337,32 +300,32 @@ describe('verifyChanges', () => {
 
 describe('isImproved', () => {
   test('resolved > introduced → true', () => {
-    const baseline = createPipelineState([
+    const baseline = createPipelineState({ issues: [
       createIssue({ id: 1, description: 'first issue' }),
       createIssue({ id: 2, description: 'second issue' }),
-    ]);
-    const current = createPipelineState([createIssue({ id: 1, description: 'first issue' })]);
+    ] });
+    const current = createPipelineState({ issues: [createIssue({ id: 1, description: 'first issue' })] });
 
     expect(isImproved(baseline, current)).toBe(true);
   });
 
   test('same issues → false', () => {
-    const baseline = createPipelineState([createIssue({ id: 1 })]);
-    const current = createPipelineState([createIssue({ id: 1 })]);
+    const baseline = createPipelineState({ issues: [createIssue({ id: 1 })] });
+    const current = createPipelineState({ issues: [createIssue({ id: 1 })] });
 
     expect(isImproved(baseline, current)).toBe(false);
   });
 
   test('more issues → false', () => {
-    const baseline = createPipelineState([createIssue({ id: 1 })]);
-    const current = createPipelineState([createIssue({ id: 1 }), createIssue({ id: 2 })]);
+    const baseline = createPipelineState({ issues: [createIssue({ id: 1 })] });
+    const current = createPipelineState({ issues: [createIssue({ id: 1 }), createIssue({ id: 2 })] });
 
     expect(isImproved(baseline, current)).toBe(false);
   });
 
   test('zero to zero → false (not less)', () => {
-    const baseline = createPipelineState([]);
-    const current = createPipelineState([]);
+    const baseline = createPipelineState({ issues: [] });
+    const current = createPipelineState({ issues: [] });
 
     expect(isImproved(baseline, current)).toBe(false);
   });
@@ -374,17 +337,17 @@ describe('isImproved', () => {
 
 describe('isResolved', () => {
   test('zero issues → true', () => {
-    const state = createPipelineState([]);
+    const state = createPipelineState({ issues: [] });
     expect(isResolved(state)).toBe(true);
   });
 
   test('any issues → false', () => {
-    const state = createPipelineState([createIssue()]);
+    const state = createPipelineState({ issues: [createIssue()] });
     expect(isResolved(state)).toBe(false);
   });
 
   test('multiple issues → false', () => {
-    const state = createPipelineState([createIssue({ id: 1 }), createIssue({ id: 2 })]);
+    const state = createPipelineState({ issues: [createIssue({ id: 1 }), createIssue({ id: 2 })] });
     expect(isResolved(state)).toBe(false);
   });
 });
