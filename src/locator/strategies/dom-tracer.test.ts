@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Effect } from 'effect';
 import type { BoundingBox, DOMElement, DOMSnapshot, Issue } from '../../core/types.js';
+import { createIssue } from '../../testing/factories.js';
 import type { LocatorContext } from '../types.js';
 import {
   buildSelectors,
@@ -32,16 +33,6 @@ function createElement(overrides: Partial<DOMElement> = {}): DOMElement {
     boundingBox: { x: 0, y: 0, width: 100, height: 100 },
     computedStyles: {},
     attributes: {},
-    ...overrides,
-  };
-}
-
-function createIssue(overrides: Partial<Issue> = {}): Issue {
-  return {
-    id: 1,
-    description: 'Test issue',
-    severity: 'medium',
-    region: 'A1',
     ...overrides,
   };
 }

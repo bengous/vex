@@ -8,8 +8,8 @@
 import { describe, expect, mock, test } from 'bun:test';
 import { Effect } from 'effect';
 import type { CodeLocation, Issue, ViewportConfig } from '../core/types.js';
-import type { PipelineDefinition, PipelineState } from '../pipeline/types.js';
 import { runEffect, runEffectExit } from '../testing/effect-helpers.js';
+import { createCodeLocation, createIssue, createPipelineState } from '../testing/factories.js';
 import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from './orchestrator.js';
 import type { AppliedFix, GateDecision, HumanResponse, LoopOptions } from './types.js';
 
@@ -24,52 +24,6 @@ const DEFAULT_VIEWPORT: ViewportConfig = {
   isMobile: false,
 };
 
-function createPipelineDefinition(): PipelineDefinition {
-  return {
-    name: 'test-pipeline',
-    description: 'Test',
-    nodes: [],
-    edges: [],
-    inputs: [],
-    outputs: [],
-  };
-}
-
-function createPipelineState(overrides: Partial<PipelineState> = {}): PipelineState {
-  return {
-    definition: createPipelineDefinition(),
-    sessionDir: '/tmp/test-session',
-    startedAt: new Date().toISOString(),
-    status: 'completed',
-    nodes: {},
-    artifacts: {},
-    data: {},
-    issues: [],
-    semanticNames: {},
-    ...overrides,
-  };
-}
-
-function createIssue(overrides: Partial<Issue> = {}): Issue {
-  return {
-    id: 1,
-    description: 'Test issue',
-    severity: 'medium',
-    region: 'A1',
-    ...overrides,
-  };
-}
-
-function createLocation(overrides: Partial<CodeLocation> = {}): CodeLocation {
-  return {
-    file: 'test.liquid',
-    confidence: 'high',
-    reasoning: 'Test location',
-    strategy: 'test',
-    ...overrides,
-  };
-}
-
 function createAppliedFix(issue: Issue, location: CodeLocation): AppliedFix {
   return {
     issue,
@@ -80,6 +34,7 @@ function createAppliedFix(issue: Issue, location: CodeLocation): AppliedFix {
 }
 
 function createLoopOptions(overrides: Partial<LoopOptions> = {}): LoopOptions {
+
   return {
     url: 'https://example.com',
     maxIterations: 5,
@@ -95,7 +50,7 @@ function createLoopOptions(overrides: Partial<LoopOptions> = {}): LoopOptions {
 function createMockCallbacks(overrides: Partial<LoopCallbacks> = {}): LoopCallbacks {
   return {
     capture: mock(() => Effect.succeed({ state: createPipelineState(), issues: [] })),
-    applyFix: mock(() => Effect.succeed(createAppliedFix(createIssue(), createLocation()))),
+    applyFix: mock(() => Effect.succeed(createAppliedFix(createIssue(), createCodeLocation()))),
     promptHuman: mock(() => Effect.succeed({ action: 'skip' } as HumanResponse)),
     ...overrides,
   };
@@ -200,7 +155,7 @@ describe('LoopOrchestrator', () => {
   describe('auto-fix path', () => {
     test('calls applyFix for high-confidence single-file issues', async () => {
       const issue = createIssue({ severity: 'medium' });
-      const location = createLocation({ confidence: 'high', file: 'single.liquid' });
+      const location = createCodeLocation({ confidence: 'high', file: 'single.liquid' });
 
       // Include codeLocations so the resolver finds them
       const issueWithLocation = { ...issue, codeLocations: [location] };
