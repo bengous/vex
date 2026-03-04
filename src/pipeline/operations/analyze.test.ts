@@ -13,6 +13,7 @@ import { Exit } from 'effect';
 import sharp from 'sharp';
 import { registerProvider, unregisterProvider } from '../../providers/shared/registry.js';
 import { expectOperationFailure, runEffectExit } from '../../testing/effect-helpers.js';
+import { createIssue } from '../../testing/factories.js';
 import {
   createCapturingLogger,
   createMockContext,
@@ -75,13 +76,7 @@ describe('analyzeOperation', () => {
   }
 
   function createTestIssue(id: number, severity: 'high' | 'medium' | 'low' = 'medium') {
-    return {
-      id,
-      description: `Test issue ${id}`,
-      severity,
-      region: 'A1',
-      suggestedFix: 'Fix it',
-    };
+    return createIssue({ id, description: `Test issue ${id}`, severity, suggestedFix: 'Fix it' });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

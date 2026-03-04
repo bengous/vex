@@ -6,23 +6,13 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import type { CodeLocation } from '../core/types.js';
+import { createCodeLocation } from '../testing/factories.js';
 import { compareConfidence, dedupeLocations, meetsMinConfidence, StrategyResolver, toFileLineKey } from './resolver.js';
 import type { LocatorStrategy } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Fixtures
 // ═══════════════════════════════════════════════════════════════════════════
-
-function createLocation(overrides: Partial<CodeLocation> = {}): CodeLocation {
-  return {
-    file: 'test.liquid',
-    confidence: 'medium',
-    reasoning: 'Test location',
-    strategy: 'test',
-    ...overrides,
-  };
-}
 
 function createMockStrategy(name: string, priority: number): LocatorStrategy {
   return {
@@ -65,9 +55,9 @@ describe('compareConfidence', () => {
 
   test('sorting by confidence', () => {
     const locations = [
-      createLocation({ confidence: 'low' }),
-      createLocation({ confidence: 'high' }),
-      createLocation({ confidence: 'medium' }),
+      createCodeLocation({ confidence: 'low' }),
+      createCodeLocation({ confidence: 'high' }),
+      createCodeLocation({ confidence: 'medium' }),
     ];
 
     locations.sort((a, b) => compareConfidence(a.confidence, b.confidence));
@@ -84,37 +74,37 @@ describe('compareConfidence', () => {
 
 describe('meetsMinConfidence', () => {
   test('high meets high threshold', () => {
-    const loc = createLocation({ confidence: 'high' });
+    const loc = createCodeLocation({ confidence: 'high' });
     expect(meetsMinConfidence(loc, 'high')).toBe(true);
   });
 
   test('high meets medium threshold', () => {
-    const loc = createLocation({ confidence: 'high' });
+    const loc = createCodeLocation({ confidence: 'high' });
     expect(meetsMinConfidence(loc, 'medium')).toBe(true);
   });
 
   test('high meets low threshold', () => {
-    const loc = createLocation({ confidence: 'high' });
+    const loc = createCodeLocation({ confidence: 'high' });
     expect(meetsMinConfidence(loc, 'low')).toBe(true);
   });
 
   test('medium meets medium threshold', () => {
-    const loc = createLocation({ confidence: 'medium' });
+    const loc = createCodeLocation({ confidence: 'medium' });
     expect(meetsMinConfidence(loc, 'medium')).toBe(true);
   });
 
   test('medium meets low threshold', () => {
-    const loc = createLocation({ confidence: 'medium' });
+    const loc = createCodeLocation({ confidence: 'medium' });
     expect(meetsMinConfidence(loc, 'low')).toBe(true);
   });
 
   test('medium does NOT meet high threshold', () => {
-    const loc = createLocation({ confidence: 'medium' });
+    const loc = createCodeLocation({ confidence: 'medium' });
     expect(meetsMinConfidence(loc, 'high')).toBe(false);
   });
 
   test('low meets only low threshold', () => {
-    const loc = createLocation({ confidence: 'low' });
+    const loc = createCodeLocation({ confidence: 'low' });
     expect(meetsMinConfidence(loc, 'low')).toBe(true);
     expect(meetsMinConfidence(loc, 'medium')).toBe(false);
     expect(meetsMinConfidence(loc, 'high')).toBe(false);
@@ -127,34 +117,34 @@ describe('meetsMinConfidence', () => {
 
 describe('toFileLineKey', () => {
   test('consistent key for same file:line', () => {
-    const loc1 = createLocation({ file: 'foo.liquid', lineNumber: 42 });
-    const loc2 = createLocation({ file: 'foo.liquid', lineNumber: 42 });
+    const loc1 = createCodeLocation({ file: 'foo.liquid', lineNumber: 42 });
+    const loc2 = createCodeLocation({ file: 'foo.liquid', lineNumber: 42 });
 
     expect(toFileLineKey(loc1)).toBe(toFileLineKey(loc2));
     expect(toFileLineKey(loc1)).toBe('foo.liquid:42');
   });
 
   test('different files → different keys', () => {
-    const loc1 = createLocation({ file: 'foo.liquid', lineNumber: 42 });
-    const loc2 = createLocation({ file: 'bar.liquid', lineNumber: 42 });
+    const loc1 = createCodeLocation({ file: 'foo.liquid', lineNumber: 42 });
+    const loc2 = createCodeLocation({ file: 'bar.liquid', lineNumber: 42 });
 
     expect(toFileLineKey(loc1)).not.toBe(toFileLineKey(loc2));
   });
 
   test('different lines → different keys', () => {
-    const loc1 = createLocation({ file: 'foo.liquid', lineNumber: 42 });
-    const loc2 = createLocation({ file: 'foo.liquid', lineNumber: 43 });
+    const loc1 = createCodeLocation({ file: 'foo.liquid', lineNumber: 42 });
+    const loc2 = createCodeLocation({ file: 'foo.liquid', lineNumber: 43 });
 
     expect(toFileLineKey(loc1)).not.toBe(toFileLineKey(loc2));
   });
 
   test('handles missing lineNumber → :0', () => {
-    const loc = createLocation({ file: 'foo.liquid', lineNumber: undefined });
+    const loc = createCodeLocation({ file: 'foo.liquid', lineNumber: undefined });
     expect(toFileLineKey(loc)).toBe('foo.liquid:0');
   });
 
   test('handles paths with colons', () => {
-    const loc = createLocation({ file: 'C:\\Users\\foo.liquid', lineNumber: 10 });
+    const loc = createCodeLocation({ file: 'C:\\Users\\foo.liquid', lineNumber: 10 });
     expect(toFileLineKey(loc)).toBe('C:\\Users\\foo.liquid:10');
   });
 });
@@ -166,9 +156,9 @@ describe('toFileLineKey', () => {
 describe('dedupeLocations', () => {
   test('removes duplicates by file:line', () => {
     const locations = [
-      createLocation({ file: 'foo.liquid', lineNumber: 10 }),
-      createLocation({ file: 'foo.liquid', lineNumber: 10 }),
-      createLocation({ file: 'foo.liquid', lineNumber: 10 }),
+      createCodeLocation({ file: 'foo.liquid', lineNumber: 10 }),
+      createCodeLocation({ file: 'foo.liquid', lineNumber: 10 }),
+      createCodeLocation({ file: 'foo.liquid', lineNumber: 10 }),
     ];
 
     const deduped = dedupeLocations(locations);
@@ -178,9 +168,9 @@ describe('dedupeLocations', () => {
 
   test('keeps higher confidence when duplicate', () => {
     const locations = [
-      createLocation({ file: 'foo.liquid', lineNumber: 10, confidence: 'low' }),
-      createLocation({ file: 'foo.liquid', lineNumber: 10, confidence: 'high' }),
-      createLocation({ file: 'foo.liquid', lineNumber: 10, confidence: 'medium' }),
+      createCodeLocation({ file: 'foo.liquid', lineNumber: 10, confidence: 'low' }),
+      createCodeLocation({ file: 'foo.liquid', lineNumber: 10, confidence: 'high' }),
+      createCodeLocation({ file: 'foo.liquid', lineNumber: 10, confidence: 'medium' }),
     ];
 
     const deduped = dedupeLocations(locations);
@@ -190,9 +180,9 @@ describe('dedupeLocations', () => {
 
   test('preserves order of first occurrence', () => {
     const locations = [
-      createLocation({ file: 'first.liquid', lineNumber: 1, confidence: 'high' }),
-      createLocation({ file: 'second.liquid', lineNumber: 2, confidence: 'high' }),
-      createLocation({ file: 'third.liquid', lineNumber: 3, confidence: 'high' }),
+      createCodeLocation({ file: 'first.liquid', lineNumber: 1, confidence: 'high' }),
+      createCodeLocation({ file: 'second.liquid', lineNumber: 2, confidence: 'high' }),
+      createCodeLocation({ file: 'third.liquid', lineNumber: 3, confidence: 'high' }),
     ];
 
     const deduped = dedupeLocations(locations);
@@ -206,11 +196,11 @@ describe('dedupeLocations', () => {
 
   test('mixed scenario: some duplicates, some unique', () => {
     const locations = [
-      createLocation({ file: 'a.liquid', lineNumber: 1, confidence: 'medium' }),
-      createLocation({ file: 'b.liquid', lineNumber: 2, confidence: 'low' }),
-      createLocation({ file: 'a.liquid', lineNumber: 1, confidence: 'high' }), // duplicate, higher confidence
-      createLocation({ file: 'c.liquid', lineNumber: 3, confidence: 'medium' }),
-      createLocation({ file: 'b.liquid', lineNumber: 2, confidence: 'medium' }), // duplicate, higher confidence
+      createCodeLocation({ file: 'a.liquid', lineNumber: 1, confidence: 'medium' }),
+      createCodeLocation({ file: 'b.liquid', lineNumber: 2, confidence: 'low' }),
+      createCodeLocation({ file: 'a.liquid', lineNumber: 1, confidence: 'high' }), // duplicate, higher confidence
+      createCodeLocation({ file: 'c.liquid', lineNumber: 3, confidence: 'medium' }),
+      createCodeLocation({ file: 'b.liquid', lineNumber: 2, confidence: 'medium' }), // duplicate, higher confidence
     ];
 
     const deduped = dedupeLocations(locations);

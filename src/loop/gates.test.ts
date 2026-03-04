@@ -7,32 +7,9 @@
 
 import { describe, expect, test } from 'bun:test';
 import type { CodeLocation, Issue } from '../core/types.js';
+import { createCodeLocation, createIssue } from '../testing/factories.js';
 import { evaluateGate, evaluateGates, filterByAction, summarizeDecisions } from './gates.js';
 import type { GateAction, GateConfig, GateDecision } from './types.js';
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Test Fixtures
-// ═══════════════════════════════════════════════════════════════════════════
-
-function createIssue(overrides: Partial<Issue> = {}): Issue {
-  return {
-    id: 1,
-    description: 'Test issue',
-    severity: 'medium',
-    region: 'A1',
-    ...overrides,
-  };
-}
-
-function createLocation(overrides: Partial<CodeLocation> = {}): CodeLocation {
-  return {
-    file: 'test.liquid',
-    confidence: 'high',
-    reasoning: 'Test location',
-    strategy: 'test',
-    ...overrides,
-  };
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // evaluateGate Tests
@@ -50,7 +27,7 @@ describe('evaluateGate', () => {
 
   test('high confidence + single file → auto-fix', () => {
     const issue = createIssue({ severity: 'medium' });
-    const locations = [createLocation({ confidence: 'high', file: 'single.liquid' })];
+    const locations = [createCodeLocation({ confidence: 'high', file: 'single.liquid' })];
 
     const result = evaluateGate(issue, locations);
 
@@ -61,7 +38,7 @@ describe('evaluateGate', () => {
 
   test('low confidence → human-review', () => {
     const issue = createIssue();
-    const locations = [createLocation({ confidence: 'low' })];
+    const locations = [createCodeLocation({ confidence: 'low' })];
 
     const result = evaluateGate(issue, locations);
 
@@ -71,7 +48,7 @@ describe('evaluateGate', () => {
 
   test('medium confidence + high severity → human-review', () => {
     const issue = createIssue({ severity: 'high' });
-    const locations = [createLocation({ confidence: 'medium' })];
+    const locations = [createCodeLocation({ confidence: 'medium' })];
 
     const result = evaluateGate(issue, locations);
 
@@ -81,7 +58,7 @@ describe('evaluateGate', () => {
 
   test('medium confidence + low severity + single file → human-review (default autoFix threshold is high)', () => {
     const issue = createIssue({ severity: 'low' });
-    const locations = [createLocation({ confidence: 'medium', file: 'single.liquid' })];
+    const locations = [createCodeLocation({ confidence: 'medium', file: 'single.liquid' })];
 
     const result = evaluateGate(issue, locations);
 
@@ -90,7 +67,7 @@ describe('evaluateGate', () => {
 
   test('medium confidence + medium severity + single file → human-review (default autoFix threshold is high)', () => {
     const issue = createIssue({ severity: 'medium' });
-    const locations = [createLocation({ confidence: 'medium', file: 'single.liquid' })];
+    const locations = [createCodeLocation({ confidence: 'medium', file: 'single.liquid' })];
 
     const result = evaluateGate(issue, locations);
 
@@ -100,8 +77,8 @@ describe('evaluateGate', () => {
   test('multi-file → human-review (default config)', () => {
     const issue = createIssue();
     const locations = [
-      createLocation({ confidence: 'high', file: 'file1.liquid' }),
-      createLocation({ confidence: 'high', file: 'file2.liquid' }),
+      createCodeLocation({ confidence: 'high', file: 'file1.liquid' }),
+      createCodeLocation({ confidence: 'high', file: 'file2.liquid' }),
     ];
 
     const result = evaluateGate(issue, locations);
@@ -116,8 +93,8 @@ describe('evaluateGate', () => {
     // still require isSingleFile. This falls through to default human-review.
     const issue = createIssue();
     const locations = [
-      createLocation({ confidence: 'high', file: 'file1.liquid' }),
-      createLocation({ confidence: 'high', file: 'file2.liquid' }),
+      createCodeLocation({ confidence: 'high', file: 'file1.liquid' }),
+      createCodeLocation({ confidence: 'high', file: 'file2.liquid' }),
     ];
     const config: Partial<GateConfig> = { allowMultiFileAutoFix: true };
 
@@ -132,8 +109,8 @@ describe('evaluateGate', () => {
     const issue = createIssue();
     // Locations should be pre-sorted by confidence (high first)
     const locations = [
-      createLocation({ confidence: 'high', file: 'best.liquid' }),
-      createLocation({ confidence: 'low', file: 'worst.liquid' }),
+      createCodeLocation({ confidence: 'high', file: 'best.liquid' }),
+      createCodeLocation({ confidence: 'low', file: 'worst.liquid' }),
     ];
 
     const result = evaluateGate(issue, locations);
@@ -151,7 +128,7 @@ describe('evaluateGates', () => {
     const issues = Array.from({ length: 5 }, (_, i) => createIssue({ id: i + 1, description: `Issue ${i + 1}` }));
     const issuesWithLocations = issues.map((issue) => ({
       issue,
-      locations: [createLocation({ confidence: 'high' })],
+      locations: [createCodeLocation({ confidence: 'high' })],
     }));
     const config: Partial<GateConfig> = { maxAutoFixesPerIteration: 3 };
 
@@ -168,7 +145,7 @@ describe('evaluateGates', () => {
     const issues = Array.from({ length: 4 }, (_, i) => createIssue({ id: i + 1, description: `Issue ${i + 1}` }));
     const issuesWithLocations = issues.map((issue) => ({
       issue,
-      locations: [createLocation({ confidence: 'high' })],
+      locations: [createCodeLocation({ confidence: 'high' })],
     }));
     const config: Partial<GateConfig> = { maxAutoFixesPerIteration: 2 };
 
@@ -308,8 +285,8 @@ describe('Decision Matrix', () => {
     (confidence, severity, isSingleFile, allowMultiFix, expected) => {
       const issue = createIssue({ severity });
       const locations = isSingleFile
-        ? [createLocation({ confidence, file: 'single.liquid' })]
-        : [createLocation({ confidence, file: 'file1.liquid' }), createLocation({ confidence, file: 'file2.liquid' })];
+        ? [createCodeLocation({ confidence, file: 'single.liquid' })]
+        : [createCodeLocation({ confidence, file: 'file1.liquid' }), createCodeLocation({ confidence, file: 'file2.liquid' })];
       const config: Partial<GateConfig> = { allowMultiFileAutoFix: allowMultiFix };
 
       const result = evaluateGate(issue, locations, config);

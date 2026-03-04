@@ -3,66 +3,33 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import type { Artifact, Issue } from '../core/types.js';
+import type { Issue } from '../core/types.js';
+import { createIssue, createPipelineDefinition, createPipelineState } from '../testing/factories.js';
+import { createMockImageArtifact } from '../testing/mocks/pipeline-context.js';
 import { mergeNodeResults, type NodeResult } from './state.js';
-import type { PipelineDefinition, PipelineState } from './types.js';
+import type { PipelineState } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Fixtures
 // ═══════════════════════════════════════════════════════════════════════════
 
-function createTestDefinition(): PipelineDefinition {
-	return {
-		name: 'test',
-		description: 'Test pipeline',
-		nodes: [
-			{ id: 'a', operation: 'capture', config: {}, inputs: [], outputs: [] },
-			{ id: 'b', operation: 'capture', config: {}, inputs: [], outputs: [] },
-		],
-		edges: [],
-		inputs: [],
-		outputs: [],
-	};
-}
+const testDefinition = createPipelineDefinition({
+	nodes: [
+		{ id: 'a', operation: 'capture', config: {}, inputs: [], outputs: [] },
+		{ id: 'b', operation: 'capture', config: {}, inputs: [], outputs: [] },
+	],
+});
 
 function createBaseState(overrides: Partial<PipelineState> = {}): PipelineState {
-	return {
-		definition: createTestDefinition(),
-		sessionDir: '/tmp/test-session',
-		startedAt: new Date().toISOString(),
+	return createPipelineState({
+		definition: testDefinition,
 		status: 'running',
 		nodes: {
 			a: { id: 'a', status: 'pending', outputArtifacts: [] },
 			b: { id: 'b', status: 'pending', outputArtifacts: [] },
 		},
-		artifacts: {},
-		data: {},
-		issues: [],
-		semanticNames: {},
 		...overrides,
-	};
-}
-
-function createImageArtifact(id: string): Artifact {
-	return {
-		_kind: 'artifact',
-		id,
-		type: 'image',
-		path: `/tmp/${id}.png`,
-		createdAt: new Date().toISOString(),
-		createdBy: 'test',
-		metadata: { width: 1920, height: 1080 },
-	};
-}
-
-function createIssue(overrides: Partial<Issue> = {}): Issue {
-	return {
-		id: 1,
-		description: 'Test issue',
-		severity: 'medium',
-		region: 'hero section',
-		...overrides,
-	};
+	});
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -72,8 +39,8 @@ function createIssue(overrides: Partial<Issue> = {}): Issue {
 describe('mergeNodeResults', () => {
 	test('merges two node results with disjoint artifacts', () => {
 		const base = createBaseState();
-		const artA = createImageArtifact('art-a');
-		const artB = createImageArtifact('art-b');
+		const artA = createMockImageArtifact({ id: 'art-a', path: '/tmp/art-a.png' });
+		const artB = createMockImageArtifact({ id: 'art-b', path: '/tmp/art-b.png' });
 
 		const resultA: NodeResult = {
 			nodeId: 'a',
@@ -116,7 +83,7 @@ describe('mergeNodeResults', () => {
 
 	test('single result returns that result state directly', () => {
 		const base = createBaseState();
-		const artA = createImageArtifact('art-a');
+		const artA = createMockImageArtifact({ id: 'art-a', path: '/tmp/art-a.png' });
 
 		const result: NodeResult = {
 			nodeId: 'a',
