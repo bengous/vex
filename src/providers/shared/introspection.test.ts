@@ -6,10 +6,11 @@
  */
 
 import { afterAll, describe, expect, test } from 'bun:test';
-import { registerProvider, unregisterProvider } from './registry.js';
-import { getProviderInfo, getAllProviders } from './introspection.js';
-import { createMockVisionProviderLayer } from '../../testing/mocks/vision-provider.js';
+import assert from 'node:assert';
 import { runEffect } from '../../testing/effect-helpers.js';
+import { createMockVisionProviderLayer } from '../../testing/mocks/vision-provider.js';
+import { getAllProviders, getProviderInfo } from './introspection.js';
+import { registerProvider, unregisterProvider } from './registry.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Setup
@@ -56,12 +57,12 @@ describe('getProviderInfo', () => {
 
 		const info = await runEffect(getProviderInfo(name));
 
-		expect(info).toBeDefined();
-		expect(info!.name).toBe(name);
-		expect(info!.displayName).toBe('Test Provider');
-		expect(info!.type).toBe('cli');
-		expect(info!.available).toBe(true);
-		expect(info!.models).toEqual(['live-model-a', 'live-model-b']);
+		assert(info);
+		expect(info.name).toBe(name);
+		expect(info.displayName).toBe('Test Provider');
+		expect(info.type).toBe('cli');
+		expect(info.available).toBe(true);
+		expect(info.models).toEqual(['live-model-a', 'live-model-b']);
 	});
 
 	test('returns undefined for non-existent provider', async () => {
@@ -80,10 +81,10 @@ describe('getProviderInfo', () => {
 
 		const info = await runEffect(getProviderInfo(name));
 
-		expect(info).toBeDefined();
-		expect(info!.available).toBe(false);
+		assert(info);
+		expect(info.available).toBe(false);
 		// Falls back to knownModels when live models list is empty
-		expect(info!.models).toEqual(['known-model']);
+		expect(info.models).toEqual(['known-model']);
 	});
 });
 
