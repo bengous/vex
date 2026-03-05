@@ -9,20 +9,13 @@ import { describe, expect, mock, test } from 'bun:test';
 import { Effect } from 'effect';
 import type { CodeLocation, Issue, ViewportConfig } from '../core/types.js';
 import { runEffect, runEffectExit } from '../testing/effect-helpers.js';
-import { createCodeLocation, createIssue, createPipelineState } from '../testing/factories.js';
+import { createCodeLocation, createIssue, createLoopOptions, createPipelineState } from '../testing/factories.js';
 import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from './orchestrator.js';
-import type { AppliedFix, GateDecision, HumanResponse, LoopOptions } from './types.js';
+import type { AppliedFix, GateDecision, HumanResponse } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Fixtures
 // ═══════════════════════════════════════════════════════════════════════════
-
-const DEFAULT_VIEWPORT: ViewportConfig = {
-  width: 1920,
-  height: 1080,
-  deviceScaleFactor: 1,
-  isMobile: false,
-};
 
 function createAppliedFix(issue: Issue, location: CodeLocation): AppliedFix {
   return {
@@ -30,20 +23,6 @@ function createAppliedFix(issue: Issue, location: CodeLocation): AppliedFix {
     location,
     action: 'auto',
     timestamp: new Date().toISOString(),
-  };
-}
-
-function createLoopOptions(overrides: Partial<LoopOptions> = {}): LoopOptions {
-
-  return {
-    url: 'https://example.com',
-    maxIterations: 5,
-    viewports: [DEFAULT_VIEWPORT],
-    provider: 'test',
-    projectRoot: '/tmp/test',
-    interactive: false,
-    autoFixThreshold: 'high',
-    ...overrides,
   };
 }
 

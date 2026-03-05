@@ -31,12 +31,16 @@ export function createSilentLogger(): Logger {
  */
 export interface CapturingLogger extends Logger {
   readonly messages: { level: string; message: string }[];
+  readonly warnings: string[];
+  readonly errors: string[];
 }
 
 export function createCapturingLogger(): CapturingLogger {
   const messages: { level: string; message: string }[] = [];
   return {
     messages,
+    get warnings() { return messages.filter((m) => m.level === 'warn').map((m) => m.message); },
+    get errors() { return messages.filter((m) => m.level === 'error').map((m) => m.message); },
     debug: (msg) => messages.push({ level: 'debug', message: msg }),
     info: (msg) => messages.push({ level: 'info', message: msg }),
     warn: (msg) => messages.push({ level: 'warn', message: msg }),
