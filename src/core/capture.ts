@@ -454,7 +454,7 @@ export async function captureScreenshot(
 
     const artifact: ImageArtifact = {
       _kind: 'artifact',
-      id: `img_${Date.now()}`,
+      id: crypto.randomUUID(),
       type: 'image',
       path: outputPath,
       createdAt: new Date().toISOString(),
@@ -632,7 +632,7 @@ export async function captureWithDOM(
 
     const artifact: ImageArtifact = {
       _kind: 'artifact',
-      id: `img_${Date.now()}`,
+      id: crypto.randomUUID(),
       type: 'image',
       path: outputPath,
       createdAt: new Date().toISOString(),
