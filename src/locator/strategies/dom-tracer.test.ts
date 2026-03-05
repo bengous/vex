@@ -6,6 +6,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import assert from 'node:assert';
 import { mkdtempSync } from 'node:fs';
 import { rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -543,5 +544,23 @@ describe('batchGrepForSelectors', () => {
     const results = await batchGrepForSelectors([], testDir, ['*.liquid']);
 
     expect(results.size).toBe(0);
+  });
+
+  test('escapes regex metacharacters in selectors', async () => {
+    // Create files where escaping matters: CSS has literal ".product-card",
+    // but a broken regex (unescaped dot) would also match "Xproduct-card"
+    const metaDir = mkdtempSync(join(tmpdir(), 'meta-grep-test-'));
+    await writeFile(join(metaDir, 'styles.css'), '.product-card { color: red; }');
+    await writeFile(join(metaDir, 'noise.css'), 'Xproduct-card { color: blue; }');
+
+    const results = await batchGrepForSelectors(['.product-card'], metaDir, ['*.css']);
+
+    expect(results.has('.product-card')).toBe(true);
+    const match = results.get('.product-card')?.[0];
+    assert(match);
+    expect(results.get('.product-card')).toHaveLength(1);
+    expect(match.file).toContain('styles.css');
+
+    await rm(metaDir, { recursive: true });
   });
 });
