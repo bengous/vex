@@ -7,6 +7,8 @@
 
 import { describe, expect, test } from 'bun:test';
 import { Effect, Exit } from 'effect';
+import { createIssue } from '../testing/factories.js';
+import { createCapturingLogger } from '../testing/mocks/pipeline-context.js';
 import type { Issue } from './schema.js';
 import {
   buildRetryPrompt,
@@ -19,35 +21,12 @@ import {
 } from './validation.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Test Fixtures
-// ═══════════════════════════════════════════════════════════════════════════
-
-function createValidIssue(overrides: Partial<Issue> = {}): Issue {
-  return {
-    id: 1,
-    description: 'Test issue description',
-    severity: 'medium',
-    region: 'A1',
-    ...overrides,
-  } as Issue;
-}
-
-/** Create a mock logger that records calls */
-function createMockLogger() {
-  const warnings: string[] = [];
-  return {
-    warn: (msg: string) => warnings.push(msg),
-    warnings,
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // validateIssues Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('validateIssues', () => {
   test('succeeds with valid issue array', async () => {
-    const issues = [createValidIssue({ id: 1 }), createValidIssue({ id: 2, severity: 'high' })];
+    const issues = [createIssue({ id: 1 }), createIssue({ id: 2, severity: 'high' })];
 
     const result = await Effect.runPromise(validateIssues(issues));
 
@@ -63,7 +42,7 @@ describe('validateIssues', () => {
 
   test('succeeds with issue containing BoundingBox region', async () => {
     const issues = [
-      createValidIssue({
+      createIssue({
         id: 1,
         region: { x: 100, y: 200, width: 50, height: 50 },
       }),
@@ -77,7 +56,7 @@ describe('validateIssues', () => {
 
   test('succeeds with issue containing optional fields', async () => {
     const issues = [
-      createValidIssue({
+      createIssue({
         id: 1,
         suggestedFix: 'Fix it',
         category: 'accessibility',
@@ -113,7 +92,7 @@ describe('validateIssues', () => {
   });
 
   test('fails with IssueParseError for invalid severity', async () => {
-    const issues = [createValidIssue({ severity: 'critical' as Issue['severity'] })];
+    const issues = [createIssue({ severity: 'critical' as Issue['severity'] })];
 
     const exit = await Effect.runPromiseExit(validateIssues(issues));
 
@@ -150,7 +129,7 @@ describe('validateIssues', () => {
 
 describe('validateIssuesWithPartialRecovery', () => {
   test('returns all issues when all valid', async () => {
-    const issues = [createValidIssue({ id: 1 }), createValidIssue({ id: 2 }), createValidIssue({ id: 3 })];
+    const issues = [createIssue({ id: 1 }), createIssue({ id: 2 }), createIssue({ id: 3 })];
 
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery(issues));
 
@@ -159,11 +138,11 @@ describe('validateIssuesWithPartialRecovery', () => {
 
   test('keeps valid issues when some are invalid', async () => {
     const issues = [
-      createValidIssue({ id: 1 }),
+      createIssue({ id: 1 }),
       { id: 2, description: 'Invalid - missing fields' }, // invalid
-      createValidIssue({ id: 3 }),
+      createIssue({ id: 3 }),
       { id: 4, severity: 'wrong' }, // invalid
-      createValidIssue({ id: 5, severity: 'high' }),
+      createIssue({ id: 5, severity: 'high' }),
     ];
 
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery(issues));
@@ -200,8 +179,8 @@ describe('validateIssuesWithPartialRecovery', () => {
   });
 
   test('logs warning when full validation fails', async () => {
-    const logger = createMockLogger();
-    const issues = [createValidIssue({ id: 1 }), { id: 2 }]; // second is invalid
+    const logger = createCapturingLogger();
+    const issues = [createIssue({ id: 1 }), { id: 2 }]; // second is invalid
 
     await Effect.runPromise(validateIssuesWithPartialRecovery(issues, logger));
 
@@ -209,10 +188,10 @@ describe('validateIssuesWithPartialRecovery', () => {
   });
 
   test('logs warning for each dropped issue', async () => {
-    const logger = createMockLogger();
+    const logger = createCapturingLogger();
     const issues = [
       { id: 1 }, // invalid
-      createValidIssue({ id: 2 }),
+      createIssue({ id: 2 }),
       { id: 3, bad: true }, // invalid
     ];
 
@@ -224,7 +203,7 @@ describe('validateIssuesWithPartialRecovery', () => {
   });
 
   test('logs warning when input is not array', async () => {
-    const logger = createMockLogger();
+    const logger = createCapturingLogger();
 
     await Effect.runPromise(validateIssuesWithPartialRecovery('not an array', logger));
 
@@ -232,8 +211,8 @@ describe('validateIssuesWithPartialRecovery', () => {
   });
 
   test('does not log when all issues valid', async () => {
-    const logger = createMockLogger();
-    const issues = [createValidIssue({ id: 1 }), createValidIssue({ id: 2 })];
+    const logger = createCapturingLogger();
+    const issues = [createIssue({ id: 1 }), createIssue({ id: 2 })];
 
     await Effect.runPromise(validateIssuesWithPartialRecovery(issues, logger));
 
@@ -258,7 +237,7 @@ describe('validateIssuesWithPartialRecovery', () => {
 describe('parseIssuesFromResponse', () => {
   test('extracts issues from clean JSON', async () => {
     const response = JSON.stringify({
-      issues: [createValidIssue({ id: 1 }), createValidIssue({ id: 2 })],
+      issues: [createIssue({ id: 1 }), createIssue({ id: 2 })],
     });
 
     const result = await Effect.runPromise(parseIssuesFromResponse(response));
@@ -323,7 +302,7 @@ Let me know if you have questions.`;
   });
 
   test('logs warning when no JSON found', async () => {
-    const logger = createMockLogger();
+    const logger = createCapturingLogger();
     const response = 'No JSON here';
 
     await Effect.runPromise(parseIssuesFromResponse(response, logger));
@@ -332,7 +311,7 @@ Let me know if you have questions.`;
   });
 
   test('logs warning for JSON parse error', async () => {
-    const logger = createMockLogger();
+    const logger = createCapturingLogger();
     const response = '{"issues": [bad json}';
 
     await Effect.runPromise(parseIssuesFromResponse(response, logger));
@@ -346,7 +325,7 @@ Let me know if you have questions.`;
     // but JSON.parse produces something other than object
     // Actually, the regex matches {...} so JSON.parse will always produce an object
     // Let's test with array that contains "issues" string
-    const logger = createMockLogger();
+    const logger = createCapturingLogger();
     // We can't easily hit this case with the current regex, but let's verify behavior
     // by testing the "issues field undefined" case
     const response = '{"issues": undefined, "other": true}'; // invalid JSON
@@ -359,9 +338,9 @@ Let me know if you have questions.`;
   test('applies partial recovery to extracted issues', async () => {
     const response = JSON.stringify({
       issues: [
-        createValidIssue({ id: 1 }),
+        createIssue({ id: 1 }),
         { id: 2, description: 'Invalid' }, // missing severity and region
-        createValidIssue({ id: 3 }),
+        createIssue({ id: 3 }),
       ],
     });
 
@@ -423,7 +402,7 @@ describe('IssueParseError', () => {
 describe('parseIssuesStrict', () => {
   test('succeeds for valid JSON with all valid issues', async () => {
     const response = JSON.stringify({
-      issues: [createValidIssue({ id: 1 }), createValidIssue({ id: 2 })],
+      issues: [createIssue({ id: 1 }), createIssue({ id: 2 })],
     });
 
     const result = await Effect.runPromise(parseIssuesStrict(response));
@@ -492,9 +471,9 @@ describe('parseIssuesStrict', () => {
   test('fails with ValidationRetryNeeded for partial schema failures, includes partial issues', async () => {
     const response = JSON.stringify({
       issues: [
-        createValidIssue({ id: 1 }),
+        createIssue({ id: 1 }),
         { id: 2, description: 'Invalid' }, // missing fields
-        createValidIssue({ id: 3 }),
+        createIssue({ id: 3 }),
       ],
     });
 
@@ -567,7 +546,7 @@ describe('ValidationRetryNeeded', () => {
   });
 
   test('includes partial issues', () => {
-    const partialIssues = [createValidIssue({ id: 1 }), createValidIssue({ id: 2 })];
+    const partialIssues = [createIssue({ id: 1 }), createIssue({ id: 2 })];
     const error = new ValidationRetryNeeded({
       reason: 'schema_validation_error',
       details: 'Some issues invalid',
@@ -642,7 +621,7 @@ describe('buildRetryPrompt', () => {
 describe('Edge Cases', () => {
   test('handles deeply nested invalid codeLocations', async () => {
     const issues = [
-      createValidIssue({
+      createIssue({
         id: 1,
         codeLocations: [{ file: 'test.liquid', confidence: 'invalid' as 'high', reasoning: 'r', strategy: 's' }],
       }),
@@ -655,7 +634,7 @@ describe('Edge Cases', () => {
 
   test('handles issue with invalid BoundingBox region', async () => {
     const issues = [
-      createValidIssue({
+      createIssue({
         id: 1,
         region: { x: -1, y: 0, width: 100, height: 50 }, // negative x
       }),
@@ -667,7 +646,7 @@ describe('Edge Cases', () => {
   });
 
   test('handles very large arrays', async () => {
-    const issues = Array.from({ length: 1000 }, (_, i) => createValidIssue({ id: i + 1 }));
+    const issues = Array.from({ length: 1000 }, (_, i) => createIssue({ id: i + 1 }));
 
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery(issues));
 
@@ -676,11 +655,11 @@ describe('Edge Cases', () => {
 
   test('preserves issue order after partial recovery', async () => {
     const issues = [
-      createValidIssue({ id: 5 }),
+      createIssue({ id: 5 }),
       { id: 10, invalid: true }, // dropped
-      createValidIssue({ id: 15 }),
+      createIssue({ id: 15 }),
       { id: 20, invalid: true }, // dropped
-      createValidIssue({ id: 25 }),
+      createIssue({ id: 25 }),
     ];
 
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery(issues));
@@ -690,7 +669,7 @@ describe('Edge Cases', () => {
 
   test('handles unicode in descriptions', async () => {
     const issues = [
-      createValidIssue({
+      createIssue({
         id: 1,
         description: 'Bouton avec texte "Ajouter au panier" trop petit',
       }),
