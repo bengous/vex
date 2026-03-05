@@ -5,7 +5,8 @@
  * Each factory accepts a Partial<T> spread override for per-test customization.
  */
 
-import type { CodeLocation, Issue } from '../core/types.js';
+import type { CodeLocation, Issue, ViewportConfig } from '../core/types.js';
+import type { LoopOptions } from '../loop/types.js';
 import type { PipelineDefinition, PipelineState } from '../pipeline/types.js';
 
 export function createIssue(overrides: Partial<Issue> = {}): Issue {
@@ -57,6 +58,28 @@ export function createPipelineState(
 		data: {},
 		issues: [],
 		semanticNames: {},
+		...overrides,
+	};
+}
+
+export const DEFAULT_VIEWPORT: ViewportConfig = {
+	width: 1920,
+	height: 1080,
+	deviceScaleFactor: 1,
+	isMobile: false,
+};
+
+export function createLoopOptions(
+	overrides: Partial<LoopOptions> = {},
+): LoopOptions {
+	return {
+		url: 'https://example.com',
+		maxIterations: 5,
+		viewports: [DEFAULT_VIEWPORT],
+		provider: 'test',
+		projectRoot: '/tmp/test',
+		interactive: false,
+		autoFixThreshold: 'high',
 		...overrides,
 	};
 }
