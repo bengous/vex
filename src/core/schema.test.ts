@@ -10,8 +10,10 @@ import { Either, Schema } from 'effect';
 import {
   AnalysisResponse,
   BoundingBox,
+  CONFIDENCE_RANK,
   CodeLocation,
   Confidence,
+  compareConfidence,
   GridRef,
   Issue,
   IssueArray,
@@ -92,6 +94,23 @@ describe('Confidence', () => {
   test('rejects invalid value', () => {
     const result = decode(Confidence)('uncertain');
     expect(isFailure(result)).toBe(true);
+  });
+
+  test('CONFIDENCE_RANK orders high < medium < low', () => {
+    expect(CONFIDENCE_RANK.high).toBeLessThan(CONFIDENCE_RANK.medium);
+    expect(CONFIDENCE_RANK.medium).toBeLessThan(CONFIDENCE_RANK.low);
+  });
+
+  test('compareConfidence sorts high before medium before low', () => {
+    const values: Confidence[] = ['low', 'high', 'medium'];
+    const sorted = [...values].sort(compareConfidence);
+    expect(sorted).toEqual(['high', 'medium', 'low']);
+  });
+
+  test('compareConfidence returns 0 for equal values', () => {
+    expect(compareConfidence('high', 'high')).toBe(0);
+    expect(compareConfidence('medium', 'medium')).toBe(0);
+    expect(compareConfidence('low', 'low')).toBe(0);
   });
 });
 

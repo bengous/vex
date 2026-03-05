@@ -9,6 +9,7 @@
  */
 
 import { Effect } from 'effect';
+import { CONFIDENCE_RANK, compareConfidence } from '../core/schema.js';
 import type { CodeLocation, Issue } from '../core/types.js';
 import type {
   BatchResolutionResult,
@@ -24,24 +25,11 @@ import { DEFAULT_RESOLVER_OPTIONS } from './types.js';
 // Confidence Utilities
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CONFIDENCE_ORDER: Record<CodeLocation['confidence'], number> = {
-  high: 0,
-  medium: 1,
-  low: 2,
-};
-
-/**
- * Compare confidence levels for sorting (higher confidence = lower value = sorts first).
- */
-export function compareConfidence(a: CodeLocation['confidence'], b: CodeLocation['confidence']): number {
-  return CONFIDENCE_ORDER[a] - CONFIDENCE_ORDER[b];
-}
-
 /**
  * Check if a location meets the minimum confidence threshold.
  */
 export function meetsMinConfidence(location: CodeLocation, minConfidence: CodeLocation['confidence']): boolean {
-  return CONFIDENCE_ORDER[location.confidence] <= CONFIDENCE_ORDER[minConfidence];
+  return CONFIDENCE_RANK[location.confidence] <= CONFIDENCE_RANK[minConfidence];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

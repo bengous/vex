@@ -9,6 +9,7 @@
  * 5. otherwise -> human-review
  */
 
+import { CONFIDENCE_RANK } from '../core/schema.js';
 import type { CodeLocation, Issue, Severity } from '../core/types.js';
 import type { AutoFixThreshold, GateAction, GateConfig, GateDecision } from './types.js';
 import { DEFAULT_GATE_CONFIG } from './types.js';
@@ -28,14 +29,8 @@ function isSeverityAtLeast(actual: Severity, threshold: Severity): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Confidence Ordering
+// Confidence Threshold
 // ═══════════════════════════════════════════════════════════════════════════
-
-const CONFIDENCE_RANK: Record<CodeLocation['confidence'], number> = {
-  high: 0,
-  medium: 1,
-  low: 2,
-};
 
 function isConfidenceAtLeast(actual: CodeLocation['confidence'], threshold: AutoFixThreshold): boolean {
   if (threshold === 'none') {

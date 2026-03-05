@@ -6,8 +6,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { compareConfidence } from '../core/schema.js';
 import { createCodeLocation } from '../testing/factories.js';
-import { compareConfidence, dedupeLocations, meetsMinConfidence, StrategyResolver, toFileLineKey } from './resolver.js';
+import { dedupeLocations, meetsMinConfidence, StrategyResolver, toFileLineKey } from './resolver.js';
 import type { LocatorStrategy } from './types.js';
 
 // ═══════════════════════════════════════════════════════════════════════════

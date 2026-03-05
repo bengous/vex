@@ -53,6 +53,16 @@ export type Region = typeof Region.Type;
 export const Confidence = S.Literal('high', 'medium', 'low');
 export type Confidence = typeof Confidence.Type;
 
+export const CONFIDENCE_RANK: Record<Confidence, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+export function compareConfidence(a: Confidence, b: Confidence): number {
+  return CONFIDENCE_RANK[a] - CONFIDENCE_RANK[b];
+}
+
 export const CodeLocation = S.mutable(
   S.Struct({
     file: S.String,

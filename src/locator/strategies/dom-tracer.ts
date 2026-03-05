@@ -10,6 +10,7 @@
 
 import { $ } from 'bun';
 import { Effect } from 'effect';
+import { compareConfidence } from '../../core/schema.js';
 import type { BoundingBox, CodeLocation, DOMElement, DOMSnapshot, GridRef, Issue, Region } from '../../core/types.js';
 import { GRID_CONFIG } from '../../core/types.js';
 import type { ElementMatch, GrepMatch, LocatorContext, LocatorStrategy } from '../types.js';
@@ -350,8 +351,7 @@ export const domTracerStrategy: LocatorStrategy = {
       }
 
       // Sort by confidence (high > medium > low)
-      const confidenceOrder = { high: 0, medium: 1, low: 2 };
-      locations.sort((a, b) => confidenceOrder[a.confidence] - confidenceOrder[b.confidence]);
+      locations.sort((a, b) => compareConfidence(a.confidence, b.confidence));
 
       return locations;
     });
