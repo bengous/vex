@@ -15,6 +15,7 @@ import type { BoundingBox, DOMElement, DOMSnapshot, Issue } from '../../core/typ
 import { createIssue } from '../../testing/factories.js';
 import type { LocatorContext } from '../types.js';
 import {
+  batchGrepForSelectors,
   buildSelectors,
   domTracerStrategy,
   findAllElementsAtPosition,
@@ -487,5 +488,60 @@ describe('domTracerStrategy', () => {
         }
       }
     });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// batchGrepForSelectors Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('batchGrepForSelectors', () => {
+  let testDir: string;
+
+  beforeAll(async () => {
+    testDir = mkdtempSync(join(tmpdir(), 'batch-grep-test-'));
+
+    await writeFile(join(testDir, 'hero.liquid'), '<div id="hero" class="hero-section banner">Hero content</div>');
+    await writeFile(join(testDir, 'product.liquid'), '<div data-product-id="123" class="product-card">Product</div>');
+  });
+
+  afterAll(async () => {
+    await rm(testDir, { recursive: true });
+  });
+
+  test('finds multiple selectors in single call', async () => {
+    // Use attribute-format selectors that appear literally in HTML content
+    const results = await batchGrepForSelectors(['id="hero"', 'class="hero-section'], testDir, ['*.liquid']);
+
+    expect(results.has('id="hero"')).toBe(true);
+    expect(results.has('class="hero-section')).toBe(true);
+
+    const idMatches = results.get('id="hero"');
+    expect(idMatches?.[0]?.file).toContain('hero.liquid');
+  });
+
+  test('attributes match to correct selector when line matches multiple', async () => {
+    // hero.liquid contains both "hero-section" and "banner" as literal text
+    const results = await batchGrepForSelectors(['hero-section', 'product-card'], testDir, ['*.liquid']);
+
+    expect(results.has('hero-section')).toBe(true);
+    expect(results.has('product-card')).toBe(true);
+
+    const heroMatches = results.get('hero-section');
+    const productMatches = results.get('product-card');
+    expect(heroMatches?.[0]?.file).toContain('hero.liquid');
+    expect(productMatches?.[0]?.file).toContain('product.liquid');
+  });
+
+  test('returns empty map for selectors with no matches', async () => {
+    const results = await batchGrepForSelectors(['.nonexistent', '#missing'], testDir, ['*.liquid']);
+
+    expect(results.size).toBe(0);
+  });
+
+  test('returns empty map for empty selectors array', async () => {
+    const results = await batchGrepForSelectors([], testDir, ['*.liquid']);
+
+    expect(results.size).toBe(0);
   });
 });
