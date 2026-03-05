@@ -161,54 +161,45 @@ export function buildSelectors(element: DOMElement): string[] {
 
 export const DEFAULT_FILE_PATTERNS = ['*.liquid', '*.css', '*.scss', '*.html', '*.jsx', '*.tsx', '*.vue', '*.svelte'];
 
-async function grepForSelector(
-  selector: string,
-  projectRoot: string,
-  patterns: readonly string[],
-): Promise<GrepMatch[]> {
-  const matches: GrepMatch[] = [];
-
-  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const globArgs = patterns.flatMap((p) => ['--glob', p]);
-
-  try {
-    const result = await $`rg -n --no-heading ${escapedSelector} ${globArgs} ${projectRoot}`.quiet().nothrow();
-    const stdout = result.stdout.toString();
-
-    for (const line of stdout.split('\n')) {
-      if (!line.trim()) continue;
-
-      const lineMatch = line.match(/^(.+?):(\d+):(.*)$/);
-      if (lineMatch) {
-        const [, filePath, lineNum, content] = lineMatch;
-        if (filePath && lineNum && content !== undefined) {
-          matches.push({
-            file: filePath,
-            line: Number.parseInt(lineNum, 10),
-            content,
-            selector,
-          });
-        }
-      }
-    }
-  } catch {
-    // rg returns non-zero when no matches found
-  }
-
-  return matches;
-}
-
-async function grepForSelectors(
+export async function batchGrepForSelectors(
   selectors: string[],
   projectRoot: string,
   patterns: readonly string[],
 ): Promise<Map<string, GrepMatch[]>> {
   const results = new Map<string, GrepMatch[]>();
 
-  for (const selector of selectors) {
-    const matches = await grepForSelector(selector, projectRoot, patterns);
-    if (matches.length > 0) {
-      results.set(selector, matches);
+  if (selectors.length === 0) return results;
+
+  const escapedSelectors = selectors.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const combinedPattern = escapedSelectors.join('|');
+  const globArgs = patterns.flatMap((p) => ['--glob', p]);
+
+  const result = await $`rg -n --no-heading ${combinedPattern} ${globArgs} ${projectRoot}`.quiet().nothrow();
+  const stdout = result.stdout.toString();
+
+  for (const line of stdout.split('\n')) {
+    if (!line.trim()) continue;
+
+    const lineMatch = line.match(/^(.+?):(\d+):(.*)$/);
+    if (!lineMatch) continue;
+
+    const [, filePath, lineNum, content] = lineMatch;
+    if (!filePath || !lineNum || content === undefined) continue;
+
+    for (const selector of selectors) {
+      if (!content.includes(selector)) continue;
+
+      let matches = results.get(selector);
+      if (!matches) {
+        matches = [];
+        results.set(selector, matches);
+      }
+      matches.push({
+        file: filePath,
+        line: Number.parseInt(lineNum, 10),
+        content,
+        selector,
+      });
     }
   }
 
@@ -333,7 +324,7 @@ export const domTracerStrategy: LocatorStrategy = {
         // 3. Grep for selectors
         const patterns = filePatterns.length > 0 ? filePatterns : DEFAULT_FILE_PATTERNS;
         const grepResults = yield* Effect.tryPromise({
-          try: () => grepForSelectors(selectors, projectRoot, patterns),
+          try: () => batchGrepForSelectors(selectors, projectRoot, patterns),
           catch: (e) => makeError('Grep failed', e),
         });
 
