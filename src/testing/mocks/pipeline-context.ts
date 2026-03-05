@@ -96,7 +96,7 @@ export interface MockImageArtifactOptions {
  * Create a mock ImageArtifact for testing operations that consume images.
  */
 export function createMockImageArtifact(options: MockImageArtifactOptions): ImageArtifact {
-  const { path, id = `img_${Date.now()}`, width = 1920, height = 1080, viewport } = options;
+  const { path, id = crypto.randomUUID(), width = 1920, height = 1080, viewport } = options;
 
   return {
     _kind: 'artifact',
