@@ -21,7 +21,7 @@ export default defineConfig({
       devices: 'desktop-b3ngous-arch', // Your 1440x1248 setup
       provider: {
         name: 'codex-cli',
-        model: 'gpt-5.2',
+        model: 'gpt-5.4',
         reasoning: 'low',
       },
       full: false,
@@ -32,7 +32,7 @@ export default defineConfig({
       devices: 'desktop-b3ngous-arch', // Your 1440x1248 setup
       provider: {
         name: 'codex-cli',
-        model: 'gpt-5.2',
+        model: 'gpt-5.4',
         reasoning: 'high',
       },
       full: true,
@@ -43,7 +43,7 @@ export default defineConfig({
       devices: 'iphone-15-pro',
       provider: {
         name: 'codex-cli',
-        model: 'gpt-5.2',
+        model: 'gpt-5.4',
         reasoning: 'low',
       },
       full: false,
@@ -74,7 +74,7 @@ export default defineConfig({
       devices: ['desktop-1920', 'iphone-15-pro'],
       provider: {
         name: 'codex-cli',
-        model: 'gpt-5.2',
+        model: 'gpt-5.4',
         reasoning: 'low',
       },
     },
@@ -87,7 +87,7 @@ export default defineConfig({
       devices: 'desktop-1920',
       provider: {
         name: 'codex-cli',
-        model: 'gpt-5.2',
+        model: 'gpt-5.4',
         reasoning: 'low',
       },
       maxIterations: 3,

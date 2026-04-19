@@ -42,7 +42,7 @@ export default defineConfig({
   scanPresets: {
     quick: {
       devices: 'desktop-1920',
-      provider: { name: 'codex-cli', model: 'gpt-5.2', reasoning: 'low' },
+      provider: { name: 'codex-cli', model: 'gpt-5.4', reasoning: 'low' },
     },
   },
   loopPresets: {
@@ -272,7 +272,7 @@ bun src/cli/index.ts scan --help
 bun src/cli/index.ts scan <url> --preset quick
 
 # Test with direct options
-bun src/cli/index.ts scan <url> --provider codex-cli --model gpt-5.2 --reasoning low
+bun src/cli/index.ts scan <url> --provider codex-cli --model gpt-5.4 --reasoning low
 bun src/cli/index.ts scan <url> --device iphone-15-pro --placeholder-media
 
 # List available providers
