@@ -49,6 +49,15 @@ describe('SubprocessService', () => {
     expect(result.stdout.trim()).toBe('こんにちは');
   });
 
+  it('closes stdin so commands waiting for EOF can complete', async () => {
+    const program = Effect.gen(function* () {
+      const subprocess = yield* Subprocess;
+      return yield* subprocess.exec('bash', ['-lc', 'cat >/dev/null; echo done'], 5000);
+    });
+    const result = await Effect.runPromise(program.pipe(Effect.provide(TestLayer)));
+    expect(result.stdout.trim()).toBe('done');
+  });
+
   it('commandExists returns true for existing commands', async () => {
     const program = Effect.gen(function* () {
       const subprocess = yield* Subprocess;

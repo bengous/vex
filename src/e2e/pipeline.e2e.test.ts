@@ -15,7 +15,7 @@
  *
  * Provider fallback order (first available wins):
  * 1. gemini-cli + gemini-2.5-flash (cheapest, fast)
- * 2. codex-cli + gpt-5.2 with reasoning: 'low' (best at visuals)
+ * 2. codex-cli + gpt-5.4 with reasoning: 'low' (best at visuals)
  * 3. ollama + qwen3-vl:8b (free, local)
  */
 
@@ -53,7 +53,7 @@ interface ProviderConfig {
 
 // Note: gemini-cli's @file syntax doesn't work for images, so codex-cli is preferred
 const PROVIDER_CHAIN: readonly ProviderConfig[] = [
-  { name: 'codex-cli', model: 'gpt-5.2', reasoning: 'low' },
+  { name: 'codex-cli', model: 'gpt-5.4', reasoning: 'low' },
   { name: 'ollama', model: 'qwen3-vl:8b' },
 ];
 
