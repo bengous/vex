@@ -86,6 +86,11 @@ export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = L
         const label = cmdLabel(command, args);
         let cmd = Command.make(command, ...args);
 
+        // Some CLIs probe stdin even when all inputs are passed as args.
+        // Feeding an empty string guarantees EOF so the child does not wait
+        // forever on an open pipe (notably `codex exec` in non-TTY mode).
+        cmd = Command.feed(cmd, '');
+
         // Merge provided env vars with process.env
         if (env && Object.keys(env).length > 0) {
           cmd = Command.env(cmd, env);

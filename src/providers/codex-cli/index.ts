@@ -5,9 +5,10 @@
  * Uses a colocated config.toml (via CODEX_HOME env var) to disable MCPs
  * and web search for faster execution.
  *
- * Available models (from ~/.codex/models_cache.json):
- *   - gpt-5.2-codex    : Latest frontier agentic coding model (default)
- *   - gpt-5.2          : Latest frontier model with reasoning
+ * Available models (from OpenAI docs / local Codex CLI usage):
+ *   - gpt-5.4          : Current flagship model for complex reasoning and coding
+ *   - gpt-5.2-codex    : Coding-optimized model for long-horizon agentic tasks
+ *   - gpt-5.2          : Previous frontier model with reasoning
  *   - gpt-5.1-codex-max: Flagship for deep and fast reasoning
  *   - gpt-5.1-codex-mini: Cheaper, faster, less capable
  *
@@ -33,7 +34,7 @@ const config: CliProviderConfig = {
   displayName: 'Codex CLI',
   command: 'codex',
   timeoutMs: CLI_DEFAULT_TIMEOUT_MS,
-  knownModels: ['gpt-5.2', 'gpt-5.2-codex', 'gpt-5.1-codex-max', 'gpt-5.1-codex-mini'],
+  knownModels: ['gpt-5.4', 'gpt-5.2', 'gpt-5.2-codex', 'gpt-5.1-codex-max', 'gpt-5.1-codex-mini'],
 
   buildEnv: () => ({
     CODEX_HOME: __dirname, // Points to vex/providers/codex-cli/ with config.toml

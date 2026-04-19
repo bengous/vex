@@ -24,7 +24,7 @@ export default defineConfig({
   scanPresets: {
     quick: {
       devices: 'desktop-1920',
-      provider: { name: 'codex-cli', model: 'gpt-5.2', reasoning: 'low' },
+      provider: { name: 'codex-cli', model: 'gpt-5.4', reasoning: 'low' },
     },
   },
 });
