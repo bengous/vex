@@ -11,6 +11,7 @@
 
 import type { CodeLocation, Issue, Severity } from "../core/types.js";
 import type { AutoFixThreshold, GateAction, GateConfig, GateDecision } from "./types.js";
+import { CONFIDENCE_RANK } from "../core/schema.js";
 import { DEFAULT_GATE_CONFIG } from "./types.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -26,16 +27,6 @@ const SEVERITY_RANK: Record<Severity, number> = {
 function isSeverityAtLeast(actual: Severity, threshold: Severity): boolean {
   return SEVERITY_RANK[actual] <= SEVERITY_RANK[threshold];
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Confidence Ordering
-// ═══════════════════════════════════════════════════════════════════════════
-
-const CONFIDENCE_RANK: Record<CodeLocation["confidence"], number> = {
-  high: 0,
-  medium: 1,
-  low: 2,
-};
 
 function isConfidenceAtLeast(
   actual: CodeLocation["confidence"],

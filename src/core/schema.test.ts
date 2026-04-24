@@ -11,7 +11,9 @@ import {
   AnalysisResponse,
   BoundingBox,
   CodeLocation,
+  compareConfidence,
   Confidence,
+  CONFIDENCE_RANK,
   GridRef,
   Issue,
   IssueArray,
@@ -94,6 +96,17 @@ describe("Confidence", () => {
   test("rejects invalid value", () => {
     const result = decode(Confidence)("uncertain");
     expect(isFailure(result)).toBe(true);
+  });
+
+  test("defines high to low rank order", () => {
+    expect(CONFIDENCE_RANK).toEqual({ high: 0, medium: 1, low: 2 });
+  });
+
+  test("compares high-confidence values first", () => {
+    expect(compareConfidence("high", "medium")).toBeLessThan(0);
+    expect(compareConfidence("medium", "low")).toBeLessThan(0);
+    expect(compareConfidence("low", "high")).toBeGreaterThan(0);
+    expect(compareConfidence("high", "high")).toBe(0);
   });
 });
 
