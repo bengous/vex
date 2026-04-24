@@ -5,6 +5,8 @@
  * Each factory accepts a Partial<T> spread override for per-test customization.
  */
 
+import type { ValidRunSpec } from "../cli/audit/plan.js";
+import type { AuditManifest } from "../cli/scan-layout.js";
 import type { CodeLocation, Issue, ViewportConfig } from "../core/types.js";
 import type { LoopOptions } from "../loop/types.js";
 import type { PipelineDefinition, PipelineState } from "../pipeline/types.js";
@@ -74,6 +76,45 @@ export function createLoopOptions(overrides: Partial<LoopOptions> = {}): LoopOpt
     projectRoot: "/tmp/test",
     interactive: false,
     autoFixThreshold: "high",
+    ...overrides,
+  };
+}
+
+export function createAuditManifest(overrides: Partial<AuditManifest> = {}): AuditManifest {
+  return {
+    type: "vex-audit",
+    auditId: "audit-test",
+    status: "running",
+    startedAt: "2026-04-24T00:00:00.000Z",
+    outputDir: "/tmp/audit-test",
+    provider: "codex-cli",
+    model: "gpt-5.4",
+    reasoning: "low",
+    urls: ["https://example.com"],
+    devices: ["desktop-1920"],
+    mode: "analyze",
+    full: false,
+    placeholderMedia: false,
+    fullPageScrollFix: false,
+    totalRuns: 1,
+    completedRuns: 0,
+    failedRuns: 0,
+    runs: [],
+    ...overrides,
+  };
+}
+
+export function createRunSpec(overrides: Partial<ValidRunSpec> = {}): ValidRunSpec {
+  return {
+    kind: "valid",
+    url: "https://example.com",
+    deviceId: "desktop-1920",
+    viewport: DEFAULT_VIEWPORT,
+    pageDir: "/tmp/audit-test/pages/example.com/_index",
+    pagePath: "pages/example.com/_index",
+    viewportDir: "/tmp/audit-test/pages/example.com/_index/desktop-1920",
+    viewportPath: "pages/example.com/_index/desktop-1920",
+    viewportDirName: "desktop-1920",
     ...overrides,
   };
 }
