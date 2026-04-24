@@ -181,7 +181,7 @@ function parseActiveConfig(): ReadonlyArray<ActiveRule> {
   return Object.entries(config.rules).map(([name, severity]) => ({
     name,
     severity: extractSeverity(severity),
-    plugin: name.includes("/") ? name.split("/")[0] : "eslint",
+    plugin: name.includes("/") ? (name.split("/")[0] ?? "eslint") : "eslint",
   }));
 }
 
@@ -193,7 +193,7 @@ function parseCatalogRules(): ReadonlyArray<CatalogRule> {
   return output.split(/\r?\n/).flatMap((line) => {
     const categoryMatch = CATEGORY_RE.exec(line);
     if (categoryMatch !== null) {
-      currentCategory = categoryMatch[1].toLowerCase();
+      currentCategory = (categoryMatch[1] ?? "").toLowerCase();
       return [];
     }
     if (!line.startsWith("|")) {
@@ -212,12 +212,13 @@ function parseCatalogRules(): ReadonlyArray<CatalogRule> {
     ) {
       return [];
     }
-    const plugin = ruleName.includes("/") ? ruleName.split("/")[0] : source.toLowerCase();
+    const plugin = ruleName.includes("/") ? (ruleName.split("/")[0] ?? source) : source;
+    const category = categoryMatch?.[1] ?? currentCategory;
     return [
       {
         name: ruleName,
-        plugin,
-        category: currentCategory,
+        plugin: plugin.toLowerCase(),
+        category: category.toLowerCase(),
         fixable: fixableCol.toLowerCase().includes("fix"),
       },
     ];
