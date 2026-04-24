@@ -95,7 +95,7 @@ export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = L
         cmd = Command.feed(cmd, "");
 
         // Merge provided env vars with process.env
-        if (env && Object.keys(env).length > 0) {
+        if (env !== undefined && Object.keys(env).length > 0) {
           cmd = Command.env(cmd, env);
         }
 
