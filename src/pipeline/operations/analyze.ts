@@ -24,7 +24,8 @@ export type AnalyzeConfig = {
 };
 
 /** Providers that support the reasoning effort option */
-const REASONING_PROVIDERS = ["codex-cli"] as const;
+const REASONING_PROVIDERS = new Set(["codex-cli"]);
+const REASONING_PROVIDER_LIST = [...REASONING_PROVIDERS].join(", ");
 
 export type AnalyzeInput = {
   readonly image: ImageArtifact;
@@ -81,14 +82,10 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
       const effectivePrompt = prompt ?? buildAnalysisPrompt(viewport);
 
       // Validate reasoning is only used with supported providers
-      if (
-        reasoning !== undefined &&
-        reasoning.length > 0 &&
-        !REASONING_PROVIDERS.includes(provider as (typeof REASONING_PROVIDERS)[number])
-      ) {
+      if (reasoning !== undefined && reasoning.length > 0 && !REASONING_PROVIDERS.has(provider)) {
         return yield* new OperationError({
           operation: "analyze",
-          detail: `Provider '${provider}' does not support --reasoning. Supported: ${REASONING_PROVIDERS.join(", ")}`,
+          detail: `Provider '${provider}' does not support --reasoning. Supported: ${REASONING_PROVIDER_LIST}`,
         });
       }
 

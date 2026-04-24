@@ -10,6 +10,7 @@ import { Data, Effect } from "effect";
 import { join } from "node:path";
 import { decodeJson, encodeJson } from "../core/json.js";
 import { SESSION_STRUCTURE } from "../core/types.js";
+import { decodePipelineState } from "./schema.js";
 
 /**
  * JSON parsing failed when loading pipeline state.
@@ -102,7 +103,7 @@ export function loadPipelineState(
     const statePath = join(sessionDir, SESSION_STRUCTURE.stateFile);
     const content = yield* fs.readFileString(statePath);
     return yield* Effect.try({
-      try: () => decodeJson(content) as PipelineState,
+      try: () => decodePipelineState(decodeJson(content)),
       catch: (e) =>
         new JsonParseError({
           message: `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`,

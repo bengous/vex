@@ -4,7 +4,8 @@
 
 import type { AnalysisResult, AnnotationsArtifact, Issue, ToolCall } from "../../core/types.js";
 import type { Operation, PipelineContext } from "../types.js";
-import { Effect } from "effect";
+import { Effect, Either, Schema as S } from "effect";
+import { ToolCall as ToolCallSchema } from "../../core/schema.js";
 import { VisionProvider } from "../../providers/shared/service.js";
 import { OperationError } from "../types.js";
 import { resolveProviderForOperation } from "./resolve-provider.js";
@@ -54,27 +55,71 @@ function formatIssuesForPrompt(issues: readonly Issue[]): string {
     .join("\n");
 }
 
-function parseToolCalls(response: string): ToolCall[] {
+function parseToolCalls(response: string): readonly ToolCall[] {
   try {
     const jsonMatch = response.match(/\[[\s\S]*\]/);
     if (jsonMatch === null) {
       return [];
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed: unknown = JSON.parse(jsonMatch[0]);
+    const result = S.decodeUnknownEither(S.Array(ToolCallSchema))(parsed);
+    if (Either.isRight(result)) {
+      return result.right.map(normalizeToolCall);
+    }
+
     if (!Array.isArray(parsed)) {
       return [];
     }
 
-    return parsed.filter(
-      (call): call is ToolCall =>
-        typeof call === "object" &&
-        call !== null &&
-        ["draw_rectangle", "draw_arrow", "add_label"].includes(call.tool) &&
-        typeof call.params === "object",
-    );
+    const toolCalls: ToolCall[] = [];
+    const items: readonly unknown[] = parsed;
+    for (const item of items) {
+      const itemResult = S.decodeUnknownEither(ToolCallSchema)(item);
+      if (Either.isRight(itemResult)) {
+        toolCalls.push(normalizeToolCall(itemResult.right));
+      }
+    }
+    return toolCalls;
   } catch {
     return [];
+  }
+}
+
+function normalizeToolCall(call: typeof ToolCallSchema.Type): ToolCall {
+  switch (call.tool) {
+    case "draw_rectangle":
+      return {
+        tool: call.tool,
+        params: {
+          start: call.params.start,
+          style: call.params.style,
+          ...(call.params.end !== undefined ? { end: call.params.end } : {}),
+          ...(call.params.label !== undefined ? { label: call.params.label } : {}),
+        },
+      };
+    case "draw_arrow":
+      return {
+        tool: call.tool,
+        params: {
+          from: call.params.from,
+          to: call.params.to,
+          style: call.params.style,
+          ...(call.params.label !== undefined ? { label: call.params.label } : {}),
+        },
+      };
+    case "add_label":
+      return {
+        tool: call.tool,
+        params: {
+          cell: call.params.cell,
+          text: call.params.text,
+          style: call.params.style,
+          ...(call.params.position !== undefined ? { position: call.params.position } : {}),
+        },
+      };
+    default:
+      return call;
   }
 }
 
@@ -86,7 +131,7 @@ function createAnnotationsArtifact(
   toolCalls: readonly ToolCall[],
   issueCount: number,
   ctx: PipelineContext,
-) {
+): Effect.Effect<AnnotationsArtifact, OperationError> {
   return Effect.gen(function* () {
     const outputPath = yield* ctx.getArtifactPath("annotations").pipe(
       Effect.mapError(
@@ -141,7 +186,7 @@ export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, Annotat
       if (issues.length === 0) {
         ctx.logger.info("No issues to annotate");
         const artifact = yield* createAnnotationsArtifact([], 0, ctx);
-        return { toolCalls: [] as readonly ToolCall[], annotations: artifact };
+        return { toolCalls: [], annotations: artifact };
       }
 
       ctx.logger.info(`Generating annotations for ${issues.length} issues`);

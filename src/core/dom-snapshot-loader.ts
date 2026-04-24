@@ -5,9 +5,11 @@
  */
 
 import type { DOMSnapshot, ViewportConfig } from "./types.js";
+import { Schema as S } from "effect";
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { DOMSnapshot as DOMSnapshotSchema } from "./schema.js";
 import { ARTIFACT_NAMES, getViewportDirName } from "./types.js";
 
 export type LoadDOMSnapshotResult = {
@@ -64,7 +66,9 @@ export async function loadDOMSnapshotFromPath(domPath: string): Promise<LoadDOMS
 
   try {
     const content = await readFile(domPath, "utf-8");
-    const snapshot = JSON.parse(content) as DOMSnapshot;
+    const snapshot = normalizeDOMSnapshot(
+      S.decodeUnknownSync(DOMSnapshotSchema)(JSON.parse(content)),
+    );
     return { snapshot, path: domPath };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
@@ -74,6 +78,33 @@ export async function loadDOMSnapshotFromPath(domPath: string): Promise<LoadDOMS
       error: `Failed to parse DOM snapshot: ${message}`,
     };
   }
+}
+
+function normalizeDOMSnapshot(snapshot: typeof DOMSnapshotSchema.Type): DOMSnapshot {
+  return {
+    url: snapshot.url,
+    timestamp: snapshot.timestamp,
+    viewport: {
+      width: snapshot.viewport.width,
+      height: snapshot.viewport.height,
+      deviceScaleFactor: snapshot.viewport.deviceScaleFactor,
+      isMobile: snapshot.viewport.isMobile,
+      ...(snapshot.viewport.hasTouch !== undefined ? { hasTouch: snapshot.viewport.hasTouch } : {}),
+      ...(snapshot.viewport.userAgent !== undefined
+        ? { userAgent: snapshot.viewport.userAgent }
+        : {}),
+    },
+    html: snapshot.html,
+    elements: snapshot.elements.map((element) => ({
+      tagName: element.tagName,
+      ...(element.id !== undefined ? { id: element.id } : {}),
+      classes: element.classes,
+      boundingBox: element.boundingBox,
+      computedStyles: element.computedStyles,
+      attributes: element.attributes,
+      ...(element.xpath !== undefined ? { xpath: element.xpath } : {}),
+    })),
+  };
 }
 
 async function findFirstViewportDir(sessionDir: string): Promise<string | null> {
