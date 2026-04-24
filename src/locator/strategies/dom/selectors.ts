@@ -65,7 +65,7 @@ export function createElementMatch(
   return {
     element: {
       tagName: element.tagName,
-      id: element.id,
+      ...(element.id !== undefined ? { id: element.id } : {}),
       classes: element.classes,
       boundingBox: element.boundingBox,
     },

@@ -27,7 +27,7 @@ export function checkProviderInstalled(
       return yield* new ProviderNotInstalled({
         provider: providerName,
         command: metadata.command,
-        installHint: metadata.installHint,
+        ...(metadata.installHint !== undefined ? { installHint: metadata.installHint } : {}),
       });
     }
   });

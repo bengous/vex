@@ -85,7 +85,7 @@ export const analyzeCommand = Command.make(
       const analyze = (prompt: string) => {
         const providerEffect = Effect.gen(function* () {
           const provider = yield* VisionProvider;
-          return yield* provider.analyze([imagePath], prompt, { model });
+          return yield* provider.analyze([imagePath], prompt, model !== undefined ? { model } : {});
         });
         // @effect-diagnostics-next-line strictEffectProvide:off
         return providerEffect.pipe(Effect.provide(providerLayer));
@@ -98,7 +98,7 @@ export const analyzeCommand = Command.make(
       const { issues, ...result } = yield* analyzeWithRetry({
         analyze,
         prompt: DEFAULT_PROMPT,
-        logger,
+        ...(logger !== undefined ? { logger } : {}),
       });
 
       // Consolidated output object for file write and JSON output

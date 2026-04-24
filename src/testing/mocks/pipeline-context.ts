@@ -116,7 +116,7 @@ export function createMockImageArtifact(options: MockImageArtifactOptions): Imag
     metadata: {
       width,
       height,
-      viewport,
+      ...(viewport !== undefined ? { viewport } : {}),
     },
   };
 }

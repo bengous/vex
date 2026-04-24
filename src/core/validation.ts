@@ -146,7 +146,7 @@ export function parseIssuesStrict(
     );
   }
 
-  const issues = (parsed as Record<string, unknown>).issues;
+  const issues = (parsed as Record<string, unknown>)["issues"];
   if (issues === undefined) {
     return Effect.fail(
       new ValidationRetryNeeded({
@@ -225,7 +225,7 @@ export function parseIssuesFromResponse(
     return Effect.succeed([]);
   }
 
-  const issues = (parsed as Record<string, unknown>).issues;
+  const issues = (parsed as Record<string, unknown>)["issues"];
   if (issues === undefined) {
     logger?.warn('No "issues" field in parsed JSON');
     return Effect.succeed([]);

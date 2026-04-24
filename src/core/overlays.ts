@@ -320,7 +320,7 @@ export async function addFoldOverlay(
 
   return addFoldLines(imageBuffer, {
     viewportHeight,
-    cssViewportHeight,
+    ...(cssViewportHeight !== undefined ? { cssViewportHeight } : {}),
     lineColor: config.color,
     showLabels: config.showLabels,
   });

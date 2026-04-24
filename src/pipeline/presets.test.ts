@@ -45,7 +45,7 @@ describe("simpleAnalysis preset", () => {
       "folds->grid:image",
       "grid->analyze:image",
     ]);
-    expect(captureConfig(pipeline).withDOM).toBe(true);
+    expect(captureConfig(pipeline)["withDOM"]).toBe(true);
   });
 });
 
@@ -79,7 +79,7 @@ describe("fullAnnotation preset", () => {
       "grid->render:image",
       "annotate->render:toolCalls",
     ]);
-    expect(captureConfig(pipeline).withDOM).toBe(true);
+    expect(captureConfig(pipeline)["withDOM"]).toBe(true);
   });
 });
 
@@ -95,8 +95,8 @@ describe("responsiveComparison preset", () => {
       "capture-desktop->diff:image:baseImage",
       "capture-mobile->diff:image:compareImage",
     ]);
-    expect(captureConfig(pipeline, "capture-desktop").withDOM).toBeUndefined();
-    expect(captureConfig(pipeline, "capture-mobile").withDOM).toBeUndefined();
+    expect(captureConfig(pipeline, "capture-desktop")["withDOM"]).toBeUndefined();
+    expect(captureConfig(pipeline, "capture-mobile")["withDOM"]).toBeUndefined();
   });
 });
 
@@ -108,7 +108,7 @@ describe("captureOnly preset", () => {
     expect(nodeIds(pipeline)).toEqual(["capture", "folds", "grid"]);
     expect(nodeOutputs(pipeline)).toEqual([["image"], ["image-with-folds"], ["image-with-grid"]]);
     expect(edgeRefs(pipeline)).toEqual(["capture->folds:image", "folds->grid:image"]);
-    expect(captureConfig(pipeline).withDOM).toBeUndefined();
+    expect(captureConfig(pipeline)["withDOM"]).toBeUndefined();
   });
 
   it("supports folds only", () => {
@@ -116,7 +116,7 @@ describe("captureOnly preset", () => {
     expect(pipeline.outputs).toEqual(["image-with-folds"]);
     expect(nodeIds(pipeline)).toEqual(["capture", "folds"]);
     expect(edgeRefs(pipeline)).toEqual(["capture->folds:image"]);
-    expect(captureConfig(pipeline).withDOM).toBeUndefined();
+    expect(captureConfig(pipeline)["withDOM"]).toBeUndefined();
   });
 
   it("supports grid only", () => {
@@ -124,7 +124,7 @@ describe("captureOnly preset", () => {
     expect(pipeline.outputs).toEqual(["image-with-grid"]);
     expect(nodeIds(pipeline)).toEqual(["capture", "grid"]);
     expect(edgeRefs(pipeline)).toEqual(["capture->grid:image"]);
-    expect(captureConfig(pipeline).withDOM).toBeUndefined();
+    expect(captureConfig(pipeline)["withDOM"]).toBeUndefined();
   });
 
   it("supports raw capture with no overlays", () => {
@@ -132,6 +132,6 @@ describe("captureOnly preset", () => {
     expect(pipeline.outputs).toEqual(["image"]);
     expect(nodeIds(pipeline)).toEqual(["capture"]);
     expect(edgeRefs(pipeline)).toEqual([]);
-    expect(captureConfig(pipeline).withDOM).toBeUndefined();
+    expect(captureConfig(pipeline)["withDOM"]).toBeUndefined();
   });
 });

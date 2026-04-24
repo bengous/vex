@@ -81,8 +81,8 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
                 viewport,
                 outputDir: dirname(screenshotPath),
                 filename: "01-screenshot.png",
-                placeholderMedia,
-                fullPageScrollFix,
+                ...(placeholderMedia !== undefined ? { placeholderMedia } : {}),
+                ...(fullPageScrollFix !== undefined ? { fullPageScrollFix } : {}),
               }),
             catch: (e) =>
               new OperationError({
