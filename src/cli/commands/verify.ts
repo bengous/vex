@@ -11,6 +11,7 @@ import { Args, Command } from "@effect/cli";
 import { Effect, Option } from "effect";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { decodeJson, encodeJson } from "../../core/json.js";
 import { verifyChanges } from "../../loop/verify.js";
 import { baselineOption, currentOption, jsonOption } from "../options.js";
 
@@ -33,7 +34,7 @@ function loadIterationState(sessionDir: string, iteration: number | "latest"): P
     throw new Error(`Session state not found: ${statePath}`);
   }
 
-  const state = JSON.parse(readFileSync(statePath, "utf-8")) as unknown;
+  const state = decodeJson(readFileSync(statePath, "utf-8"));
   const stateObject =
     typeof state === "object" && state !== null ? (state as Record<string, unknown>) : {};
 
@@ -92,7 +93,7 @@ export const verifyCommand = Command.make(
       const result = yield* verifyChanges(baseline, current);
 
       if (args.json) {
-        console.log(JSON.stringify(result, null, 2));
+        console.log(encodeJson(result));
       } else {
         console.log(`\nVerdict: ${result.verdict.toUpperCase()}`);
         console.log(`\nResolved: ${result.resolved.length}`);

@@ -11,6 +11,7 @@ import { Effect, Option } from "effect";
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { analyzeWithRetry } from "../../core/analysis.js";
+import { encodeJson } from "../../core/json.js";
 import { resolveProviderLayer } from "../../providers/shared/registry.js";
 import { VisionProvider } from "../../providers/shared/service.js";
 import { jsonOption, modelOption, outputOption, providerOption } from "../options.js";
@@ -116,13 +117,13 @@ export const analyzeCommand = Command.make(
           const imageName = basename(imagePath, extname(imagePath));
           const outputPath = join(outputDir, `${imageName}-analysis.json`);
 
-          await writeFile(outputPath, JSON.stringify(output, null, 2));
+          await writeFile(outputPath, encodeJson(output));
           console.log(`Results written to: ${outputPath}`);
         });
       }
 
       if (args.json) {
-        console.log(JSON.stringify(output, null, 2));
+        console.log(encodeJson(output));
         return;
       }
 
