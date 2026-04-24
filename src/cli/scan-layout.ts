@@ -60,7 +60,7 @@ function sanitizePathSegment(segment: string): string {
 }
 
 function buildVariantSuffix(url: URL): string | undefined {
-  if (!url.search && !url.hash) {
+  if (url.search.length === 0 && url.hash.length === 0) {
     return undefined;
   }
   const hash = createHash("sha1").update(`${url.search}${url.hash}`).digest("hex").slice(0, 8);
@@ -92,7 +92,7 @@ export function urlToPagePathSegments(rawUrl: string): readonly string[] {
     .map(sanitizePathSegment);
 
   const variant = buildVariantSuffix(url);
-  const leaf = variant ? `_index__${variant}` : "_index";
+  const leaf = variant !== undefined ? `_index__${variant}` : "_index";
   return [host, ...pathSegments, leaf];
 }
 
