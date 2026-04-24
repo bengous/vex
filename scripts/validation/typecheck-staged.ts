@@ -2,22 +2,7 @@
 
 import { CODE_PATTERN, classifyScopes, expandConfigScope, getChangedFiles } from "./detect-scope";
 import { resolveProjectRoot } from "./resolve-bin";
-
-function run(label: string, cmd: string[], cwd: string, errors: string[]): void {
-  const result = Bun.spawnSync(cmd, {
-    cwd,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  if (result.exitCode !== 0) {
-    const output = [result.stderr.toString(), result.stdout.toString()]
-      .filter(Boolean)
-      .join("\n")
-      .trim();
-    errors.push(`[${label}] ${output || `exited with code ${result.exitCode}`}`);
-  }
-}
+import { runCommand } from "./run-command";
 
 async function main(): Promise<void> {
   const projectRoot = resolveProjectRoot(import.meta.dir);
@@ -32,10 +17,10 @@ async function main(): Promise<void> {
   const errors: string[] = [];
 
   if (scopes.has("backend") || scopes.has("scripts")) {
-    run("typecheck", ["bun", "run", "--silent", "typecheck"], projectRoot, errors);
+    runCommand("typecheck", ["bun", "run", "--silent", "typecheck"], projectRoot, errors);
   }
   if (scopes.has("frontend")) {
-    run(
+    runCommand(
       "typecheck:frontend",
       ["bun", "run", "--silent", "typecheck:frontend"],
       projectRoot,

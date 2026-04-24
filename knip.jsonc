@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/knip/schema.json",
+  "entry": [
+    "src/index.ts",
+    "src/**/*.test.ts",
+    "scripts/**/*.test.ts",
+    "scripts/validation/format-and-lint.ts",
+    "scripts/validation/typecheck-staged.ts",
+    "scripts/validation/validate-on-stop.ts",
+    ".claude/hooks/guard-destructive.ts",
+    "vex.config.example.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx,js,jsx,mjs,cjs}",
+    "scripts/**/*.{ts,tsx,js,jsx,mjs,cjs}",
+    ".claude/hooks/**/*.{ts,tsx,js,jsx,mjs,cjs}",
+    "vex.config.example.ts"
+  ],
+  "ignoreBinaries": ["rg"]
+}
