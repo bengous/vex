@@ -10,6 +10,7 @@ import type { ProviderInfo } from "../../providers/shared/introspection.js";
 import { Command, Options } from "@effect/cli";
 import { Effect } from "effect";
 import { loadConfigOptional } from "../../config/loader.js";
+import { encodeJson } from "../../core/json.js";
 import { BUILTIN_PROFILES } from "../../providers/codex-cli/schema.js";
 import { getAllProviders } from "../../providers/shared/introspection.js";
 import { jsonOption } from "../options.js";
@@ -115,7 +116,7 @@ export const providersCommand = Command.make(
               }
             : {}),
         }));
-        console.log(JSON.stringify(output, null, 2));
+        console.log(encodeJson(output));
         return;
       }
 
