@@ -113,7 +113,7 @@ function createIterationLogger(): LoopCallbacks["onIterationComplete"] {
     if (state.fixesApplied.length > 0) {
       console.log(`Fixes applied: ${state.fixesApplied.length} (simulated)`);
     }
-    if (state.verification) {
+    if (state.verification !== undefined) {
       console.log(`Verification: ${state.verification.verdict}`);
       console.log(`  Resolved: ${state.verification.resolved.length}`);
       console.log(`  Introduced: ${state.verification.introduced.length}`);
@@ -156,14 +156,15 @@ async function saveIterationHistory(
       sessionDir: iter.pipelineState.sessionDir,
       issueCount: iter.issuesFound.length,
       fixCount: iter.fixesApplied.length,
-      verification: iter.verification
-        ? {
-            verdict: iter.verification.verdict,
-            resolved: iter.verification.resolved.length,
-            introduced: iter.verification.introduced.length,
-            unchanged: iter.verification.unchanged.length,
-          }
-        : undefined,
+      verification:
+        iter.verification !== undefined
+          ? {
+              verdict: iter.verification.verdict,
+              resolved: iter.verification.resolved.length,
+              introduced: iter.verification.introduced.length,
+              unchanged: iter.verification.unchanged.length,
+            }
+          : undefined,
     })),
   };
 
@@ -199,7 +200,7 @@ function printLoopSummary(result: LoopResult): void {
   if (result.totalFixesApplied > 0) {
     console.log(`Fixes applied: ${result.totalFixesApplied} (simulated)`);
   }
-  if (result.finalVerification) {
+  if (result.finalVerification !== undefined) {
     console.log(`Final verdict: ${result.finalVerification.verdict}`);
   }
   console.log(`Session: ${result.sessionDir}`);
@@ -252,12 +253,13 @@ export const loopCommand = Command.make(
       const resolved = yield* resolveLoopOptions(cliArgs);
 
       const deviceResult = lookupDevice(resolved.devices[0]!);
-      if (!deviceResult) {
+      if (deviceResult === undefined) {
         const validDevices = getAllDeviceIds().join(", ");
-        return yield* Effect.fail(
-          new Error(`Unknown device: ${resolved.devices[0]}.
+        return yield* makeLoopError(
+          "capture",
+          `Unknown device: ${resolved.devices[0]}.
 Use explicit device IDs (e.g., iphone-se-2016 or iphone-se-2022).
-Valid devices: ${validDevices}`),
+Valid devices: ${validDevices}`,
         );
       }
       const viewport: ViewportConfig = deviceResult.preset.viewport;
@@ -284,13 +286,13 @@ Valid devices: ${validDevices}`),
       console.log(`Max iterations: ${loopOptions.maxIterations}`);
       console.log(`Auto-fix threshold: ${loopOptions.autoFixThreshold}`);
       console.log(
-        `Provider: ${loopOptions.provider}${resolved.model ? ` (model: ${resolved.model})` : ""}${resolved.profile !== "minimal" ? ` (profile: ${resolved.profile})` : ""}`,
+        `Provider: ${loopOptions.provider}${resolved.model !== undefined && resolved.model.length > 0 ? ` (model: ${resolved.model})` : ""}${resolved.profile !== "minimal" ? ` (profile: ${resolved.profile})` : ""}`,
       );
       console.log(`Viewport: ${viewport.width}x${viewport.height} (${resolved.devices[0]})`);
-      if (resolved.placeholderMedia) {
+      if (resolved.placeholderMedia !== undefined) {
         console.log("Placeholder media: enabled");
       }
-      if (resolved.fullPageScrollFix) {
+      if (resolved.fullPageScrollFix !== undefined) {
         console.log("Full-page scroll fix: enabled");
       }
       console.log("");

@@ -60,15 +60,17 @@ function asObject(value: unknown): JsonObject | undefined {
 function loadIssuesFromAnalysisArtifacts(
   artifacts: Record<string, AnalysisArtifactRef> | undefined,
 ): Issue[] {
-  const analysisArtifact = artifacts
-    ? Object.values(artifacts).find((a) => a.type === "analysis")
-    : undefined;
-  if (!analysisArtifact?.path || !existsSync(analysisArtifact.path)) {
+  const analysisArtifact =
+    artifacts !== undefined
+      ? Object.values(artifacts).find((a) => a.type === "analysis")
+      : undefined;
+  const analysisPath = analysisArtifact?.path;
+  if (analysisPath === undefined || analysisPath.length === 0 || !existsSync(analysisPath)) {
     return [];
   }
 
   try {
-    const analysis = JSON.parse(readFileSync(analysisArtifact.path, "utf-8")) as {
+    const analysis = JSON.parse(readFileSync(analysisPath, "utf-8")) as {
       issues?: unknown;
     };
     return Array.isArray(analysis.issues) ? (analysis.issues as Issue[]) : [];
@@ -83,7 +85,7 @@ function collectStateFilesRecursive(rootDir: string): string[] {
 
   while (stack.length > 0) {
     const current = stack.pop();
-    if (!current) {
+    if (current === undefined) {
       continue;
     }
     const entries = readdirSync(current, { withFileTypes: true });
@@ -109,7 +111,7 @@ export function loadLocateSessionContext(sessionDir: string): LocateSessionConte
 
   const state = JSON.parse(readFileSync(statePath, "utf-8")) as unknown;
   const stateObj = asObject(state);
-  if (!stateObj) {
+  if (stateObj === undefined) {
     return { issues: [], domSessionDir: sessionDir };
   }
 
@@ -205,7 +207,10 @@ export const locateCommand = Command.make(
       const sessionDir = args.session;
       const projectRoot = args.project;
       const patternsStr = Option.getOrUndefined(args.patterns);
-      const filePatterns = patternsStr ? patternsStr.split(",") : ["*.liquid", "*.css", "*.scss"];
+      const filePatterns =
+        patternsStr !== undefined && patternsStr.length > 0
+          ? patternsStr.split(",")
+          : ["*.liquid", "*.css", "*.scss"];
       const jsonOutput = args.json;
 
       console.log(`Loading target from ${sessionDir}`);
@@ -216,7 +221,7 @@ export const locateCommand = Command.make(
 
       if (targetSet.kind === "session") {
         const [target] = targetSet.targets;
-        if (!target) {
+        if (target === undefined) {
           console.log("No issues to locate");
           return;
         }
@@ -228,7 +233,7 @@ export const locateCommand = Command.make(
         }
 
         const domResult = yield* Effect.promise(async () => loadDOMSnapshot(target.domSessionDir));
-        if (domResult.error) {
+        if (domResult.error !== undefined && domResult.error.length > 0) {
           console.warn(`DOM: ${domResult.error}`);
         }
 
@@ -279,7 +284,7 @@ export const locateCommand = Command.make(
         }
 
         const domResult = yield* Effect.promise(async () => loadDOMSnapshot(target.domSessionDir));
-        if (domResult.error) {
+        if (domResult.error !== undefined && domResult.error.length > 0) {
           console.warn(`DOM (${target.source}): ${domResult.error}`);
         }
 
