@@ -16,7 +16,7 @@ import { Duration, Effect, Layer, Schema } from "effect";
 import { registerProvider } from "../shared/registry.js";
 import { AnalysisFailed, VisionProvider } from "../shared/service.js";
 
-const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
+const OLLAMA_URL = process.env["OLLAMA_URL"] ?? "http://localhost:11434";
 const TIMEOUT_MS = 180_000;
 const DEFAULT_MODEL = "qwen3-vl:8b";
 

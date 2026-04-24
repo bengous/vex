@@ -480,7 +480,7 @@ async function captureDOMSnapshot(
 
             results.push({
               tagName: node.tagName.toLowerCase(),
-              id: node.id.length > 0 ? node.id : undefined,
+              ...(node.id.length > 0 ? { id: node.id } : {}),
               classes: Array.from(node.classList),
               boundingBox: {
                 x: rect.x + window.scrollX,
@@ -502,14 +502,14 @@ async function captureDOMSnapshot(
   );
 
   const html = await page.content();
-  const domElements: DOMElement[] = elements.map((el) => ({
-    tagName: el.tagName,
-    id: el.id,
-    classes: el.classes,
-    boundingBox: el.boundingBox as BoundingBox,
-    computedStyles: el.computedStyles,
-    attributes: el.attributes,
-  }));
+  const domElements: DOMElement[] = elements.map((el) =>
+    Object.assign({ tagName: el.tagName }, el.id !== undefined ? { id: el.id } : {}, {
+      classes: el.classes,
+      boundingBox: el.boundingBox as BoundingBox,
+      computedStyles: el.computedStyles,
+      attributes: el.attributes,
+    }),
+  );
 
   return {
     url,
@@ -545,8 +545,8 @@ async function runCapture(
     viewport: { width: viewport.width, height: viewport.height },
     deviceScaleFactor: viewport.deviceScaleFactor,
     isMobile: viewport.isMobile,
-    hasTouch: viewport.hasTouch,
-    userAgent: viewport.userAgent,
+    ...(viewport.hasTouch !== undefined ? { hasTouch: viewport.hasTouch } : {}),
+    ...(viewport.userAgent !== undefined ? { userAgent: viewport.userAgent } : {}),
   });
 
   await setupNetworkBlocking(context);
@@ -609,7 +609,11 @@ async function runCapture(
       },
     };
 
-    return { artifact, buffer, domSnapshot };
+    return {
+      artifact,
+      buffer,
+      ...(domSnapshot !== undefined ? { domSnapshot } : {}),
+    };
   } finally {
     await context.close();
   }

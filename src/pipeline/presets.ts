@@ -12,10 +12,10 @@ type CaptureNodeOptions = {
   readonly viewport: ViewportConfig;
   readonly filename: string;
   readonly outputs: readonly string[];
-  readonly withDOM?: true;
-  readonly includeCaptureOptions?: true;
-  readonly placeholderMedia?: PlaceholderMediaOptions;
-  readonly fullPageScrollFix?: FullPageScrollFixOptions;
+  readonly withDOM?: true | undefined;
+  readonly includeCaptureOptions?: true | undefined;
+  readonly placeholderMedia?: PlaceholderMediaOptions | undefined;
+  readonly fullPageScrollFix?: FullPageScrollFixOptions | undefined;
 };
 
 function edge(from: string, to: string, artifact: string, targetField?: string): PipelineEdge {
@@ -32,12 +32,16 @@ function captureNode(options: CaptureNodeOptions): PipelineNode {
   };
 
   if (options.withDOM === true) {
-    config.withDOM = true;
+    config["withDOM"] = true;
   }
 
   if (options.includeCaptureOptions === true) {
-    config.placeholderMedia = options.placeholderMedia;
-    config.fullPageScrollFix = options.fullPageScrollFix;
+    if (options.placeholderMedia !== undefined) {
+      config["placeholderMedia"] = options.placeholderMedia;
+    }
+    if (options.fullPageScrollFix !== undefined) {
+      config["fullPageScrollFix"] = options.fullPageScrollFix;
+    }
   }
 
   return {
@@ -73,7 +77,11 @@ function analyzeNode(provider: string, model?: string, reasoning?: string): Pipe
   return {
     id: "analyze",
     operation: "analyze",
-    config: { provider, model, reasoning },
+    config: {
+      provider,
+      ...(model !== undefined ? { model } : {}),
+      ...(reasoning !== undefined ? { reasoning } : {}),
+    },
     inputs: ["image-with-grid"],
     outputs: ["analysis"],
   };

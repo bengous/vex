@@ -27,7 +27,7 @@ const VIEWPORT: ViewportConfig = {
   deviceScaleFactor: 1,
   isMobile: false,
 };
-const RUN_E2E = process.env.RUN_E2E !== undefined && process.env.RUN_E2E.length > 0;
+const RUN_E2E = process.env["RUN_E2E"] !== undefined && process.env["RUN_E2E"].length > 0;
 
 describe("CLI E2E - Gemini preset smoke", () => {
   let tempDir: string;

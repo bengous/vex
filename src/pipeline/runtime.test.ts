@@ -248,8 +248,8 @@ describe("parallel node execution", () => {
     if (Exit.isSuccess(exit)) {
       const state = exit.value;
       expect(state.status).toBe("completed");
-      expect(state.nodes.nodeA?.status).toBe("completed");
-      expect(state.nodes.nodeB?.status).toBe("completed");
+      expect(state.nodes["nodeA"]?.status).toBe("completed");
+      expect(state.nodes["nodeB"]?.status).toBe("completed");
     }
 
     // With parallel execution, both should start before either ends.

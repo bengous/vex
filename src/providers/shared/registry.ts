@@ -22,6 +22,15 @@ export type ProviderMetadata = {
   readonly modelAliases?: Record<string, string>;
 };
 
+type ProviderRegistrationMetadata = {
+  readonly displayName?: string | undefined;
+  readonly type?: "http" | "cli" | undefined;
+  readonly command?: string | undefined;
+  readonly installHint?: string | undefined;
+  readonly knownModels?: readonly string[] | undefined;
+  readonly modelAliases?: Record<string, string> | undefined;
+};
+
 /** Factory function that creates a provider layer, optionally with configuration */
 export type ProviderFactory<TConfig = unknown> = (config?: TConfig) => Layer.Layer<VisionProvider>;
 
@@ -42,19 +51,21 @@ const PROVIDER_ENTRIES = new Map<string, ProviderEntry>();
 export function registerProvider(
   name: string,
   factory: ProviderFactory,
-  metadata?: Omit<ProviderMetadata, "name">,
+  metadata?: ProviderRegistrationMetadata,
 ): void {
+  const providerMetadata: ProviderMetadata = {
+    name,
+    displayName: metadata?.displayName ?? name,
+    type: metadata?.type ?? "http",
+    ...(metadata?.command !== undefined ? { command: metadata.command } : {}),
+    ...(metadata?.installHint !== undefined ? { installHint: metadata.installHint } : {}),
+    ...(metadata?.knownModels !== undefined ? { knownModels: metadata.knownModels } : {}),
+    ...(metadata?.modelAliases !== undefined ? { modelAliases: metadata.modelAliases } : {}),
+  };
+
   PROVIDER_ENTRIES.set(name, {
     factory,
-    metadata: {
-      name,
-      displayName: metadata?.displayName ?? name,
-      type: metadata?.type ?? "http",
-      command: metadata?.command,
-      installHint: metadata?.installHint,
-      knownModels: metadata?.knownModels,
-      modelAliases: metadata?.modelAliases,
-    },
+    metadata: providerMetadata,
   });
 }
 

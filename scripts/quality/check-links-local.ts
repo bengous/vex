@@ -10,8 +10,8 @@ void processModule;
 const DOC_EXTENSIONS = new Set([".md", ".html"]);
 const MISE_ENV = {
   ...Bun.env,
-  BUN_INSTALL: Bun.env.BUN_INSTALL ?? "/tmp/bun-install",
-  BUN_TMPDIR: Bun.env.BUN_TMPDIR ?? "/tmp",
+  BUN_INSTALL: Bun.env["BUN_INSTALL"] ?? "/tmp/bun-install",
+  BUN_TMPDIR: Bun.env["BUN_TMPDIR"] ?? "/tmp",
 };
 
 function resolveLycheeCommand(): string[] | undefined {

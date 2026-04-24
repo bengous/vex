@@ -73,8 +73,8 @@ describe("mergeNodeResults", () => {
 
     const merged = mergeNodeResults(base, [resultA, resultB]);
 
-    expect(merged.nodes.a?.status).toBe("completed");
-    expect(merged.nodes.b?.status).toBe("completed");
+    expect(merged.nodes["a"]?.status).toBe("completed");
+    expect(merged.nodes["b"]?.status).toBe("completed");
 
     expect(merged.artifacts["art-a"]).toBeDefined();
     expect(merged.artifacts["art-b"]).toBeDefined();

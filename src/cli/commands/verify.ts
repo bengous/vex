@@ -38,9 +38,10 @@ function loadIterationState(sessionDir: string, iteration: number | "latest"): P
   const stateObject =
     typeof state === "object" && state !== null ? (state as Record<string, unknown>) : {};
 
-  if (Array.isArray(stateObject.iterationHistory)) {
-    const idx = iteration === "latest" ? stateObject.iterationHistory.length - 1 : iteration;
-    const iterState = stateObject.iterationHistory[idx] as
+  if (Array.isArray(stateObject["iterationHistory"])) {
+    const iterationHistory = stateObject["iterationHistory"];
+    const idx = iteration === "latest" ? iterationHistory.length - 1 : iteration;
+    const iterState = iterationHistory[idx] as
       | { readonly pipelineState?: PipelineState }
       | undefined;
     if (iterState?.pipelineState === undefined) {

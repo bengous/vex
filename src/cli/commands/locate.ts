@@ -118,26 +118,28 @@ export function loadLocateSessionContext(sessionDir: string): LocateSessionConte
 
   let domSessionDir = sessionDir;
 
-  if (stateObj.type === "vex-loop") {
-    const iterations = Array.isArray(stateObj.iterationHistory) ? stateObj.iterationHistory : [];
+  if (stateObj["type"] === "vex-loop") {
+    const iterations = Array.isArray(stateObj["iterationHistory"])
+      ? stateObj["iterationHistory"]
+      : [];
     const latestIteration = asObject(iterations.at(-1));
-    const latestPipelineState = asObject(latestIteration?.pipelineState);
+    const latestPipelineState = asObject(latestIteration?.["pipelineState"]);
 
-    if (typeof latestPipelineState?.sessionDir === "string") {
-      domSessionDir = latestPipelineState.sessionDir;
+    if (typeof latestPipelineState?.["sessionDir"] === "string") {
+      domSessionDir = latestPipelineState["sessionDir"];
     }
 
-    const loopIssues = latestIteration?.issuesFound;
+    const loopIssues = latestIteration?.["issuesFound"];
     if (Array.isArray(loopIssues) && loopIssues.length > 0) {
       return { issues: loopIssues as Issue[], domSessionDir };
     }
 
-    const pipelineIssues = latestPipelineState?.issues;
+    const pipelineIssues = latestPipelineState?.["issues"];
     if (Array.isArray(pipelineIssues) && pipelineIssues.length > 0) {
       return { issues: pipelineIssues as Issue[], domSessionDir };
     }
 
-    const latestPipelineArtifacts = asObject(latestPipelineState?.artifacts) as
+    const latestPipelineArtifacts = asObject(latestPipelineState?.["artifacts"]) as
       | Record<string, AnalysisArtifactRef>
       | undefined;
     const latestPipelineAnalysisIssues = loadIssuesFromAnalysisArtifacts(latestPipelineArtifacts);
@@ -146,11 +148,11 @@ export function loadLocateSessionContext(sessionDir: string): LocateSessionConte
     }
   }
 
-  if (Array.isArray(stateObj.issues) && stateObj.issues.length > 0) {
-    return { issues: stateObj.issues as Issue[], domSessionDir };
+  if (Array.isArray(stateObj["issues"]) && stateObj["issues"].length > 0) {
+    return { issues: stateObj["issues"] as Issue[], domSessionDir };
   }
 
-  const rootArtifacts = asObject(stateObj.artifacts) as
+  const rootArtifacts = asObject(stateObj["artifacts"]) as
     | Record<string, AnalysisArtifactRef>
     | undefined;
   return { issues: loadIssuesFromAnalysisArtifacts(rootArtifacts), domSessionDir };
@@ -241,7 +243,9 @@ export const locateCommand = Command.make(
         const ctx: LocatorContext = {
           projectRoot,
           filePatterns,
-          domSnapshot: domResult.snapshot ?? undefined,
+          ...(domResult.snapshot !== undefined && domResult.snapshot !== null
+            ? { domSnapshot: domResult.snapshot }
+            : {}),
         };
 
         const result = yield* resolver.locateAll(target.issues, ctx);
@@ -292,7 +296,9 @@ export const locateCommand = Command.make(
         const ctx: LocatorContext = {
           projectRoot,
           filePatterns,
-          domSnapshot: domResult.snapshot ?? undefined,
+          ...(domResult.snapshot !== undefined && domResult.snapshot !== null
+            ? { domSnapshot: domResult.snapshot }
+            : {}),
         };
 
         const result = yield* resolver.locateAll(target.issues, ctx);

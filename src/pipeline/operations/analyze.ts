@@ -101,8 +101,8 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
         const providerEffect = Effect.gen(function* () {
           const visionProvider = yield* VisionProvider;
           return yield* visionProvider.analyze([input.image.path], analysisPrompt, {
-            model,
-            reasoning,
+            ...(model !== undefined ? { model } : {}),
+            ...(reasoning !== undefined ? { reasoning } : {}),
           });
         });
         // @effect-diagnostics-next-line strictEffectProvide:off

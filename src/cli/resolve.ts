@@ -106,11 +106,11 @@ export type ResolvedLoopOptions = {
  * Preset fields shared between ScanPreset and LoopPreset.
  */
 export type CommonPresetFields = {
-  readonly urls?: readonly string[];
-  readonly devices?: DeviceSpec;
-  readonly provider?: ProviderSpec;
-  readonly placeholderMedia?: PlaceholderMediaSpec;
-  readonly fullPageScrollFix?: FullPageScrollFixSpec;
+  readonly urls?: readonly string[] | undefined;
+  readonly devices?: DeviceSpec | undefined;
+  readonly provider?: ProviderSpec | undefined;
+  readonly placeholderMedia?: PlaceholderMediaSpec | undefined;
+  readonly fullPageScrollFix?: FullPageScrollFixSpec | undefined;
 };
 
 /**
@@ -332,8 +332,8 @@ function extractProviderInfo(spec: ProviderSpec | undefined): {
   }
   return {
     provider: spec.name,
-    model: spec.model,
-    reasoning: "reasoning" in spec ? spec.reasoning : undefined,
+    ...(spec.model !== undefined ? { model: spec.model } : {}),
+    ...("reasoning" in spec && spec.reasoning !== undefined ? { reasoning: spec.reasoning } : {}),
   };
 }
 
@@ -349,7 +349,7 @@ function resolveOutputDir(
     return Effect.succeed(cliOutput.value);
   }
 
-  const envDir = process.env.VEX_OUTPUT_DIR;
+  const envDir = process.env["VEX_OUTPUT_DIR"];
   if (envDir !== undefined && envDir.length > 0) {
     return Effect.succeed(envDir);
   }

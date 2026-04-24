@@ -56,7 +56,7 @@ const PROVIDER_CHAIN: readonly ProviderConfig[] = [
   { name: "codex-cli", model: "gpt-5.4", reasoning: "low" },
   { name: "ollama", model: "qwen3-vl:8b" },
 ];
-const RUN_E2E = process.env.RUN_E2E !== undefined && process.env.RUN_E2E.length > 0;
+const RUN_E2E = process.env["RUN_E2E"] !== undefined && process.env["RUN_E2E"].length > 0;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Provider Discovery
