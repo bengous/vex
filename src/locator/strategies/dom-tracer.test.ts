@@ -18,6 +18,8 @@ import type { LocatorContext } from '../types.js';
 import {
   batchGrepForSelectors,
   buildSelectors,
+  createDomTracerStrategy,
+  type DomTracerSearcher,
   domTracerStrategy,
   findAllElementsAtPosition,
   findElementAtPosition,
@@ -302,6 +304,30 @@ describe('buildSelectors', () => {
 
     expect(selectors).toEqual([]);
   });
+
+  test('preserves selector specificity order', () => {
+    const element = createElement({
+      tagName: 'section',
+      id: 'hero',
+      classes: ['hero-section'],
+      attributes: { 'data-section-id': 'hero' },
+    });
+    const selectors = buildSelectors(element);
+
+    expect(selectors).toEqual([
+      '#hero',
+      'id="hero"',
+      '.hero-section',
+      'class="hero-section"',
+      'class="hero-section ',
+      ' hero-section"',
+      ' hero-section ',
+      'section.hero-section',
+      'data-section-id="hero"',
+      '[data-section-id="hero"]',
+      '<section class=',
+    ]);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -489,6 +515,140 @@ describe('domTracerStrategy', () => {
         }
       }
     });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Strategy Tests (with injected searcher)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('createDomTracerStrategy', () => {
+  function createContext(elements: DOMElement[]): LocatorContext {
+    return {
+      projectRoot: '/project',
+      domSnapshot: createDOMSnapshot(elements),
+      filePatterns: ['*.tsx'],
+    };
+  }
+
+  test('uses the injected searcher and preserves selector order', async () => {
+    const mutableCalls: string[][] = [];
+    const searcher: DomTracerSearcher = async (selectors) => {
+      mutableCalls.push([...selectors]);
+      return new Map([[selectors[0] ?? '', [{ file: '/project/Hero.tsx', line: 10, content: '', selector: selectors[0] ?? '' }]]]);
+    };
+    const strategy = createDomTracerStrategy({ searcher });
+    const issue = createIssue({ region: { x: 0, y: 0, width: 20, height: 20 } });
+    const ctx = createContext([
+      createElement({
+        tagName: 'section',
+        id: 'hero',
+        classes: ['hero-section'],
+        attributes: { 'data-section-id': 'hero' },
+        boundingBox: { x: 0, y: 0, width: 100, height: 100 },
+      }),
+    ]);
+
+    const result = await Effect.runPromise(strategy.locate(issue, ctx));
+
+    expect(result).toHaveLength(1);
+    expect(mutableCalls[0]).toEqual([
+      '#hero',
+      'id="hero"',
+      '.hero-section',
+      'class="hero-section"',
+      'class="hero-section ',
+      ' hero-section"',
+      ' hero-section ',
+      'section.hero-section',
+      'data-section-id="hero"',
+      '[data-section-id="hero"]',
+      '<section class=',
+    ]);
+  });
+
+  test('processes at most three elements by default', async () => {
+    const calls: string[][] = [];
+    const searcher: DomTracerSearcher = async (selectors) => {
+      calls.push([...selectors]);
+      const selector = selectors[0] ?? '';
+      return new Map([[selector, [{ file: `/project/${selector.slice(1)}.tsx`, line: 1, content: '', selector }]]]);
+    };
+    const strategy = createDomTracerStrategy({ searcher });
+    const issue = createIssue({ region: { x: 0, y: 0, width: 20, height: 20 } });
+    const ctx = createContext([
+      createElement({ classes: ['fourth'], boundingBox: { x: 0, y: 0, width: 400, height: 400 } }),
+      createElement({ classes: ['third'], boundingBox: { x: 0, y: 0, width: 300, height: 300 } }),
+      createElement({ classes: ['second'], boundingBox: { x: 0, y: 0, width: 200, height: 200 } }),
+      createElement({ classes: ['first'], boundingBox: { x: 0, y: 0, width: 100, height: 100 } }),
+    ]);
+
+    const result = await Effect.runPromise(strategy.locate(issue, ctx));
+
+    expect(calls).toHaveLength(3);
+    expect(calls.map((selectors) => selectors[0])).toEqual(['.first', '.second', '.third']);
+    expect(result).toHaveLength(3);
+  });
+
+  test('supports custom maxElements', async () => {
+    const calls: string[][] = [];
+    const searcher: DomTracerSearcher = async (selectors) => {
+      calls.push([...selectors]);
+      return new Map();
+    };
+    const strategy = createDomTracerStrategy({ searcher, maxElements: 2 });
+    const issue = createIssue({ region: { x: 0, y: 0, width: 20, height: 20 } });
+    const ctx = createContext([
+      createElement({ classes: ['third'], boundingBox: { x: 0, y: 0, width: 300, height: 300 } }),
+      createElement({ classes: ['second'], boundingBox: { x: 0, y: 0, width: 200, height: 200 } }),
+      createElement({ classes: ['first'], boundingBox: { x: 0, y: 0, width: 100, height: 100 } }),
+    ]);
+
+    await Effect.runPromise(strategy.locate(issue, ctx));
+
+    expect(calls.map((selectors) => selectors[0])).toEqual(['.first', '.second']);
+  });
+
+  test('sorts locations by confidence', async () => {
+    const searcher: DomTracerSearcher = async () =>
+      new Map([
+        [
+          '.hero-section',
+          [
+            { file: '/project/one.tsx', line: 1, content: '', selector: '.hero-section' },
+            { file: '/project/two.tsx', line: 2, content: '', selector: '.hero-section' },
+          ],
+        ],
+        ['#hero', [{ file: '/project/Hero.tsx', line: 3, content: '', selector: '#hero' }]],
+      ]);
+    const strategy = createDomTracerStrategy({ searcher });
+    const issue = createIssue({ region: { x: 0, y: 0, width: 20, height: 20 } });
+    const ctx = createContext([
+      createElement({ id: 'hero', classes: ['hero-section'], boundingBox: { x: 0, y: 0, width: 100, height: 100 } }),
+    ]);
+
+    const result = await Effect.runPromise(strategy.locate(issue, ctx));
+
+    expect(result.map((location) => location.confidence)).toEqual(['high', 'medium', 'medium']);
+    expect(result[0]?.selector).toBe('#hero');
+  });
+
+  test('dedupes locations by file and line keeping the first selector match', async () => {
+    const searcher: DomTracerSearcher = async () =>
+      new Map([
+        ['#hero', [{ file: '/project/Hero.tsx', line: 12, content: '', selector: '#hero' }]],
+        ['id="hero"', [{ file: '/project/Hero.tsx', line: 12, content: '', selector: 'id="hero"' }]],
+      ]);
+    const strategy = createDomTracerStrategy({ searcher });
+    const issue = createIssue({ region: { x: 0, y: 0, width: 20, height: 20 } });
+    const ctx = createContext([
+      createElement({ id: 'hero', boundingBox: { x: 0, y: 0, width: 100, height: 100 } }),
+    ]);
+
+    const result = await Effect.runPromise(strategy.locate(issue, ctx));
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.selector).toBe('#hero');
   });
 });
 

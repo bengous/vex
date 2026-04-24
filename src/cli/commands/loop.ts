@@ -10,7 +10,6 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Args, Command } from '@effect/cli';
 import { Effect } from 'effect';
-import { loadCodexProfile, loadConfigOptional } from '../../config/loader.js';
 import { Url } from '../../config/schema.js';
 import { getAllDeviceIds, listDevices, lookupDevice } from '../../core/devices.js';
 import type { CodeLocation, Issue, ViewportConfig } from '../../core/types.js';
@@ -27,7 +26,7 @@ import {
 import { simpleAnalysis } from '../../pipeline/presets.js';
 import { runPipeline } from '../../pipeline/runtime.js';
 import { generateSessionId } from '../../pipeline/state.js';
-import { CodexEnv, makeCodexEnvResource } from '../../providers/codex-cli/environment.js';
+import { withProviderExecution } from '../../providers/shared/profile-execution.js';
 import {
   autoFixOption,
   deviceOption,
@@ -300,8 +299,6 @@ Valid devices: ${validDevices}`),
         createGateConfigFromLoopOptions(loopOptions),
       );
 
-      // Run orchestrator with scoped environment when profile is active
-      const needsScopedEnv = resolved.provider === 'codex-cli' && resolved.profile !== 'minimal';
       const runOrchestrator = orchestrator.run().pipe(
         Effect.catchAll((err) => {
           if (err instanceof LoopError) {
@@ -313,16 +310,10 @@ Valid devices: ${validDevices}`),
         }),
       );
 
-      const result = needsScopedEnv
-        ? yield* Effect.scoped(
-            Effect.gen(function* () {
-              const config = yield* loadConfigOptional();
-              const profile = yield* loadCodexProfile(resolved.profile, config);
-              const codexEnv = yield* makeCodexEnvResource(profile);
-              return yield* runOrchestrator.pipe(Effect.provideService(CodexEnv, codexEnv));
-            }),
-          )
-        : yield* runOrchestrator;
+      const result = yield* withProviderExecution(
+        { provider: resolved.provider, profile: resolved.profile },
+        runOrchestrator,
+      );
 
       yield* Effect.promise(() => saveIterationHistory(sessionDir, result, loopOptions));
       printLoopSummary(result);

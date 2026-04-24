@@ -6,8 +6,10 @@ import { dirname } from 'node:path';
 import { Effect } from 'effect';
 import { chromium } from 'playwright';
 import {
+  type CaptureResult,
   captureScreenshot,
   captureWithDOM,
+  type DOMCaptureResult,
   type FullPageScrollFixOptions,
   type PlaceholderMediaOptions,
 } from '../../core/capture.js';
@@ -28,6 +30,10 @@ export interface CaptureOutput {
   readonly image: ImageArtifact;
   /** DOM snapshot artifact, present when withDOM: true */
   readonly domSnapshot?: DOMSnapshotArtifact;
+}
+
+function hasDOMSnapshot(result: CaptureResult | DOMCaptureResult): result is DOMCaptureResult {
+  return 'domSnapshot' in result;
 }
 
 export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
@@ -59,6 +65,32 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
               ),
             );
 
+          const capture = withDOM ? captureWithDOM : captureScreenshot;
+          const result: CaptureResult | DOMCaptureResult = yield* Effect.tryPromise({
+            try: () =>
+              capture(browser, {
+                url,
+                viewport,
+                outputDir: dirname(screenshotPath),
+                filename: '01-screenshot.png',
+                placeholderMedia,
+                fullPageScrollFix,
+              }),
+            catch: (e) =>
+              new OperationError({
+                operation: 'capture',
+                detail: withDOM ? 'Failed to capture with DOM' : 'Failed to capture screenshot',
+                cause: e,
+              }),
+          });
+
+          const artifact: ImageArtifact = {
+            ...result.artifact,
+            path: screenshotPath,
+          };
+
+          ctx.storeArtifact(artifact);
+
           if (withDOM) {
             const domPath = yield* ctx
               .getArtifactPath('dom')
@@ -68,31 +100,17 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
                 ),
               );
 
-            const result = yield* Effect.tryPromise({
-              try: () =>
-                captureWithDOM(browser, {
-                  url,
-                  viewport,
-                  outputDir: dirname(screenshotPath),
-                  filename: '01-screenshot.png',
-                  placeholderMedia,
-                  fullPageScrollFix,
-                }),
-              catch: (e) => new OperationError({ operation: 'capture', detail: 'Failed to capture with DOM', cause: e }),
-            });
+            if (!hasDOMSnapshot(result)) {
+              return yield* Effect.fail(
+                new OperationError({ operation: 'capture', detail: 'Capture completed without DOM snapshot' }),
+              );
+            }
 
             yield* Effect.tryPromise({
               try: () => Bun.write(domPath, JSON.stringify(result.domSnapshot, null, 2)),
               catch: (e) =>
                 new OperationError({ operation: 'capture', detail: 'Failed to save DOM snapshot', cause: e }),
             });
-
-            const artifact: ImageArtifact = {
-              ...result.artifact,
-              path: screenshotPath,
-            };
-
-            ctx.storeArtifact(artifact);
 
             const domArtifact: DOMSnapshotArtifact = {
               _kind: 'artifact',
@@ -112,27 +130,6 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
 
             return { image: artifact, domSnapshot: domArtifact };
           }
-
-          const result = yield* Effect.tryPromise({
-            try: () =>
-              captureScreenshot(browser, {
-                url,
-                viewport,
-                outputDir: dirname(screenshotPath),
-                filename: '01-screenshot.png',
-                placeholderMedia,
-                fullPageScrollFix,
-              }),
-            catch: (e) =>
-              new OperationError({ operation: 'capture', detail: 'Failed to capture screenshot', cause: e }),
-          });
-
-          const artifact: ImageArtifact = {
-            ...result.artifact,
-            path: screenshotPath,
-          };
-
-          ctx.storeArtifact(artifact);
 
           return { image: artifact };
         }),
