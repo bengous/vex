@@ -6,7 +6,7 @@
  */
 
 import type { Artifact } from "../core/types.js";
-import type { PipelineDefinition, PipelineState } from "./types.js";
+import type { PipelineDefinition, PipelineState, StoredOutput } from "./types.js";
 import { ParseResult, Schema as S } from "effect";
 import { Artifact as ArtifactSchema, IssueArray } from "../core/schema.js";
 import { OperationError } from "./types.js";
@@ -40,11 +40,11 @@ const PipelineNode = S.Struct({
 const PipelineEdge = S.Struct({
   from: S.String,
   to: S.String,
-  artifact: S.String,
-  targetField: S.optional(S.String),
+  output: S.String,
+  input: S.optional(S.String),
 });
 
-const PipelineDefinition = S.Struct({
+const PipelineDefinitionSchema = S.Struct({
   name: S.String,
   description: S.String,
   nodes: S.Array(PipelineNode),
@@ -54,16 +54,36 @@ const PipelineDefinition = S.Struct({
 });
 
 const PersistedPipelineState = S.Struct({
-  definition: PipelineDefinition,
+  definition: PipelineDefinitionSchema,
   sessionDir: S.String,
   startedAt: S.String,
   completedAt: S.optional(S.String),
   status: S.Literal("running", "completed", "failed", "paused"),
   nodes: S.Record({ key: S.String, value: NodeState }),
   artifacts: S.Record({ key: S.String, value: ArtifactSchema }),
-  data: S.optional(S.Record({ key: S.String, value: S.Unknown })),
+  outputs: S.Record({
+    key: S.String,
+    value: S.Union(
+      S.Struct({
+        channel: S.Literal("artifact"),
+        artifactId: S.String,
+        type: S.Literal(
+          "image",
+          "annotated-image",
+          "analysis",
+          "manifest",
+          "dom-snapshot",
+          "diff-report",
+          "annotations",
+        ),
+      }),
+      S.Struct({
+        channel: S.Literal("data"),
+        value: S.Unknown,
+      }),
+    ),
+  }),
   issues: IssueArray,
-  semanticNames: S.optional(S.Record({ key: S.String, value: S.String })),
 });
 
 type PersistedPipelineState = typeof PersistedPipelineState.Type;
@@ -98,6 +118,11 @@ function normalizePipelineState(state: PersistedPipelineState): PipelineState {
     };
   }
 
+  const outputs: Record<string, StoredOutput> = {};
+  for (const [key, output] of Object.entries(state.outputs)) {
+    outputs[key] = output;
+  }
+
   return {
     definition: normalizePipelineDefinition(state.definition),
     sessionDir: state.sessionDir,
@@ -106,9 +131,8 @@ function normalizePipelineState(state: PersistedPipelineState): PipelineState {
     status: state.status,
     nodes,
     artifacts,
-    data: state.data ?? {},
+    outputs,
     issues: state.issues,
-    semanticNames: state.semanticNames ?? {},
   };
 }
 
@@ -128,8 +152,8 @@ function normalizePipelineDefinition(
     edges: definition.edges.map((edge) => ({
       from: edge.from,
       to: edge.to,
-      artifact: edge.artifact,
-      ...(edge.targetField !== undefined ? { targetField: edge.targetField } : {}),
+      output: edge.output,
+      ...(edge.input !== undefined ? { input: edge.input } : {}),
     })),
     inputs: definition.inputs,
     outputs: definition.outputs,

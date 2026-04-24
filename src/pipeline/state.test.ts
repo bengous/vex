@@ -54,8 +54,10 @@ describe("mergeNodeResults", () => {
         ...base,
         nodes: { ...base.nodes, a: { id: "a", status: "completed", outputArtifacts: ["art-a"] } },
         artifacts: { [artA.id]: artA },
-        semanticNames: { "a:image": artA.id },
-        data: { "a:meta": { width: 1920 } },
+        outputs: {
+          "a:image": { channel: "artifact", artifactId: artA.id, type: "image" },
+          "a:meta": { channel: "data", value: { width: 1920 } },
+        },
       },
     };
 
@@ -66,24 +68,36 @@ describe("mergeNodeResults", () => {
         ...base,
         nodes: { ...base.nodes, b: { id: "b", status: "completed", outputArtifacts: ["art-b"] } },
         artifacts: { [artB.id]: artB },
-        semanticNames: { "b:image": artB.id },
-        data: { "b:meta": { width: 375 } },
+        outputs: {
+          "b:image": { channel: "artifact", artifactId: artB.id, type: "image" },
+          "b:meta": { channel: "data", value: { width: 375 } },
+        },
       },
     };
 
     const merged = mergeNodeResults(base, [resultA, resultB]);
 
+    // biome-ignore lint/complexity/useLiteralKeys: node IDs come from the test fixture.
     expect(merged.nodes["a"]?.status).toBe("completed");
+    // biome-ignore lint/complexity/useLiteralKeys: node IDs come from the test fixture.
     expect(merged.nodes["b"]?.status).toBe("completed");
 
     expect(merged.artifacts["art-a"]).toBeDefined();
     expect(merged.artifacts["art-b"]).toBeDefined();
 
-    expect(merged.semanticNames["a:image"]).toBe("art-a");
-    expect(merged.semanticNames["b:image"]).toBe("art-b");
+    expect(merged.outputs["a:image"]).toEqual({
+      channel: "artifact",
+      artifactId: "art-a",
+      type: "image",
+    });
+    expect(merged.outputs["b:image"]).toEqual({
+      channel: "artifact",
+      artifactId: "art-b",
+      type: "image",
+    });
 
-    expect(merged.data["a:meta"]).toEqual({ width: 1920 });
-    expect(merged.data["b:meta"]).toEqual({ width: 375 });
+    expect(merged.outputs["a:meta"]).toEqual({ channel: "data", value: { width: 1920 } });
+    expect(merged.outputs["b:meta"]).toEqual({ channel: "data", value: { width: 375 } });
   });
 
   test("single result returns that result state directly", () => {
@@ -97,8 +111,7 @@ describe("mergeNodeResults", () => {
         ...base,
         nodes: { ...base.nodes, a: { id: "a", status: "completed", outputArtifacts: ["art-a"] } },
         artifacts: { [artA.id]: artA },
-        semanticNames: { "a:image": artA.id },
-        data: {},
+        outputs: { "a:image": { channel: "artifact", artifactId: artA.id, type: "image" } },
       },
     };
 

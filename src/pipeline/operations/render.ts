@@ -17,20 +17,36 @@ export type RenderInput = {
 };
 
 export type RenderOutput = {
-  readonly image: ImageArtifact;
+  readonly artifacts: {
+    readonly image: ImageArtifact;
+  };
 };
 
 export const renderOperation: Operation<RenderInput, RenderOutput, RenderConfig> = {
   name: "render",
   description: "Render annotations onto image",
-  inputTypes: ["image"],
-  outputTypes: ["annotated-image"],
+  inputSpecs: {
+    image: { channel: "artifact", type: "image" },
+    toolCalls: { channel: "data" },
+  },
+  outputSpecs: {
+    image: { channel: "artifact", type: "annotated-image" },
+  },
 
   execute: (input, _config, ctx) =>
     Effect.gen(function* () {
       if (input.toolCalls.length === 0) {
         ctx.logger.info("No annotations to render");
-        return { image: input.image };
+        const artifact = ctx.createArtifact<ImageArtifact>({
+          type: "annotated-image",
+          path: input.image.path,
+          createdBy: "render",
+          metadata: {
+            ...input.image.metadata,
+            hasAnnotations: false,
+          },
+        });
+        return { artifacts: { image: artifact } };
       }
 
       ctx.logger.info(`Rendering ${input.toolCalls.length} annotations onto ${input.image.path}`);
@@ -72,20 +88,16 @@ export const renderOperation: Operation<RenderInput, RenderOutput, RenderConfig>
           }),
       });
 
-      const artifact: ImageArtifact = {
-        _kind: "artifact",
-        id: crypto.randomUUID(),
+      const artifact = ctx.createArtifact<ImageArtifact>({
         type: "annotated-image",
         path: outputPath,
-        createdAt: new Date().toISOString(),
         createdBy: "render",
         metadata: {
           ...input.image.metadata,
           hasAnnotations: true,
         },
-      };
+      });
 
-      ctx.storeArtifact(artifact);
-      return { image: artifact };
+      return { artifacts: { image: artifact } };
     }),
 };

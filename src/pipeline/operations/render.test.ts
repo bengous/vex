@@ -82,11 +82,11 @@ describe("renderOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.metadata.hasAnnotations).toBe(true);
-        expect(exit.value.image.createdBy).toBe("render");
+        expect(exit.value.artifacts.image.metadata.hasAnnotations).toBe(true);
+        expect(exit.value.artifacts.image.createdBy).toBe("render");
 
         // Verify output file exists and is valid
-        const outputMeta = await sharp(exit.value.image.path).metadata();
+        const outputMeta = await sharp(exit.value.artifacts.image.path).metadata();
         expect(outputMeta.width).toBe(400);
         expect(outputMeta.height).toBe(400);
       }
@@ -104,8 +104,9 @@ describe("renderOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        // Should return the original image unchanged
-        expect(exit.value.image).toBe(inputImage);
+        expect(exit.value.artifacts.image.path).toBe(inputImage.path);
+        expect(exit.value.artifacts.image.type).toBe("annotated-image");
+        expect(exit.value.artifacts.image.metadata.hasAnnotations).toBe(false);
       }
     });
 
@@ -123,7 +124,7 @@ describe("renderOperation", () => {
       expect(infoMessages.some((m) => m.message.includes("No annotations"))).toBe(true);
     });
 
-    test("stores artifact in context", async () => {
+    test("returns artifact for runtime storage without mutating context", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
         image: createMockImageArtifact({ path: testImagePath }),
@@ -134,9 +135,8 @@ describe("renderOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        const storedArtifact = ctx.getArtifact(exit.value.image.id);
-        expect(storedArtifact).toBeDefined();
-        expect(storedArtifact?.id).toBe(exit.value.image.id);
+        expect(exit.value.artifacts.image.id).toBeDefined();
+        expect(ctx.artifacts.size).toBe(0);
       }
     });
 
@@ -151,7 +151,7 @@ describe("renderOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.type).toBe("annotated-image");
+        expect(exit.value.artifacts.image.type).toBe("annotated-image");
       }
     });
   });
@@ -197,7 +197,7 @@ describe("renderOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.metadata.viewport).toEqual(viewport);
+        expect(exit.value.artifacts.image.metadata.viewport).toEqual(viewport);
       }
     });
 
@@ -216,8 +216,8 @@ describe("renderOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.metadata.width).toBe(400);
-        expect(exit.value.image.metadata.height).toBe(400);
+        expect(exit.value.artifacts.image.metadata.width).toBe(400);
+        expect(exit.value.artifacts.image.metadata.height).toBe(400);
       }
     });
   });

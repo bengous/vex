@@ -159,6 +159,8 @@ export {
   renderOperation,
 } from "./pipeline/operations/render.js";
 
+// Runtime
+export { checkProviderInstalled } from "./pipeline/preflight.js";
 // Presets
 export {
   captureOnly,
@@ -166,9 +168,6 @@ export {
   responsiveComparison,
   simpleAnalysis,
 } from "./pipeline/presets.js";
-
-// Runtime
-export { checkProviderInstalled } from "./pipeline/preflight.js";
 export { resumePipeline, runPipeline } from "./pipeline/runtime.js";
 
 // State management
@@ -182,6 +181,7 @@ export {
   loadPipelineState,
   savePipelineState,
   storeArtifact,
+  storeOutput,
   updateNodeState,
 } from "./pipeline/state.js";
 export type {
@@ -189,13 +189,17 @@ export type {
   NodeState,
   NodeStatus,
   Operation,
+  OperationInputSpec,
+  OperationOutputSpec,
   OperationRegistry,
+  OperationResult,
   PipelineBuilder,
   PipelineContext,
   PipelineDefinition,
   PipelineEdge,
   PipelineNode,
   PipelineState,
+  StoredOutput,
 } from "./pipeline/types.js";
 // Types
 export { OperationError, PipelineError } from "./pipeline/types.js";

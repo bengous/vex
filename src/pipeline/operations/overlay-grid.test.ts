@@ -61,12 +61,12 @@ describe("overlayGridOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.type).toBe("image");
-        expect(exit.value.image.metadata.hasGrid).toBe(true);
-        expect(exit.value.image.createdBy).toBe("overlay-grid");
+        expect(exit.value.artifacts.image.type).toBe("image");
+        expect(exit.value.artifacts.image.metadata.hasGrid).toBe(true);
+        expect(exit.value.artifacts.image.createdBy).toBe("overlay-grid");
 
         // Verify output file exists and is valid
-        const outputMeta = await sharp(exit.value.image.path).metadata();
+        const outputMeta = await sharp(exit.value.artifacts.image.path).metadata();
         expect(outputMeta.width).toBe(400);
         expect(outputMeta.height).toBe(400);
       }
@@ -84,11 +84,11 @@ describe("overlayGridOperation", () => {
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         // Output should still be valid (labels just not shown)
-        expect(exit.value.image.metadata.hasGrid).toBe(true);
+        expect(exit.value.artifacts.image.metadata.hasGrid).toBe(true);
       }
     });
 
-    test("stores artifact in context", async () => {
+    test("returns artifact for runtime storage without mutating context", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
@@ -96,9 +96,8 @@ describe("overlayGridOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        const storedArtifact = ctx.getArtifact(exit.value.image.id);
-        expect(storedArtifact).toBeDefined();
-        expect(storedArtifact?.id).toBe(exit.value.image.id);
+        expect(exit.value.artifacts.image.id).toBeDefined();
+        expect(ctx.artifacts.size).toBe(0);
       }
     });
 
@@ -159,9 +158,9 @@ describe("overlayGridOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.metadata.viewport).toEqual(viewport);
-        expect(exit.value.image.metadata.width).toBe(400);
-        expect(exit.value.image.metadata.height).toBe(400);
+        expect(exit.value.artifacts.image.metadata.viewport).toEqual(viewport);
+        expect(exit.value.artifacts.image.metadata.width).toBe(400);
+        expect(exit.value.artifacts.image.metadata.height).toBe(400);
       }
     });
   });

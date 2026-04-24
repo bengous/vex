@@ -53,9 +53,8 @@ export function createPipelineState(overrides: Partial<PipelineState> = {}): Pip
     status: "completed",
     nodes: {},
     artifacts: {},
-    data: {},
+    outputs: {},
     issues: [],
-    semanticNames: {},
     ...overrides,
   };
 }

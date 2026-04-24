@@ -94,13 +94,13 @@ describe("diffOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.pixelDiffPercent).toBe(0);
-        expect(exit.value.report.type).toBe("diff-report");
-        expect(exit.value.report.metadata.pixelDiffPercent).toBe(0);
+        expect(exit.value.data.pixelDiffPercent).toBe(0);
+        expect(exit.value.artifacts.report.type).toBe("diff-report");
+        expect(exit.value.artifacts.report.metadata.pixelDiffPercent).toBe(0);
       }
     });
 
-    test("stores artifact in context", async () => {
+    test("returns artifact for runtime storage without mutating context", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
         baseImage: createMockImageArtifact({ path: whiteImagePath, id: "base" }),
@@ -111,8 +111,8 @@ describe("diffOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        const storedArtifact = ctx.getArtifact(exit.value.report.id);
-        expect(storedArtifact).toBeDefined();
+        expect(exit.value.artifacts.report.id).toBeDefined();
+        expect(ctx.artifacts.size).toBe(0);
       }
     });
   });
@@ -134,7 +134,7 @@ describe("diffOperation", () => {
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         // All pixels should be different (white vs black)
-        expect(exit.value.pixelDiffPercent).toBe(100);
+        expect(exit.value.data.pixelDiffPercent).toBe(100);
       }
     });
 
@@ -151,7 +151,7 @@ describe("diffOperation", () => {
       if (Exit.isSuccess(exit)) {
         // White (255,255,255) vs Gray (245,245,245) = 10 diff per channel
         // Should NOT count as different since diff is exactly 10 (threshold is > 10)
-        expect(exit.value.pixelDiffPercent).toBe(0);
+        expect(exit.value.data.pixelDiffPercent).toBe(0);
       }
     });
 
@@ -188,7 +188,7 @@ describe("diffOperation", () => {
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         // Should still produce a result
-        expect(exit.value.report.type).toBe("diff-report");
+        expect(exit.value.artifacts.report.type).toBe("diff-report");
       }
 
       // Should log a warning about size mismatch
@@ -278,8 +278,8 @@ describe("diffOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.report.metadata.baseImageId).toBe("base-123");
-        expect(exit.value.report.metadata.compareImageId).toBe("compare-456");
+        expect(exit.value.artifacts.report.metadata.baseImageId).toBe("base-123");
+        expect(exit.value.artifacts.report.metadata.compareImageId).toBe("compare-456");
       }
     });
   });

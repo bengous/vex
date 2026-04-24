@@ -32,8 +32,12 @@ export type AnalyzeInput = {
 };
 
 export type AnalyzeOutput = {
-  readonly analysis: AnalysisArtifact;
-  readonly result: AnalysisResult;
+  readonly artifacts: {
+    readonly analysis: AnalysisArtifact;
+  };
+  readonly data: {
+    readonly result: AnalysisResult;
+  };
 };
 
 /**
@@ -72,8 +76,13 @@ Format your response as JSON:
 export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeConfig> = {
   name: "analyze",
   description: "Analyze image with VLM for visual issues",
-  inputTypes: ["image"],
-  outputTypes: ["analysis"],
+  inputSpecs: {
+    image: { channel: "artifact", type: "image" },
+  },
+  outputSpecs: {
+    analysis: { channel: "artifact", type: "analysis" },
+    result: { channel: "data" },
+  },
 
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
@@ -142,12 +151,9 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
           new OperationError({ operation: "analyze", detail: "Failed to save analysis", cause: e }),
       });
 
-      const artifact: AnalysisArtifact = {
-        _kind: "artifact",
-        id: crypto.randomUUID(),
+      const artifact = ctx.createArtifact<AnalysisArtifact>({
         type: "analysis",
         path: outputPath,
-        createdAt: new Date().toISOString(),
         createdBy: "analyze",
         metadata: {
           provider: result.provider,
@@ -155,9 +161,8 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
           durationMs: result.durationMs,
           issueCount: result.issues.length,
         },
-      };
+      });
 
-      ctx.storeArtifact(artifact);
-      return { analysis: artifact, result };
+      return { artifacts: { analysis: artifact }, data: { result } };
     }),
 };
