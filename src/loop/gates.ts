@@ -117,7 +117,7 @@ export function evaluateGate(
   }
 
   const bestLocation = locations[0]; // Already sorted by confidence
-  if (!bestLocation) {
+  if (bestLocation === undefined) {
     return {
       action: "skip",
       issue,
