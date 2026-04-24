@@ -57,7 +57,7 @@ export function createDomTracerStrategy(options: DomTracerStrategyOptions = {}):
       return Effect.gen(function* () {
         const { domSnapshot, projectRoot, filePatterns } = ctx;
 
-        if (!domSnapshot) {
+        if (domSnapshot === undefined) {
           return yield* makeError("No DOM snapshot available");
         }
 
@@ -122,7 +122,7 @@ export function findElementMatch(domSnapshot: DOMSnapshot, region: Region): Elem
   const center = regionToCenter(region, domSnapshot.viewport.width, domSnapshot.viewport.height);
   const element = findElementAtPosition(domSnapshot.elements, center.x, center.y);
 
-  if (!element) {
+  if (element === null) {
     return null;
   }
 

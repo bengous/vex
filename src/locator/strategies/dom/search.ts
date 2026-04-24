@@ -39,17 +39,23 @@ export async function batchGrepForSelectors(
   const stdout = result.stdout.toString();
 
   for (const line of stdout.split("\n")) {
-    if (!line.trim()) {
+    if (line.trim().length === 0) {
       continue;
     }
 
     const lineMatch = line.match(/^(.+?):(\d+):(.*)$/);
-    if (!lineMatch) {
+    if (lineMatch === null) {
       continue;
     }
 
     const [, filePath, lineNum, content] = lineMatch;
-    if (!filePath || !lineNum || content === undefined) {
+    if (
+      filePath === undefined ||
+      filePath.length === 0 ||
+      lineNum === undefined ||
+      lineNum.length === 0 ||
+      content === undefined
+    ) {
       continue;
     }
 
@@ -59,7 +65,7 @@ export async function batchGrepForSelectors(
       }
 
       let matches = results.get(selector);
-      if (!matches) {
+      if (matches === undefined) {
         matches = [];
         results.set(selector, matches);
       }

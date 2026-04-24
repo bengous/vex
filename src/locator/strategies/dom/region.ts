@@ -11,7 +11,12 @@ function gridRefToCenter(
   imageHeight: number,
 ): { x: number; y: number } {
   const match = gridRef.match(/^([A-Z])(\d{1,2})$/i);
-  if (!match?.[1] || !match[2]) {
+  if (
+    match?.[1] === undefined ||
+    match[1].length === 0 ||
+    match[2] === undefined ||
+    match[2].length === 0
+  ) {
     return { x: imageWidth / 2, y: imageHeight / 2 };
   }
 
@@ -70,9 +75,14 @@ export function findElementAtPosition(
     }
 
     const area = boxArea(el.boundingBox);
-    const hasIdentifiers = el.id ?? el.classes.length > 0;
+    const hasIdentifiers = (el.id !== undefined && el.id.length > 0) || el.classes.length > 0;
 
-    if (area < bestArea || (area === bestArea && hasIdentifiers && !bestMatch?.id)) {
+    if (
+      area < bestArea ||
+      (area === bestArea &&
+        hasIdentifiers &&
+        (bestMatch?.id === undefined || bestMatch.id.length === 0))
+    ) {
       bestMatch = el;
       bestArea = area;
     }
