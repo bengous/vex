@@ -82,7 +82,11 @@ function makeError(
   detail: string,
   cause?: OperationError,
 ): PipelineError {
-  return new PipelineError({ phase, detail, cause });
+  return new PipelineError({
+    phase,
+    detail,
+    ...(cause !== undefined ? { cause } : {}),
+  });
 }
 
 /**
@@ -180,7 +184,7 @@ function createContext(
     sessionDir: state.sessionDir,
     artifacts,
     logger: createLogger(),
-    viewport,
+    ...(viewport !== undefined ? { viewport } : {}),
     storeArtifact: (artifact) => {
       artifacts.set(artifact.id, artifact);
       return artifact.id;

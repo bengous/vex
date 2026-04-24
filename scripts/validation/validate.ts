@@ -63,7 +63,7 @@ async function main(): Promise<void> {
   const verbose = process.argv.includes("--verbose");
   const jobs = parseFlag("--jobs", 3);
   const availableScripts = new Set(await packageScripts());
-  const steps = (process.env.VALIDATE_STEPS?.split(",") ?? [...DEFAULT_STEPS]).filter((step) =>
+  const steps = (process.env["VALIDATE_STEPS"]?.split(",") ?? [...DEFAULT_STEPS]).filter((step) =>
     availableScripts.has(step),
   );
 

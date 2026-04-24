@@ -39,7 +39,11 @@ import { verifyChanges } from "./verify.js";
 // ═══════════════════════════════════════════════════════════════════════════
 
 function makeError(phase: LoopError["phase"], detail: string, cause?: unknown): LoopError {
-  return new LoopError({ phase, detail, cause });
+  return new LoopError({
+    phase,
+    detail,
+    ...(cause !== undefined ? { cause } : {}),
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -172,7 +176,7 @@ export class LoopOrchestrator {
 
         const locatorCtx: LocatorContext = {
           projectRoot: this.options.projectRoot,
-          domSnapshot,
+          ...(domSnapshot !== undefined ? { domSnapshot } : {}),
           filePatterns: DEFAULT_FILE_PATTERNS,
         };
 
@@ -286,8 +290,9 @@ export class LoopOrchestrator {
       }
 
       const finalIssues = iterationHistory.at(-1)?.issuesFound ?? [];
+      const finalVerification = iterationHistory.at(-1)?.verification;
 
-      return {
+      const result = {
         status,
         iterations: iterationHistory.length,
         sessionDir: this.options.sessionDir ?? "",
@@ -297,8 +302,8 @@ export class LoopOrchestrator {
         finalIssueCount: finalIssues.length,
         totalFixesApplied: iterationHistory.reduce((sum, i) => sum + i.fixesApplied.length, 0),
         iterationHistory,
-        finalVerification: iterationHistory.at(-1)?.verification,
       };
+      return finalVerification !== undefined ? { ...result, finalVerification } : result;
     });
   }
 
@@ -317,7 +322,7 @@ export class LoopOrchestrator {
       pipelineState,
       issuesFound,
       fixesApplied,
-      verification,
+      ...(verification !== undefined ? { verification } : {}),
     };
   }
 }

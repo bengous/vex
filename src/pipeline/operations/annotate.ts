@@ -152,7 +152,7 @@ export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, Annotat
 
       const visionResult = yield* Effect.gen(function* () {
         const visionProvider = yield* VisionProvider;
-        return yield* visionProvider.analyze([], prompt, { model });
+        return yield* visionProvider.analyze([], prompt, model !== undefined ? { model } : {});
       }).pipe(
         // @effect-diagnostics-next-line strictEffectProvide:off
         Effect.provide(providerLayer),

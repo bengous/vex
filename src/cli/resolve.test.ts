@@ -62,15 +62,15 @@ describe("resolveScanOptions", () => {
   let originalEnv: string | undefined;
 
   beforeEach(() => {
-    originalEnv = process.env.VEX_OUTPUT_DIR;
-    process.env.VEX_OUTPUT_DIR = "/test/output";
+    originalEnv = process.env["VEX_OUTPUT_DIR"];
+    process.env["VEX_OUTPUT_DIR"] = "/test/output";
   });
 
   afterEach(() => {
     if (originalEnv !== undefined) {
-      process.env.VEX_OUTPUT_DIR = originalEnv;
+      process.env["VEX_OUTPUT_DIR"] = originalEnv;
     } else {
-      delete process.env.VEX_OUTPUT_DIR;
+      delete process.env["VEX_OUTPUT_DIR"];
     }
   });
 
@@ -270,15 +270,15 @@ describe("resolveLoopOptions", () => {
   let originalEnv: string | undefined;
 
   beforeEach(() => {
-    originalEnv = process.env.VEX_OUTPUT_DIR;
-    process.env.VEX_OUTPUT_DIR = "/test/output";
+    originalEnv = process.env["VEX_OUTPUT_DIR"];
+    process.env["VEX_OUTPUT_DIR"] = "/test/output";
   });
 
   afterEach(() => {
     if (originalEnv !== undefined) {
-      process.env.VEX_OUTPUT_DIR = originalEnv;
+      process.env["VEX_OUTPUT_DIR"] = originalEnv;
     } else {
-      delete process.env.VEX_OUTPUT_DIR;
+      delete process.env["VEX_OUTPUT_DIR"];
     }
   });
 
@@ -355,15 +355,15 @@ describe("resolveScanOptions profile handling", () => {
   let originalEnv: string | undefined;
 
   beforeEach(() => {
-    originalEnv = process.env.VEX_OUTPUT_DIR;
-    process.env.VEX_OUTPUT_DIR = "/test/output";
+    originalEnv = process.env["VEX_OUTPUT_DIR"];
+    process.env["VEX_OUTPUT_DIR"] = "/test/output";
   });
 
   afterEach(() => {
     if (originalEnv !== undefined) {
-      process.env.VEX_OUTPUT_DIR = originalEnv;
+      process.env["VEX_OUTPUT_DIR"] = originalEnv;
     } else {
-      delete process.env.VEX_OUTPUT_DIR;
+      delete process.env["VEX_OUTPUT_DIR"];
     }
   });
 
@@ -446,15 +446,15 @@ describe("resolveCommonOptions", () => {
   let originalEnv: string | undefined;
 
   beforeEach(() => {
-    originalEnv = process.env.VEX_OUTPUT_DIR;
-    process.env.VEX_OUTPUT_DIR = "/test/output";
+    originalEnv = process.env["VEX_OUTPUT_DIR"];
+    process.env["VEX_OUTPUT_DIR"] = "/test/output";
   });
 
   afterEach(() => {
     if (originalEnv !== undefined) {
-      process.env.VEX_OUTPUT_DIR = originalEnv;
+      process.env["VEX_OUTPUT_DIR"] = originalEnv;
     } else {
-      delete process.env.VEX_OUTPUT_DIR;
+      delete process.env["VEX_OUTPUT_DIR"];
     }
   });
 

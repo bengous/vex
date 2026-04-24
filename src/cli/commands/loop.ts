@@ -105,7 +105,7 @@ function createDryRunPromptHuman(): LoopCallbacks["promptHuman"] {
     Effect.succeed({ action: "skip" } satisfies HumanResponse);
 }
 
-function createIterationLogger(): LoopCallbacks["onIterationComplete"] {
+function createIterationLogger(): NonNullable<LoopCallbacks["onIterationComplete"]> {
   return (state) => {
     console.log(`\n--- Iteration ${state.number} Complete ---`);
     console.log(`Session: ${state.pipelineState.sessionDir}`);
@@ -276,7 +276,7 @@ Valid devices: ${validDevices}`,
         autoFixThreshold: resolved.autoFix,
         viewports: [viewport],
         provider: resolved.provider,
-        model: resolved.model,
+        ...(resolved.model !== undefined ? { model: resolved.model } : {}),
         sessionDir,
         projectRoot: resolved.projectRoot,
         dryRun: true, // Phase 1: always dry-run

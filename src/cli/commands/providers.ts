@@ -6,6 +6,7 @@
  * Migrated to @effect/cli with Effect Schema validation.
  */
 
+import type { VexConfig } from "../../config/schema.js";
 import type { ProviderInfo } from "../../providers/shared/introspection.js";
 import { Command, Options } from "@effect/cli";
 import { Effect } from "effect";
@@ -59,7 +60,7 @@ function formatProvider(info: ProviderInfo): string {
 function getProfileInfo(
   providerName: string,
   showProfiles: boolean,
-  config?: { providers?: { codex?: Record<string, unknown> } },
+  config?: VexConfig,
 ): { builtin: string[]; user: string[] } | undefined {
   if (!showProfiles) {
     return undefined;
