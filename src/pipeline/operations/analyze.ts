@@ -84,12 +84,10 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
         reasoning &&
         !REASONING_PROVIDERS.includes(provider as (typeof REASONING_PROVIDERS)[number])
       ) {
-        return yield* Effect.fail(
-          new OperationError({
-            operation: "analyze",
-            detail: `Provider '${provider}' does not support --reasoning. Supported: ${REASONING_PROVIDERS.join(", ")}`,
-          }),
-        );
+        return yield* new OperationError({
+          operation: "analyze",
+          detail: `Provider '${provider}' does not support --reasoning. Supported: ${REASONING_PROVIDERS.join(", ")}`,
+        });
       }
 
       ctx.logger.info(`Analyzing ${input.image.path} with ${provider}`);

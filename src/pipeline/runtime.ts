@@ -208,19 +208,18 @@ function executeNode(
   return Effect.gen(function* () {
     const node = state.definition.nodes.find((n) => n.id === nodeId);
     if (!node) {
-      return yield* Effect.fail(
-        new OperationError({ operation: nodeId, detail: `Node not found: ${nodeId}` }),
-      );
+      return yield* new OperationError({
+        operation: nodeId,
+        detail: `Node not found: ${nodeId}`,
+      });
     }
 
     const operation = OPERATIONS[node.operation];
     if (!operation) {
-      return yield* Effect.fail(
-        new OperationError({
-          operation: node.operation,
-          detail: `Unknown operation: ${node.operation}`,
-        }),
-      );
+      return yield* new OperationError({
+        operation: node.operation,
+        detail: `Unknown operation: ${node.operation}`,
+      });
     }
 
     let currentState = updateNodeState(state, nodeId, {
@@ -329,9 +328,7 @@ function executePipelineLoop(
       const readyNodes = getReadyNodes(state);
 
       if (readyNodes.length === 0 && !isComplete(state)) {
-        return yield* Effect.fail(
-          makeError("execution", "Pipeline deadlock: no ready nodes but not complete"),
-        );
+        return yield* makeError("execution", "Pipeline deadlock: no ready nodes but not complete");
       }
 
       // Execute ready nodes in parallel — independent nodes at the same
@@ -352,8 +349,8 @@ function executePipelineLoop(
                   ...failedState,
                   status: "failed",
                   completedAt: new Date().toISOString(),
-                }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
-                return yield* Effect.fail(e);
+                }).pipe(Effect.catchAll(() => Effect.void));
+                return yield* e;
               }),
             ),
             Effect.mapError((e) =>
@@ -397,7 +394,7 @@ export function runPipeline(
 ): Effect.Effect<PipelineState, PipelineError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     if (definition.nodes.length === 0) {
-      return yield* Effect.fail(makeError("validation", "Pipeline has no nodes"));
+      return yield* makeError("validation", "Pipeline has no nodes");
     }
 
     const sessionDir = yield* createSessionDir(baseDir, options?.sessionId).pipe(
