@@ -33,12 +33,16 @@ function loadIterationState(sessionDir: string, iteration: number | "latest"): P
     throw new Error(`Session state not found: ${statePath}`);
   }
 
-  const state = JSON.parse(readFileSync(statePath, "utf-8"));
+  const state = JSON.parse(readFileSync(statePath, "utf-8")) as unknown;
+  const stateObject =
+    typeof state === "object" && state !== null ? (state as Record<string, unknown>) : {};
 
-  if (state.iterationHistory && Array.isArray(state.iterationHistory)) {
-    const idx = iteration === "latest" ? state.iterationHistory.length - 1 : iteration;
-    const iterState = state.iterationHistory[idx];
-    if (!iterState) {
+  if (Array.isArray(stateObject.iterationHistory)) {
+    const idx = iteration === "latest" ? stateObject.iterationHistory.length - 1 : iteration;
+    const iterState = stateObject.iterationHistory[idx] as
+      | { readonly pipelineState?: PipelineState }
+      | undefined;
+    if (iterState?.pipelineState === undefined) {
       throw new Error(`Iteration ${iteration} not found`);
     }
     return iterState.pipelineState;

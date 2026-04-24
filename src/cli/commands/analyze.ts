@@ -106,7 +106,7 @@ export const analyzeCommand = Command.make(
       };
 
       // Write to output directory if specified (additive to console output)
-      if (outputDir) {
+      if (outputDir !== undefined && outputDir.length > 0) {
         yield* Effect.promise(async () => {
           await mkdir(outputDir, { recursive: true });
 
@@ -134,7 +134,7 @@ export const analyzeCommand = Command.make(
               ? issue.region
               : `(${issue.region.x},${issue.region.y})`;
           console.log(`  [${issue.severity.toUpperCase()}] ${issue.description} @ ${regionStr}`);
-          if (issue.suggestedFix) {
+          if (issue.suggestedFix !== undefined && issue.suggestedFix.length > 0) {
             console.log(`           Fix: ${issue.suggestedFix}`);
           }
         }
