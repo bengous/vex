@@ -4,34 +4,34 @@
  * Tests fold line overlay addition with various viewport configurations.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdtempSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Exit } from 'effect';
-import sharp from 'sharp';
-import { runEffectExit } from '../../testing/effect-helpers.js';
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { Exit } from "effect";
+import { mkdtempSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import sharp from "sharp";
+import { runEffectExit } from "../../testing/effect-helpers.js";
 import {
   createCapturingLogger,
   createMockContext,
   createMockImageArtifact,
-} from '../../testing/mocks/pipeline-context.js';
-import { overlayFoldsOperation } from './overlay-folds.js';
+} from "../../testing/mocks/pipeline-context.js";
+import { overlayFoldsOperation } from "./overlay-folds.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Setup
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('overlayFoldsOperation', () => {
+describe("overlayFoldsOperation", () => {
   let testDir: string;
   let testImagePath: string;
 
   beforeAll(async () => {
-    testDir = mkdtempSync(join(tmpdir(), 'overlay-folds-test-'));
+    testDir = mkdtempSync(join(tmpdir(), "overlay-folds-test-"));
 
     // Create a tall test image (400x1200 to have multiple fold lines)
-    testImagePath = join(testDir, 'test-input.png');
+    testImagePath = join(testDir, "test-input.png");
     await sharp({
       create: {
         width: 400,
@@ -52,8 +52,8 @@ describe('overlayFoldsOperation', () => {
   // Success Path Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('success paths', () => {
-    test('adds fold lines to image', async () => {
+  describe("success paths", () => {
+    test("adds fold lines to image", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath, height: 1200 }) };
 
@@ -61,9 +61,9 @@ describe('overlayFoldsOperation', () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.type).toBe('image');
+        expect(exit.value.image.type).toBe("image");
         expect(exit.value.image.metadata.hasFoldLines).toBe(true);
-        expect(exit.value.image.createdBy).toBe('overlay-folds');
+        expect(exit.value.image.createdBy).toBe("overlay-folds");
 
         // Verify output file exists and has correct dimensions
         const outputMeta = await sharp(exit.value.image.path).metadata();
@@ -72,11 +72,13 @@ describe('overlayFoldsOperation', () => {
       }
     });
 
-    test('uses custom viewportHeight config', async () => {
+    test("uses custom viewportHeight config", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath, height: 1200 }) };
 
-      const exit = await runEffectExit(overlayFoldsOperation.execute(input, { viewportHeight: 600 }, ctx));
+      const exit = await runEffectExit(
+        overlayFoldsOperation.execute(input, { viewportHeight: 600 }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
@@ -84,17 +86,19 @@ describe('overlayFoldsOperation', () => {
       }
     });
 
-    test('uses custom foldConfig', async () => {
+    test("uses custom foldConfig", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath, height: 1200 }) };
 
       const customConfig = {
         enabled: true,
-        color: '#00FF00',
+        color: "#00FF00",
         showLabels: false,
       };
 
-      const exit = await runEffectExit(overlayFoldsOperation.execute(input, { foldConfig: customConfig }, ctx));
+      const exit = await runEffectExit(
+        overlayFoldsOperation.execute(input, { foldConfig: customConfig }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
@@ -102,7 +106,7 @@ describe('overlayFoldsOperation', () => {
       }
     });
 
-    test('extracts viewport height from image metadata', async () => {
+    test("extracts viewport height from image metadata", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const viewport = { width: 1920, height: 800, deviceScaleFactor: 1, isMobile: false };
       const input = {
@@ -122,7 +126,7 @@ describe('overlayFoldsOperation', () => {
       }
     });
 
-    test('stores artifact in context', async () => {
+    test("stores artifact in context", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
@@ -135,16 +139,16 @@ describe('overlayFoldsOperation', () => {
       }
     });
 
-    test('logs operation progress', async () => {
+    test("logs operation progress", async () => {
       const logger = createCapturingLogger();
       const ctx = createMockContext({ sessionDir: testDir, logger });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
       await runEffectExit(overlayFoldsOperation.execute(input, {}, ctx));
 
-      const infoMessages = logger.messages.filter((m) => m.level === 'info');
+      const infoMessages = logger.messages.filter((m) => m.level === "info");
       expect(infoMessages.length).toBeGreaterThan(0);
-      expect(infoMessages.some((m) => m.message.includes('fold'))).toBe(true);
+      expect(infoMessages.some((m) => m.message.includes("fold"))).toBe(true);
     });
   });
 
@@ -152,20 +156,20 @@ describe('overlayFoldsOperation', () => {
   // Error Path Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('error paths', () => {
-    test('fails when input image does not exist', async () => {
+  describe("error paths", () => {
+    test("fails when input image does not exist", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
-      const input = { image: createMockImageArtifact({ path: '/nonexistent/image.png' }) };
+      const input = { image: createMockImageArtifact({ path: "/nonexistent/image.png" }) };
 
       const exit = await runEffectExit(overlayFoldsOperation.execute(input, {}, ctx));
 
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {
         const cause = exit.cause;
-        if (cause._tag === 'Fail') {
-          expect(cause.error._tag).toBe('OperationError');
-          expect(cause.error.operation).toBe('overlay-folds');
-          expect(cause.error.detail).toContain('Failed to read image');
+        if (cause._tag === "Fail") {
+          expect(cause.error._tag).toBe("OperationError");
+          expect(cause.error.operation).toBe("overlay-folds");
+          expect(cause.error.detail).toContain("Failed to read image");
         }
       }
     });
@@ -175,8 +179,8 @@ describe('overlayFoldsOperation', () => {
   // Default Value Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('default values', () => {
-    test('uses default viewport height of 900 when not specified', async () => {
+  describe("default values", () => {
+    test("uses default viewport height of 900 when not specified", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       // No viewport in metadata, no viewportHeight in config
       const input = { image: createMockImageArtifact({ path: testImagePath, height: 1200 }) };

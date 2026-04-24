@@ -1,9 +1,13 @@
-import type { ViewportConfig } from '../core/types.js';
-import { captureOnly, fullAnnotation, simpleAnalysis } from '../pipeline/presets.js';
-import type { PipelineDefinition } from '../pipeline/types.js';
-import type { ResolvedFullPageScrollFix, ResolvedPlaceholderMedia, ResolvedScanMode } from './resolve.js';
+import type { ViewportConfig } from "../core/types.js";
+import type { PipelineDefinition } from "../pipeline/types.js";
+import type {
+  ResolvedFullPageScrollFix,
+  ResolvedPlaceholderMedia,
+  ResolvedScanMode,
+} from "./resolve.js";
+import { captureOnly, fullAnnotation, simpleAnalysis } from "../pipeline/presets.js";
 
-export interface BuildScanPipelineSpec {
+export type BuildScanPipelineSpec = {
   readonly url: string;
   readonly viewport: ViewportConfig;
   readonly mode: ResolvedScanMode;
@@ -13,11 +17,18 @@ export interface BuildScanPipelineSpec {
   readonly reasoning: string | undefined;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
-}
+};
 
 export function buildScanPipeline(spec: BuildScanPipelineSpec): PipelineDefinition {
-  if (spec.mode === 'capture-only') {
-    return captureOnly(spec.url, spec.viewport, true, true, spec.placeholderMedia, spec.fullPageScrollFix);
+  if (spec.mode === "capture-only") {
+    return captureOnly(
+      spec.url,
+      spec.viewport,
+      true,
+      true,
+      spec.placeholderMedia,
+      spec.fullPageScrollFix,
+    );
   }
 
   if (spec.full) {

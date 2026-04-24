@@ -2,31 +2,32 @@
  * Diff operation - compares two images for visual differences.
  */
 
-import { Effect } from 'effect';
-import sharp from 'sharp';
-import type { DiffReportArtifact, ImageArtifact } from '../../core/types.js';
-import { type Operation, OperationError } from '../types.js';
+import type { DiffReportArtifact, ImageArtifact } from "../../core/types.js";
+import type { Operation } from "../types.js";
+import { Effect } from "effect";
+import sharp from "sharp";
+import { OperationError } from "../types.js";
 
-export interface DiffConfig {
+export type DiffConfig = {
   readonly threshold?: number;
-}
+};
 
-export interface DiffInput {
+export type DiffInput = {
   readonly baseImage: ImageArtifact;
   readonly compareImage: ImageArtifact;
-}
+};
 
-export interface DiffOutput {
+export type DiffOutput = {
   readonly report: DiffReportArtifact;
   readonly diffImage?: ImageArtifact;
   readonly pixelDiffPercent: number;
-}
+};
 
 export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
-  name: 'diff',
-  description: 'Compare two images for visual differences',
-  inputTypes: ['image', 'image'],
-  outputTypes: ['diff-report'],
+  name: "diff",
+  description: "Compare two images for visual differences",
+  inputTypes: ["image", "image"],
+  outputTypes: ["diff-report"],
 
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
@@ -36,12 +37,23 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
 
       const [baseBuffer, compareBuffer] = yield* Effect.all([
         Effect.tryPromise({
-          try: () => sharp(input.baseImage.path).raw().toBuffer({ resolveWithObject: true }),
-          catch: (e) => new OperationError({ operation: 'diff', detail: 'Failed to read base image', cause: e }),
+          try: async () => sharp(input.baseImage.path).raw().toBuffer({ resolveWithObject: true }),
+          catch: (e) =>
+            new OperationError({
+              operation: "diff",
+              detail: "Failed to read base image",
+              cause: e,
+            }),
         }),
         Effect.tryPromise({
-          try: () => sharp(input.compareImage.path).raw().toBuffer({ resolveWithObject: true }),
-          catch: (e) => new OperationError({ operation: 'diff', detail: 'Failed to read compare image', cause: e }),
+          try: async () =>
+            sharp(input.compareImage.path).raw().toBuffer({ resolveWithObject: true }),
+          catch: (e) =>
+            new OperationError({
+              operation: "diff",
+              detail: "Failed to read compare image",
+              cause: e,
+            }),
         }),
       ]);
 
@@ -49,7 +61,7 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
       const comparePixels = compareBuffer.data;
 
       if (basePixels.length !== comparePixels.length) {
-        ctx.logger.warn('Images have different sizes, using smaller size for comparison');
+        ctx.logger.warn("Images have different sizes, using smaller size for comparison");
       }
 
       const pixelCount = Math.min(basePixels.length, comparePixels.length) / 4; // RGBA
@@ -70,13 +82,16 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
 
       ctx.logger.info(`Pixel difference: ${pixelDiffPercent.toFixed(2)}%`);
 
-      const reportPath = yield* ctx
-        .getArtifactPath('diffReport')
-        .pipe(
-          Effect.mapError(
-            (e) => new OperationError({ operation: 'diff', detail: 'Failed to get output path', cause: e }),
-          ),
-        );
+      const reportPath = yield* ctx.getArtifactPath("diffReport").pipe(
+        Effect.mapError(
+          (e) =>
+            new OperationError({
+              operation: "diff",
+              detail: "Failed to get output path",
+              cause: e,
+            }),
+        ),
+      );
 
       const reportData = {
         baseImage: input.baseImage.path,
@@ -88,17 +103,18 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
       };
 
       yield* Effect.tryPromise({
-        try: () => Bun.write(reportPath, JSON.stringify(reportData, null, 2)),
-        catch: (e) => new OperationError({ operation: 'diff', detail: 'Failed to save diff report', cause: e }),
+        try: async () => Bun.write(reportPath, JSON.stringify(reportData, null, 2)),
+        catch: (e) =>
+          new OperationError({ operation: "diff", detail: "Failed to save diff report", cause: e }),
       });
 
       const artifact: DiffReportArtifact = {
-        _kind: 'artifact',
+        _kind: "artifact",
         id: crypto.randomUUID(),
-        type: 'diff-report',
+        type: "diff-report",
         path: reportPath,
         createdAt: new Date().toISOString(),
-        createdBy: 'diff',
+        createdBy: "diff",
         metadata: {
           baseImageId: input.baseImage.id,
           compareImageId: input.compareImage.id,

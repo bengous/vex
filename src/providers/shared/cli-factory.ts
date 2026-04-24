@@ -19,16 +19,18 @@
  *   registerProvider("my-cli", MyCliProviderLayer);
  */
 
-import { BunContext } from '@effect/platform-bun';
-import { Effect, Layer, Option } from 'effect';
-import { CodexEnv } from '../codex-cli/environment.js';
-import { AnalysisFailed, VisionProvider, type VisionProviderService, type VisionQueryOptions } from './service.js';
-import { Subprocess, type SubprocessError, SubprocessLive } from './subprocess.js';
+import type { VisionProviderService, VisionQueryOptions } from "./service.js";
+import type { SubprocessError } from "./subprocess.js";
+import { BunContext } from "@effect/platform-bun";
+import { Effect, Layer, Option } from "effect";
+import { CodexEnv } from "../codex-cli/environment.js";
+import { AnalysisFailed, VisionProvider } from "./service.js";
+import { Subprocess, SubprocessLive } from "./subprocess.js";
 
 /** Default timeout for CLI providers (5 minutes) - longer than HTTP due to CLI startup overhead */
 export const CLI_DEFAULT_TIMEOUT_MS = 300_000;
 
-export interface CliProviderConfig {
+export type CliProviderConfig = {
   readonly name: string;
   readonly displayName: string;
   readonly command: string;
@@ -45,12 +47,12 @@ export interface CliProviderConfig {
   ) => readonly string[];
   /** Build environment variables to pass to the subprocess */
   readonly buildEnv?: () => Record<string, string>;
-}
+};
 
 function mapSubprocessError(provider: string, err: SubprocessError): AnalysisFailed {
   return new AnalysisFailed({
     provider,
-    kind: err.timedOut ? 'timeout' : 'execution',
+    kind: err.timedOut ? "timeout" : "execution",
     message: err.timedOut ? `Command timed out` : `Exit code ${err.exitCode}`,
     cause: err.stderr || undefined,
   });
@@ -62,7 +64,8 @@ function mapSubprocessError(provider: string, err: SubprocessError): AnalysisFai
  * to satisfy the CommandExecutor requirement.
  */
 export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<VisionProvider> {
-  const { name, displayName, command, timeoutMs, modelAliases, knownModels, buildArgs, buildEnv } = config;
+  const { name, displayName, command, timeoutMs, modelAliases, knownModels, buildArgs, buildEnv } =
+    config;
 
   const providerLayer = Layer.effect(
     VisionProvider,
@@ -75,14 +78,16 @@ export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<V
 
         analyze: (images, prompt, options) =>
           Effect.gen(function* () {
-            const rawModel = options?.model ?? '';
+            const rawModel = options?.model ?? "";
             const model = modelAliases?.[rawModel.toLowerCase()] ?? rawModel;
             const timeout = options?.timeoutMs ?? timeoutMs;
             const args = buildArgs(model, prompt, images, options);
 
             // Check for CodexEnv service (provided when profile is active)
             const codexEnvOption = yield* Effect.serviceOption(CodexEnv);
-            const env = Option.isSome(codexEnvOption) ? { CODEX_HOME: codexEnvOption.value.codexHome } : buildEnv?.();
+            const env = Option.isSome(codexEnvOption)
+              ? { CODEX_HOME: codexEnvOption.value.codexHome }
+              : buildEnv?.();
 
             const result = yield* subprocess.exec(command, args, timeout, env);
             return {
@@ -91,17 +96,21 @@ export function createCliProviderLayer(config: CliProviderConfig): Layer.Layer<V
               model,
               provider: name,
             };
-          }).pipe(Effect.mapError((err) => mapSubprocessError(name, err as SubprocessError))),
+          }).pipe(Effect.mapError((err) => mapSubprocessError(name, err))),
 
         isAvailable: () =>
           Effect.gen(function* () {
             const exists = yield* subprocess.commandExists(command);
-            if (!exists) return false;
+            if (!exists) {
+              return false;
+            }
 
             const codexEnvOption = yield* Effect.serviceOption(CodexEnv);
-            const env = Option.isSome(codexEnvOption) ? { CODEX_HOME: codexEnvOption.value.codexHome } : buildEnv?.();
+            const env = Option.isSome(codexEnvOption)
+              ? { CODEX_HOME: codexEnvOption.value.codexHome }
+              : buildEnv?.();
 
-            yield* subprocess.exec(command, ['--help'], 5000, env);
+            yield* subprocess.exec(command, ["--help"], 5000, env);
             return true;
           }).pipe(Effect.catchAll(() => Effect.succeed(false))),
 

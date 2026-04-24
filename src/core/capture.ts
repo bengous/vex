@@ -5,11 +5,18 @@
  * Handles overlay cleanup, network blocking, and placeholder media.
  */
 
-import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-import type { BrowserContext, chromium, Page, Route } from 'playwright';
-import sharp from 'sharp';
-import type { BoundingBox, DOMElement, DOMSnapshot, FoldConfig, ImageArtifact, ViewportConfig } from './types.js';
+import type {
+  BoundingBox,
+  DOMElement,
+  DOMSnapshot,
+  FoldConfig,
+  ImageArtifact,
+  ViewportConfig,
+} from "./types.js";
+import type { BrowserContext, chromium, Page, Route } from "playwright";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import sharp from "sharp";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Network Blocking
@@ -20,50 +27,50 @@ import type { BoundingBox, DOMElement, DOMSnapshot, FoldConfig, ImageArtifact, V
  * Prevents cookie banners and chat widgets from loading.
  */
 export const BLOCKED_SCRIPT_PATTERNS = [
-  'booster_eu_cookie',
-  'nova-cookie-app-embed',
-  'consent-tracking-api',
-  'inbox-chat-loader',
-  'shopifyChatV1Widget',
-  'crisp.chat',
-  'intercom',
-  'tidio',
+  "booster_eu_cookie",
+  "nova-cookie-app-embed",
+  "consent-tracking-api",
+  "inbox-chat-loader",
+  "shopifyChatV1Widget",
+  "crisp.chat",
+  "intercom",
+  "tidio",
 ];
 
 /**
  * CSS selectors for overlay elements to hide/remove.
  */
 export const OVERLAY_SELECTORS = {
-  shopifyConsent: ['#shopify-pc__banner', '.shopify-pc__banner__dialog', '[role="alertdialog"]'],
+  shopifyConsent: ["#shopify-pc__banner", ".shopify-pc__banner__dialog", '[role="alertdialog"]'],
   cookieBanners: [
-    '.cc-window',
-    '.cc-banner',
+    ".cc-window",
+    ".cc-banner",
     '[aria-label="cookieconsent"]',
     '[role="dialog"][aria-label="cookieconsent"]',
-    '#cookie-consent',
-    '.cookie-banner',
-    '.gdpr-banner',
-    '.consent-banner',
+    "#cookie-consent",
+    ".cookie-banner",
+    ".gdpr-banner",
+    ".consent-banner",
   ],
   chatWidgets: [
-    '#ShopifyChat',
-    'inbox-online-store-chat',
-    'shopify-chat',
-    '.crisp-client',
-    '#crisp-chatbox',
-    '.intercom-messenger',
-    '#intercom-container',
-    '.tidio-chat',
-    '#tidio-chat',
+    "#ShopifyChat",
+    "inbox-online-store-chat",
+    "shopify-chat",
+    ".crisp-client",
+    "#crisp-chatbox",
+    ".intercom-messenger",
+    "#intercom-container",
+    ".tidio-chat",
+    "#tidio-chat",
     'iframe[title*="chat" i]',
   ],
 };
 
 const OVERLAY_STABILIZATION_DELAY_MS = 300;
 
-export interface NetworkBlockingOptions {
+export type NetworkBlockingOptions = {
   readonly debug?: boolean;
-}
+};
 
 /**
  * Sets up network-level blocking for overlay scripts.
@@ -74,12 +81,12 @@ export async function setupNetworkBlocking(
 ): Promise<void> {
   const { debug = false } = options;
 
-  await context.route('**/*', (route: Route) => {
+  await context.route("**/*", async (route: Route) => {
     const url = route.request().url();
     const shouldBlock = BLOCKED_SCRIPT_PATTERNS.some((pattern) => url.includes(pattern));
     if (shouldBlock) {
       if (debug) {
-        console.log('[networkBlocking] Blocked:', url);
+        console.log("[networkBlocking] Blocked:", url);
       }
       return route.abort();
     }
@@ -88,7 +95,11 @@ export async function setupNetworkBlocking(
 }
 
 function getAllOverlaySelectors(): string[] {
-  return [...OVERLAY_SELECTORS.shopifyConsent, ...OVERLAY_SELECTORS.cookieBanners, ...OVERLAY_SELECTORS.chatWidgets];
+  return [
+    ...OVERLAY_SELECTORS.shopifyConsent,
+    ...OVERLAY_SELECTORS.cookieBanners,
+    ...OVERLAY_SELECTORS.chatWidgets,
+  ];
 }
 
 /**
@@ -96,7 +107,9 @@ function getAllOverlaySelectors(): string[] {
  */
 export async function injectOverlayHidingCSS(page: Page): Promise<void> {
   const selectors = getAllOverlaySelectors();
-  const css = selectors.map((sel) => `${sel} { display: none !important; visibility: hidden !important; }`).join('\n');
+  const css = selectors
+    .map((sel) => `${sel} { display: none !important; visibility: hidden !important; }`)
+    .join("\n");
   await page.addStyleTag({ content: css });
 }
 
@@ -124,24 +137,24 @@ export async function cleanupOverlays(page: Page): Promise<void> {
 // Placeholder Media
 // ═══════════════════════════════════════════════════════════════════════════
 
-const PLACEHOLDER_FILL_COLOR = '#E5E5E5';
-const PLACEHOLDER_STROKE_COLOR = '#999999';
+const PLACEHOLDER_FILL_COLOR = "#E5E5E5";
+const PLACEHOLDER_STROKE_COLOR = "#999999";
 
-export interface PlaceholderMediaOptions {
+export type PlaceholderMediaOptions = {
   readonly enabled: boolean;
   readonly svgMinSize: number;
   readonly preserve: readonly string[];
-}
+};
 
 /**
  * Full-page scroll fix for apps that scroll inside an internal container.
  */
-export interface FullPageScrollFixOptions {
+export type FullPageScrollFixOptions = {
   readonly enabled: boolean;
   readonly selectors: readonly string[];
   readonly settleMs: number;
   readonly preserveHorizontalOverflow: boolean;
-}
+};
 
 function getPlaceholderCSS(): string {
   return `
@@ -187,8 +200,13 @@ function getBackgroundImageOverrideCSS(): string {
 /**
  * Applies placeholder media mode.
  */
-export async function applyPlaceholderMedia(page: Page, options: PlaceholderMediaOptions): Promise<void> {
-  if (!options.enabled) return;
+export async function applyPlaceholderMedia(
+  page: Page,
+  options: PlaceholderMediaOptions,
+): Promise<void> {
+  if (!options.enabled) {
+    return;
+  }
 
   const css = getPlaceholderCSS() + getBackgroundImageOverrideCSS();
   await page.addStyleTag({ content: css });
@@ -196,11 +214,11 @@ export async function applyPlaceholderMedia(page: Page, options: PlaceholderMedi
   await page.evaluate(
     ({ minSize, preserveSelectors }) => {
       function createPlaceholder(width: number, height: number, display: string): HTMLDivElement {
-        const div = document.createElement('div');
-        div.className = 'placeholder-media-box';
+        const div = document.createElement("div");
+        div.className = "placeholder-media-box";
         div.style.width = `${width}px`;
         div.style.height = `${height}px`;
-        div.style.display = display === 'inline' || !display ? 'inline-block' : display;
+        div.style.display = display === "inline" || !display ? "inline-block" : display;
         return div;
       }
 
@@ -213,8 +231,10 @@ export async function applyPlaceholderMedia(page: Page, options: PlaceholderMedi
         return false;
       }
 
-      document.querySelectorAll('img').forEach((img) => {
-        if (shouldPreserve(img)) return;
+      document.querySelectorAll("img").forEach((img) => {
+        if (shouldPreserve(img)) {
+          return;
+        }
         const rect = img.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
           const display = window.getComputedStyle(img).display;
@@ -222,43 +242,53 @@ export async function applyPlaceholderMedia(page: Page, options: PlaceholderMedi
         }
       });
 
-      document.querySelectorAll('video').forEach((video) => {
-        if (shouldPreserve(video)) return;
+      document.querySelectorAll("video").forEach((video) => {
+        if (shouldPreserve(video)) {
+          return;
+        }
         const rect = video.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
-          video.replaceWith(createPlaceholder(rect.width, rect.height, 'block'));
+          video.replaceWith(createPlaceholder(rect.width, rect.height, "block"));
         }
       });
 
-      document.querySelectorAll('picture').forEach((picture) => {
-        if (shouldPreserve(picture)) return;
+      document.querySelectorAll("picture").forEach((picture) => {
+        if (shouldPreserve(picture)) {
+          return;
+        }
         const rect = picture.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
-          picture.replaceWith(createPlaceholder(rect.width, rect.height, 'inline-block'));
+          picture.replaceWith(createPlaceholder(rect.width, rect.height, "inline-block"));
         }
       });
 
-      document.querySelectorAll('canvas').forEach((canvas) => {
-        if (shouldPreserve(canvas)) return;
+      document.querySelectorAll("canvas").forEach((canvas) => {
+        if (shouldPreserve(canvas)) {
+          return;
+        }
         const rect = canvas.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
-          canvas.replaceWith(createPlaceholder(rect.width, rect.height, 'inline-block'));
+          canvas.replaceWith(createPlaceholder(rect.width, rect.height, "inline-block"));
         }
       });
 
-      document.querySelectorAll('svg').forEach((svg) => {
-        if (shouldPreserve(svg)) return;
+      document.querySelectorAll("svg").forEach((svg) => {
+        if (shouldPreserve(svg)) {
+          return;
+        }
         const rect = svg.getBoundingClientRect();
         if (rect.width >= minSize || rect.height >= minSize) {
-          svg.replaceWith(createPlaceholder(rect.width, rect.height, 'inline-block'));
+          svg.replaceWith(createPlaceholder(rect.width, rect.height, "inline-block"));
         }
       });
 
-      document.querySelectorAll('iframe').forEach((iframe) => {
-        if (shouldPreserve(iframe)) return;
+      document.querySelectorAll("iframe").forEach((iframe) => {
+        if (shouldPreserve(iframe)) {
+          return;
+        }
         const rect = iframe.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
-          iframe.replaceWith(createPlaceholder(rect.width, rect.height, 'block'));
+          iframe.replaceWith(createPlaceholder(rect.width, rect.height, "block"));
         }
       });
     },
@@ -272,12 +302,17 @@ export async function applyPlaceholderMedia(page: Page, options: PlaceholderMedi
  * Expand root + internal scroll container to make fullPage screenshots include
  * content that normally lives inside overflow:auto containers.
  */
-async function applyFullPageScrollFix(page: Page, options: FullPageScrollFixOptions): Promise<void> {
-  if (!options.enabled) return;
+async function applyFullPageScrollFix(
+  page: Page,
+  options: FullPageScrollFixOptions,
+): Promise<void> {
+  if (!options.enabled) {
+    return;
+  }
 
   const selectors = options.selectors.filter((selector) => selector.trim().length > 0);
-  const containerSelectors = selectors.length > 0 ? selectors.join(', ') : '';
-  const horizontalOverflow = options.preserveHorizontalOverflow ? 'visible' : 'hidden';
+  const containerSelectors = selectors.length > 0 ? selectors.join(", ") : "";
+  const horizontalOverflow = options.preserveHorizontalOverflow ? "visible" : "hidden";
 
   const css = `
     html, body {
@@ -299,7 +334,7 @@ async function applyFullPageScrollFix(page: Page, options: FullPageScrollFixOpti
       max-height: none !important;
       max-width: 100% !important;
     }`
-        : ''
+        : ""
     }
   `;
 
@@ -307,9 +342,12 @@ async function applyFullPageScrollFix(page: Page, options: FullPageScrollFixOpti
   await page.waitForTimeout(options.settleMs);
 }
 
-async function enforceHorizontalOverflowClamp(page: Page, selectors: readonly string[]): Promise<void> {
+async function enforceHorizontalOverflowClamp(
+  page: Page,
+  selectors: readonly string[],
+): Promise<void> {
   const filtered = selectors.filter((selector) => selector.trim().length > 0);
-  const containerSelectors = filtered.length > 0 ? filtered.join(', ') : '';
+  const containerSelectors = filtered.length > 0 ? filtered.join(", ") : "";
   const css = `
     html, body {
       overflow-x: hidden !important;
@@ -321,7 +359,7 @@ async function enforceHorizontalOverflowClamp(page: Page, selectors: readonly st
       overflow-x: hidden !important;
       max-width: 100% !important;
     }`
-        : ''
+        : ""
     }
   `;
   await page.addStyleTag({ content: css });
@@ -329,7 +367,7 @@ async function enforceHorizontalOverflowClamp(page: Page, selectors: readonly st
 
 export async function getImageDimensionsFromBuffer(
   buffer: Buffer,
-  fallback: Pick<ViewportConfig, 'width' | 'height'>,
+  fallback: Pick<ViewportConfig, "width" | "height">,
 ): Promise<{ width: number; height: number }> {
   const metadata = await sharp(buffer).metadata();
   return {
@@ -340,7 +378,7 @@ export async function getImageDimensionsFromBuffer(
 
 export async function cropScreenshotToViewportWidth(
   buffer: Buffer,
-  viewport: Pick<ViewportConfig, 'width' | 'deviceScaleFactor'>,
+  viewport: Pick<ViewportConfig, "width" | "deviceScaleFactor">,
 ): Promise<Buffer> {
   const metadata = await sharp(buffer).metadata();
   if (!metadata.width || !metadata.height) {
@@ -367,7 +405,7 @@ export async function cropScreenshotToViewportWidth(
 // Screenshot Capture
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface CaptureOptions {
+export type CaptureOptions = {
   readonly url: string;
   readonly viewport: ViewportConfig;
   readonly outputDir: string;
@@ -378,24 +416,24 @@ export interface CaptureOptions {
   readonly fullPageScrollFix?: FullPageScrollFixOptions;
   readonly navigationTimeout?: number;
   readonly loadStateTimeout?: number;
-}
+};
 
-export interface CaptureResult {
+export type CaptureResult = {
   readonly artifact: ImageArtifact;
   readonly buffer: Buffer;
-}
+};
 
 type Browser = Awaited<ReturnType<typeof chromium.launch>>;
 
-interface InternalCaptureOptions extends CaptureOptions {
+type InternalCaptureOptions = {
   readonly captureDOM: boolean;
   readonly captureStyles: readonly string[];
   readonly createdBy: string;
-}
+} & CaptureOptions;
 
-interface InternalCaptureResult extends CaptureResult {
+type InternalCaptureResult = {
   readonly domSnapshot?: DOMSnapshot;
-}
+} & CaptureResult;
 
 async function captureDOMSnapshot(
   page: Page,
@@ -430,7 +468,9 @@ async function captureDOMSnapshot(
             const attrs: Record<string, string> = {};
             for (let i = 0; i < node.attributes.length; i++) {
               const attr = node.attributes[i];
-              if (attr) attrs[attr.name] = attr.value;
+              if (attr) {
+                attrs[attr.name] = attr.value;
+              }
             }
 
             results.push({
@@ -475,7 +515,10 @@ async function captureDOMSnapshot(
   };
 }
 
-async function runCapture(browser: Browser, options: InternalCaptureOptions): Promise<InternalCaptureResult> {
+async function runCapture(
+  browser: Browser,
+  options: InternalCaptureOptions,
+): Promise<InternalCaptureResult> {
   const {
     url,
     viewport,
@@ -506,7 +549,7 @@ async function runCapture(browser: Browser, options: InternalCaptureOptions): Pr
 
   try {
     const response = await page.goto(url, {
-      waitUntil: 'domcontentloaded',
+      waitUntil: "domcontentloaded",
       timeout: navigationTimeout,
     });
 
@@ -514,7 +557,7 @@ async function runCapture(browser: Browser, options: InternalCaptureOptions): Pr
       throw new Error(`HTTP ${response?.status()}: ${response?.statusText()}`);
     }
 
-    await page.waitForLoadState('load', { timeout: loadStateTimeout }).catch(() => {
+    await page.waitForLoadState("load", { timeout: loadStateTimeout }).catch(() => {
       // Ignore timeout, proceed with screenshot
     });
 
@@ -523,7 +566,9 @@ async function runCapture(browser: Browser, options: InternalCaptureOptions): Pr
       await applyFullPageScrollFix(page, fullPageScrollFix);
     }
 
-    const domSnapshot = captureDOM ? await captureDOMSnapshot(page, url, viewport, captureStyles) : undefined;
+    const domSnapshot = captureDOM
+      ? await captureDOMSnapshot(page, url, viewport, captureStyles)
+      : undefined;
 
     if (placeholderMedia?.enabled) {
       await applyPlaceholderMedia(page, placeholderMedia);
@@ -542,9 +587,9 @@ async function runCapture(browser: Browser, options: InternalCaptureOptions): Pr
     await Bun.write(outputPath, buffer);
 
     const artifact: ImageArtifact = {
-      _kind: 'artifact',
+      _kind: "artifact",
       id: crypto.randomUUID(),
-      type: 'image',
+      type: "image",
       path: outputPath,
       createdAt: new Date().toISOString(),
       createdBy,
@@ -576,7 +621,7 @@ export async function captureScreenshot(
     ...options,
     captureDOM: false,
     captureStyles: [],
-    createdBy: 'capture',
+    createdBy: "capture",
   });
   return { artifact: result.artifact, buffer: result.buffer };
 }
@@ -585,13 +630,13 @@ export async function captureScreenshot(
 // DOM Snapshot Capture
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface DOMCaptureOptions extends CaptureOptions {
+export type DOMCaptureOptions = {
   readonly captureStyles?: readonly string[];
-}
+} & CaptureOptions;
 
-export interface DOMCaptureResult extends CaptureResult {
+export type DOMCaptureResult = {
   readonly domSnapshot: DOMSnapshot;
-}
+} & CaptureResult;
 
 /**
  * Captures a screenshot with DOM snapshot for code location.
@@ -603,12 +648,19 @@ export async function captureWithDOM(
   const result = await runCapture(browser, {
     ...options,
     captureDOM: true,
-    captureStyles: options.captureStyles ?? ['display', 'position', 'width', 'height', 'margin', 'padding'],
-    createdBy: 'capture-with-dom',
+    captureStyles: options.captureStyles ?? [
+      "display",
+      "position",
+      "width",
+      "height",
+      "margin",
+      "padding",
+    ],
+    createdBy: "capture-with-dom",
   });
 
   if (!result.domSnapshot) {
-    throw new Error('DOM snapshot was not captured');
+    throw new Error("DOM snapshot was not captured");
   }
 
   return { artifact: result.artifact, buffer: result.buffer, domSnapshot: result.domSnapshot };

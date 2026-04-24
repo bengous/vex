@@ -6,11 +6,12 @@
  * Migrated to @effect/cli with Effect Schema validation.
  */
 
-import { Args, Command } from '@effect/cli';
-import { Effect, Option } from 'effect';
-import { Url } from '../../config/schema.js';
-import { listDevices } from '../../core/devices.js';
-import { runScanAudit } from '../audit-runner.js';
+import type { ScanCliArgs } from "../resolve.js";
+import { Args, Command } from "@effect/cli";
+import { Effect, Option } from "effect";
+import { Url } from "../../config/schema.js";
+import { listDevices } from "../../core/devices.js";
+import { runScanAudit } from "../audit-runner.js";
 import {
   deviceOption,
   fullOption,
@@ -22,9 +23,8 @@ import {
   providerOption,
   providerProfileOption,
   reasoningOption,
-} from '../options.js';
-import type { ScanCliArgs } from '../resolve.js';
-import { resolveScanOptions } from '../resolve.js';
+} from "../options.js";
+import { resolveScanOptions } from "../resolve.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // URL Argument
@@ -33,14 +33,14 @@ import { resolveScanOptions } from '../resolve.js';
 /**
  * URL positional argument (optional - can come from preset).
  */
-const urlArg = Args.text({ name: 'url' }).pipe(Args.withSchema(Url), Args.optional);
+const urlArg = Args.text({ name: "url" }).pipe(Args.withSchema(Url), Args.optional);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Scan Command
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const scanCommand = Command.make(
-  'scan',
+  "scan",
   {
     url: urlArg,
     preset: presetOption,
@@ -91,4 +91,4 @@ export const scanCommand = Command.make(
         },
       });
     }),
-).pipe(Command.withDescription('Capture and analyze a URL for visual issues'));
+).pipe(Command.withDescription("Capture and analyze a URL for visual issues"));

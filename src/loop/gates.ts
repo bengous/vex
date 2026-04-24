@@ -9,9 +9,9 @@
  * 5. otherwise -> human-review
  */
 
-import type { CodeLocation, Issue, Severity } from '../core/types.js';
-import type { AutoFixThreshold, GateAction, GateConfig, GateDecision } from './types.js';
-import { DEFAULT_GATE_CONFIG } from './types.js';
+import type { CodeLocation, Issue, Severity } from "../core/types.js";
+import type { AutoFixThreshold, GateAction, GateConfig, GateDecision } from "./types.js";
+import { DEFAULT_GATE_CONFIG } from "./types.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Severity Ordering
@@ -31,27 +31,30 @@ function isSeverityAtLeast(actual: Severity, threshold: Severity): boolean {
 // Confidence Ordering
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CONFIDENCE_RANK: Record<CodeLocation['confidence'], number> = {
+const CONFIDENCE_RANK: Record<CodeLocation["confidence"], number> = {
   high: 0,
   medium: 1,
   low: 2,
 };
 
-function isConfidenceAtLeast(actual: CodeLocation['confidence'], threshold: AutoFixThreshold): boolean {
-  if (threshold === 'none') {
+function isConfidenceAtLeast(
+  actual: CodeLocation["confidence"],
+  threshold: AutoFixThreshold,
+): boolean {
+  if (threshold === "none") {
     return false;
   }
-  return CONFIDENCE_RANK[actual] <= CONFIDENCE_RANK[threshold as CodeLocation['confidence']];
+  return CONFIDENCE_RANK[actual] <= CONFIDENCE_RANK[threshold as CodeLocation["confidence"]];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Scope Detection
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface ResolutionScope {
+type ResolutionScope = {
   isSingleFile: boolean;
   files: string[];
-}
+};
 
 function analyzeScope(locations: readonly CodeLocation[]): ResolutionScope {
   const files = [...new Set(locations.map((l) => l.file))];
@@ -67,32 +70,32 @@ function analyzeScope(locations: readonly CodeLocation[]): ResolutionScope {
 
 function buildReasoning(
   action: GateAction,
-  confidence: CodeLocation['confidence'],
+  confidence: CodeLocation["confidence"],
   severity: Severity,
   scope: ResolutionScope,
 ): string {
   const parts: string[] = [];
 
-  if (action === 'auto-fix') {
+  if (action === "auto-fix") {
     parts.push(`Auto-fixing: ${confidence} confidence`);
     if (scope.isSingleFile) {
       parts.push(`single file (${scope.files[0]})`);
     }
-  } else if (action === 'human-review') {
+  } else if (action === "human-review") {
     if (!scope.isSingleFile) {
       parts.push(`Requires review: multi-file change (${scope.files.length} files)`);
-    } else if (confidence === 'low') {
-      parts.push('Requires review: low confidence location');
-    } else if (severity === 'high') {
-      parts.push('Requires review: high severity issue');
+    } else if (confidence === "low") {
+      parts.push("Requires review: low confidence location");
+    } else if (severity === "high") {
+      parts.push("Requires review: high severity issue");
     } else {
-      parts.push('Requires review');
+      parts.push("Requires review");
     }
-  } else if (action === 'skip') {
-    parts.push('Skipped: no suitable code location found');
+  } else if (action === "skip") {
+    parts.push("Skipped: no suitable code location found");
   }
 
-  return parts.join(', ') || `Action: ${action}`;
+  return parts.join(", ") || `Action: ${action}`;
 }
 
 /**
@@ -107,18 +110,18 @@ export function evaluateGate(
 
   if (locations.length === 0) {
     return {
-      action: 'skip',
+      action: "skip",
       issue,
-      reasoning: 'No code locations found for this issue',
+      reasoning: "No code locations found for this issue",
     };
   }
 
   const bestLocation = locations[0]; // Already sorted by confidence
   if (!bestLocation) {
     return {
-      action: 'skip',
+      action: "skip",
       issue,
-      reasoning: 'No valid code location',
+      reasoning: "No valid code location",
     };
   }
 
@@ -130,23 +133,23 @@ export function evaluateGate(
 
   // Multi-file always requires review (unless explicitly allowed)
   if (!scope.isSingleFile && !opts.allowMultiFileAutoFix) {
-    action = 'human-review';
+    action = "human-review";
   }
   // Low confidence always requires review
-  else if (confidence === 'low') {
-    action = 'human-review';
+  else if (confidence === "low") {
+    action = "human-review";
   }
   // Medium confidence with high severity = review
-  else if (confidence === 'medium' && isSeverityAtLeast(severity, opts.humanReviewSeverity)) {
-    action = 'human-review';
+  else if (confidence === "medium" && isSeverityAtLeast(severity, opts.humanReviewSeverity)) {
+    action = "human-review";
   }
   // Auto-fix if threshold is met
   else if (isConfidenceAtLeast(confidence, opts.autoFixConfidence) && scope.isSingleFile) {
-    action = 'auto-fix';
+    action = "auto-fix";
   }
   // Default to review
   else {
-    action = 'human-review';
+    action = "human-review";
   }
 
   return {
@@ -171,11 +174,11 @@ export function evaluateGates(
   for (const { issue, locations } of issuesWithLocations) {
     let decision = evaluateGate(issue, locations, opts);
 
-    if (decision.action === 'auto-fix') {
+    if (decision.action === "auto-fix") {
       if (autoFixCount >= opts.maxAutoFixesPerIteration) {
         decision = {
           ...decision,
-          action: 'human-review',
+          action: "human-review",
           reasoning: `${decision.reasoning} (auto-fix limit reached)`,
         };
       } else {
@@ -192,7 +195,10 @@ export function evaluateGates(
 /**
  * Filter decisions by action type.
  */
-export function filterByAction(decisions: readonly GateDecision[], action: GateAction): GateDecision[] {
+export function filterByAction(
+  decisions: readonly GateDecision[],
+  action: GateAction,
+): GateDecision[] {
   return decisions.filter((d) => d.action === action);
 }
 
@@ -201,8 +207,8 @@ export function filterByAction(decisions: readonly GateDecision[], action: GateA
  */
 export function summarizeDecisions(decisions: readonly GateDecision[]): Record<GateAction, number> {
   const summary: Record<GateAction, number> = {
-    'auto-fix': 0,
-    'human-review': 0,
+    "auto-fix": 0,
+    "human-review": 0,
     skip: 0,
     abort: 0,
   };

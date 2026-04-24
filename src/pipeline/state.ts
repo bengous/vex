@@ -2,18 +2,18 @@
  * Pipeline state management - session persistence and artifact storage.
  */
 
-import { join } from 'node:path';
-import { FileSystem } from '@effect/platform';
-import type { PlatformError } from '@effect/platform/Error';
-import { Data, Effect } from 'effect';
-import type { Artifact } from '../core/types.js';
-import { SESSION_STRUCTURE } from '../core/types.js';
-import type { PipelineDefinition, PipelineState } from './types.js';
+import type { Artifact } from "../core/types.js";
+import type { PipelineDefinition, PipelineState } from "./types.js";
+import type { PlatformError } from "@effect/platform/Error";
+import { FileSystem } from "@effect/platform";
+import { Data, Effect } from "effect";
+import { join } from "node:path";
+import { SESSION_STRUCTURE } from "../core/types.js";
 
 /**
  * JSON parsing failed when loading pipeline state.
  */
-export class JsonParseError extends Data.TaggedError('JsonParseError')<{
+export class JsonParseError extends Data.TaggedError("JsonParseError")<{
   readonly message: string;
   readonly path: string;
 }> {}
@@ -24,8 +24,8 @@ export class JsonParseError extends Data.TaggedError('JsonParseError')<{
  */
 export function generateSessionId(): string {
   const now = new Date();
-  const date = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const time = now.toISOString().slice(11, 16).replace(':', '');
+  const date = now.toISOString().slice(0, 10).replaceAll("-", "");
+  const time = now.toISOString().slice(11, 16).replace(":", "");
   const random = Math.random().toString(36).slice(2, 6);
   return `${date}-${time}-${random}`;
 }
@@ -50,13 +50,16 @@ export function createSessionDir(
 /**
  * Initialize pipeline state.
  */
-export function initializePipelineState(definition: PipelineDefinition, sessionDir: string): PipelineState {
-  const nodes: PipelineState['nodes'] = {};
+export function initializePipelineState(
+  definition: PipelineDefinition,
+  sessionDir: string,
+): PipelineState {
+  const nodes: PipelineState["nodes"] = {};
 
   for (const node of definition.nodes) {
     nodes[node.id] = {
       id: node.id,
-      status: 'pending',
+      status: "pending",
       outputArtifacts: [],
     };
   }
@@ -65,7 +68,7 @@ export function initializePipelineState(definition: PipelineDefinition, sessionD
     definition,
     sessionDir,
     startedAt: new Date().toISOString(),
-    status: 'running',
+    status: "running",
     nodes,
     artifacts: {},
     data: {},
@@ -77,7 +80,9 @@ export function initializePipelineState(definition: PipelineDefinition, sessionD
 /**
  * Save pipeline state to disk.
  */
-export function savePipelineState(state: PipelineState): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
+export function savePipelineState(
+  state: PipelineState,
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const statePath = join(state.sessionDir, SESSION_STRUCTURE.stateFile);
@@ -122,7 +127,11 @@ export function storeArtifact(state: PipelineState, artifact: Artifact): Pipelin
 /**
  * Store a semantic name mapping in the state.
  */
-export function storeSemanticName(state: PipelineState, name: string, artifactId: string): PipelineState {
+export function storeSemanticName(
+  state: PipelineState,
+  name: string,
+  artifactId: string,
+): PipelineState {
   return {
     ...state,
     semanticNames: {
@@ -151,10 +160,12 @@ export function storeData(state: PipelineState, key: string, value: unknown): Pi
 export function updateNodeState(
   state: PipelineState,
   nodeId: string,
-  update: Partial<PipelineState['nodes'][string]>,
+  update: Partial<PipelineState["nodes"][string]>,
 ): PipelineState {
   const currentNode = state.nodes[nodeId];
-  if (!currentNode) return state;
+  if (!currentNode) {
+    return state;
+  }
 
   return {
     ...state,
@@ -169,14 +180,16 @@ export function updateNodeState(
  * Check if all nodes are complete.
  */
 export function isComplete(state: PipelineState): boolean {
-  return Object.values(state.nodes).every((node) => node.status === 'completed' || node.status === 'skipped');
+  return Object.values(state.nodes).every(
+    (node) => node.status === "completed" || node.status === "skipped",
+  );
 }
 
 /**
  * Check if any node has failed.
  */
 export function hasFailed(state: PipelineState): boolean {
-  return Object.values(state.nodes).some((node) => node.status === 'failed');
+  return Object.values(state.nodes).some((node) => node.status === "failed");
 }
 
 /**
@@ -187,12 +200,14 @@ export function getReadyNodes(state: PipelineState): string[] {
 
   for (const node of state.definition.nodes) {
     const nodeState = state.nodes[node.id];
-    if (!nodeState || nodeState.status !== 'pending') continue;
+    if (nodeState?.status !== "pending") {
+      continue;
+    }
 
     const inputEdges = state.definition.edges.filter((e) => e.to === node.id);
     const allInputsReady = inputEdges.every((edge) => {
       const sourceNode = state.nodes[edge.from];
-      return sourceNode?.status === 'completed';
+      return sourceNode?.status === "completed";
     });
 
     if (allInputsReady) {
@@ -204,11 +219,11 @@ export function getReadyNodes(state: PipelineState): string[] {
 }
 
 /** Result from a single node execution, used by mergeNodeResults. */
-export interface NodeResult {
+export type NodeResult = {
   readonly nodeId: string;
   readonly artifacts: Artifact[];
   readonly state: PipelineState;
-}
+};
 
 /**
  * Merge results from parallel node executions into a single state.
@@ -229,7 +244,9 @@ export function mergeNodeResults(
   results: ReadonlyArray<NodeResult>,
 ): PipelineState {
   const [only] = results;
-  if (only && results.length === 1) return only.state;
+  if (only && results.length === 1) {
+    return only.state;
+  }
 
   let merged = base;
   for (const result of results) {

@@ -2,25 +2,26 @@
  * Annotate operation - generates annotation tool calls from analysis.
  */
 
-import { Effect } from 'effect';
-import type { AnalysisResult, AnnotationsArtifact, Issue, ToolCall } from '../../core/types.js';
-import { VisionProvider } from '../../providers/shared/service.js';
-import { type Operation, OperationError, type PipelineContext } from '../types.js';
-import { resolveProviderForOperation } from './resolve-provider.js';
+import type { AnalysisResult, AnnotationsArtifact, Issue, ToolCall } from "../../core/types.js";
+import type { Operation, PipelineContext } from "../types.js";
+import { Effect } from "effect";
+import { VisionProvider } from "../../providers/shared/service.js";
+import { OperationError } from "../types.js";
+import { resolveProviderForOperation } from "./resolve-provider.js";
 
-export interface AnnotateConfig {
+export type AnnotateConfig = {
   readonly provider: string;
   readonly model?: string;
-}
+};
 
-export interface AnnotateInput {
+export type AnnotateInput = {
   readonly result: AnalysisResult;
-}
+};
 
-export interface AnnotateOutput {
+export type AnnotateOutput = {
   readonly toolCalls: readonly ToolCall[];
   readonly annotations: AnnotationsArtifact;
-}
+};
 
 const ANNOTATION_PROMPT = `Based on the following issues, generate annotation tool calls to visually mark them on the screenshot.
 
@@ -48,25 +49,29 @@ function formatIssuesForPrompt(issues: readonly Issue[]): string {
   return issues
     .map(
       (issue) =>
-        `- #${issue.id} [${issue.severity}]: ${issue.description} at ${typeof issue.region === 'string' ? issue.region : `(${issue.region.x},${issue.region.y})`}`,
+        `- #${issue.id} [${issue.severity}]: ${issue.description} at ${typeof issue.region === "string" ? issue.region : `(${issue.region.x},${issue.region.y})`}`,
     )
-    .join('\n');
+    .join("\n");
 }
 
 function parseToolCalls(response: string): ToolCall[] {
   try {
     const jsonMatch = response.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
+    if (!jsonMatch) {
+      return [];
+    }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
 
     return parsed.filter(
       (call): call is ToolCall =>
-        typeof call === 'object' &&
+        typeof call === "object" &&
         call !== null &&
-        ['draw_rectangle', 'draw_arrow', 'add_label'].includes(call.tool) &&
-        typeof call.params === 'object',
+        ["draw_rectangle", "draw_arrow", "add_label"].includes(call.tool) &&
+        typeof call.params === "object",
     );
   } catch {
     return [];
@@ -77,28 +82,40 @@ function parseToolCalls(response: string): ToolCall[] {
  * Creates an annotations artifact from tool calls.
  * Writes the file and stores the artifact in context.
  */
-function createAnnotationsArtifact(toolCalls: readonly ToolCall[], issueCount: number, ctx: PipelineContext) {
+function createAnnotationsArtifact(
+  toolCalls: readonly ToolCall[],
+  issueCount: number,
+  ctx: PipelineContext,
+) {
   return Effect.gen(function* () {
-    const outputPath = yield* ctx
-      .getArtifactPath('annotations')
-      .pipe(
-        Effect.mapError(
-          (e) => new OperationError({ operation: 'annotate', detail: 'Failed to get annotations path', cause: e }),
-        ),
-      );
+    const outputPath = yield* ctx.getArtifactPath("annotations").pipe(
+      Effect.mapError(
+        (e) =>
+          new OperationError({
+            operation: "annotate",
+            detail: "Failed to get annotations path",
+            cause: e,
+          }),
+      ),
+    );
 
     yield* Effect.tryPromise({
-      try: () => Bun.write(outputPath, JSON.stringify(toolCalls, null, 2)),
-      catch: (e) => new OperationError({ operation: 'annotate', detail: 'Failed to save annotations', cause: e }),
+      try: async () => Bun.write(outputPath, JSON.stringify(toolCalls, null, 2)),
+      catch: (e) =>
+        new OperationError({
+          operation: "annotate",
+          detail: "Failed to save annotations",
+          cause: e,
+        }),
     });
 
     const artifact: AnnotationsArtifact = {
-      _kind: 'artifact',
+      _kind: "artifact",
       id: crypto.randomUUID(),
-      type: 'annotations',
+      type: "annotations",
       path: outputPath,
       createdAt: new Date().toISOString(),
-      createdBy: 'annotate',
+      createdBy: "annotate",
       metadata: {
         toolCallCount: toolCalls.length,
         issueCount,
@@ -111,10 +128,10 @@ function createAnnotationsArtifact(toolCalls: readonly ToolCall[], issueCount: n
 }
 
 export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, AnnotateConfig> = {
-  name: 'annotate',
-  description: 'Generate annotation tool calls from analysis',
-  inputTypes: ['analysis'],
-  outputTypes: ['annotations'],
+  name: "annotate",
+  description: "Generate annotation tool calls from analysis",
+  inputTypes: ["analysis"],
+  outputTypes: ["annotations"],
 
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
@@ -122,16 +139,16 @@ export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, Annotat
       const { issues } = input.result;
 
       if (issues.length === 0) {
-        ctx.logger.info('No issues to annotate');
+        ctx.logger.info("No issues to annotate");
         const artifact = yield* createAnnotationsArtifact([], 0, ctx);
         return { toolCalls: [] as readonly ToolCall[], annotations: artifact };
       }
 
       ctx.logger.info(`Generating annotations for ${issues.length} issues`);
 
-      const prompt = ANNOTATION_PROMPT.replace('{{ISSUES}}', formatIssuesForPrompt(issues));
+      const prompt = ANNOTATION_PROMPT.replace("{{ISSUES}}", formatIssuesForPrompt(issues));
 
-      const providerLayer = yield* resolveProviderForOperation(provider, 'annotate');
+      const providerLayer = yield* resolveProviderForOperation(provider, "annotate");
 
       const visionResult = yield* Effect.gen(function* () {
         const visionProvider = yield* VisionProvider;
@@ -139,7 +156,12 @@ export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, Annotat
       }).pipe(
         Effect.provide(providerLayer),
         Effect.mapError(
-          (e) => new OperationError({ operation: 'annotate', detail: 'Annotation generation failed', cause: e }),
+          (e) =>
+            new OperationError({
+              operation: "annotate",
+              detail: "Annotation generation failed",
+              cause: e,
+            }),
         ),
       );
 

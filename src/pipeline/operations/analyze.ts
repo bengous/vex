@@ -2,37 +2,38 @@
  * Analyze operation - sends image to VLM for analysis.
  */
 
-import { Effect } from 'effect';
-import { analyzeWithRetry } from '../../core/analysis.js';
-import {
-  type AnalysisArtifact,
-  type AnalysisResult,
-  GRID_CONFIG,
-  type ImageArtifact,
-  type ViewportConfig,
-} from '../../core/types.js';
-import { VisionProvider } from '../../providers/shared/service.js';
-import { type Operation, OperationError } from '../types.js';
-import { resolveProviderForOperation } from './resolve-provider.js';
+import type {
+  AnalysisArtifact,
+  AnalysisResult,
+  ImageArtifact,
+  ViewportConfig,
+} from "../../core/types.js";
+import type { Operation } from "../types.js";
+import { Effect } from "effect";
+import { analyzeWithRetry } from "../../core/analysis.js";
+import { GRID_CONFIG } from "../../core/types.js";
+import { VisionProvider } from "../../providers/shared/service.js";
+import { OperationError } from "../types.js";
+import { resolveProviderForOperation } from "./resolve-provider.js";
 
-export interface AnalyzeConfig {
+export type AnalyzeConfig = {
   readonly provider: string;
   readonly model?: string;
   readonly prompt?: string;
   readonly reasoning?: string;
-}
+};
 
 /** Providers that support the reasoning effort option */
-const REASONING_PROVIDERS = ['codex-cli'] as const;
+const REASONING_PROVIDERS = ["codex-cli"] as const;
 
-export interface AnalyzeInput {
+export type AnalyzeInput = {
   readonly image: ImageArtifact;
-}
+};
 
-export interface AnalyzeOutput {
+export type AnalyzeOutput = {
   readonly analysis: AnalysisArtifact;
   readonly result: AnalysisResult;
-}
+};
 
 /**
  * Build the analysis prompt with optional viewport context.
@@ -41,11 +42,11 @@ export interface AnalyzeOutput {
  */
 function buildAnalysisPrompt(viewport?: ViewportConfig): string {
   const viewportContext = viewport
-    ? `\nViewport: ${viewport.width}×${viewport.height}px (${viewport.isMobile ? 'mobile' : 'desktop'})
+    ? `\nViewport: ${viewport.width}×${viewport.height}px (${viewport.isMobile ? "mobile" : "desktop"})
 Grid: Each cell (A1, B2, etc.) is ${GRID_CONFIG.cellSize}×${GRID_CONFIG.cellSize} pixels.\n`
-    : '';
+    : "";
 
- return `Analyze this web page screenshot for visual and layout issues.${viewportContext}
+  return `Analyze this web page screenshot for visual and layout issues.${viewportContext}
 For each issue found, provide:
 1. A clear description of the problem
 2. The severity (high, medium, low)
@@ -67,10 +68,10 @@ Format your response as JSON:
 }
 
 export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeConfig> = {
-  name: 'analyze',
-  description: 'Analyze image with VLM for visual issues',
-  inputTypes: ['image'],
-  outputTypes: ['analysis'],
+  name: "analyze",
+  description: "Analyze image with VLM for visual issues",
+  inputTypes: ["image"],
+  outputTypes: ["analysis"],
 
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
@@ -79,24 +80,30 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
       const effectivePrompt = prompt ?? buildAnalysisPrompt(viewport);
 
       // Validate reasoning is only used with supported providers
-      if (reasoning && !REASONING_PROVIDERS.includes(provider as (typeof REASONING_PROVIDERS)[number])) {
+      if (
+        reasoning &&
+        !REASONING_PROVIDERS.includes(provider as (typeof REASONING_PROVIDERS)[number])
+      ) {
         return yield* Effect.fail(
           new OperationError({
-            operation: 'analyze',
-            detail: `Provider '${provider}' does not support --reasoning. Supported: ${REASONING_PROVIDERS.join(', ')}`,
+            operation: "analyze",
+            detail: `Provider '${provider}' does not support --reasoning. Supported: ${REASONING_PROVIDERS.join(", ")}`,
           }),
         );
       }
 
       ctx.logger.info(`Analyzing ${input.image.path} with ${provider}`);
 
-      const providerLayer = yield* resolveProviderForOperation(provider, 'analyze');
+      const providerLayer = yield* resolveProviderForOperation(provider, "analyze");
 
       // Create analyze callback pre-composed with provider layer
       const analyze = (analysisPrompt: string) =>
         Effect.gen(function* () {
           const visionProvider = yield* VisionProvider;
-          return yield* visionProvider.analyze([input.image.path], analysisPrompt, { model, reasoning });
+          return yield* visionProvider.analyze([input.image.path], analysisPrompt, {
+            model,
+            reasoning,
+          });
         }).pipe(Effect.provide(providerLayer));
 
       // Use shared retry logic from core/analysis.ts
@@ -105,7 +112,9 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
         prompt: effectivePrompt,
         logger: ctx.logger,
       }).pipe(
-        Effect.mapError((e) => new OperationError({ operation: 'analyze', detail: 'Analysis failed', cause: e })),
+        Effect.mapError(
+          (e) => new OperationError({ operation: "analyze", detail: "Analysis failed", cause: e }),
+        ),
       );
 
       const result: AnalysisResult = {
@@ -116,26 +125,30 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
         issues: visionResult.issues,
       };
 
-      const outputPath = yield* ctx
-        .getArtifactPath('analysis')
-        .pipe(
-          Effect.mapError(
-            (e) => new OperationError({ operation: 'analyze', detail: 'Failed to get output path', cause: e }),
-          ),
-        );
+      const outputPath = yield* ctx.getArtifactPath("analysis").pipe(
+        Effect.mapError(
+          (e) =>
+            new OperationError({
+              operation: "analyze",
+              detail: "Failed to get output path",
+              cause: e,
+            }),
+        ),
+      );
 
       yield* Effect.tryPromise({
-        try: () => Bun.write(outputPath, JSON.stringify(result, null, 2)),
-        catch: (e) => new OperationError({ operation: 'analyze', detail: 'Failed to save analysis', cause: e }),
+        try: async () => Bun.write(outputPath, JSON.stringify(result, null, 2)),
+        catch: (e) =>
+          new OperationError({ operation: "analyze", detail: "Failed to save analysis", cause: e }),
       });
 
       const artifact: AnalysisArtifact = {
-        _kind: 'artifact',
+        _kind: "artifact",
         id: crypto.randomUUID(),
-        type: 'analysis',
+        type: "analysis",
         path: outputPath,
         createdAt: new Date().toISOString(),
-        createdBy: 'analyze',
+        createdBy: "analyze",
         metadata: {
           provider: result.provider,
           model: result.model,

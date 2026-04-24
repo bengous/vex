@@ -8,8 +8,7 @@
  * - Produce batch resolution results with metrics
  */
 
-import { Effect } from 'effect';
-import type { CodeLocation, Issue } from '../core/types.js';
+import type { CodeLocation, Issue } from "../core/types.js";
 import type {
   BatchResolutionResult,
   LocatorContext,
@@ -17,14 +16,15 @@ import type {
   LocatorStrategy,
   ResolutionResult,
   ResolverOptions,
-} from './types.js';
-import { DEFAULT_RESOLVER_OPTIONS } from './types.js';
+} from "./types.js";
+import { Effect } from "effect";
+import { DEFAULT_RESOLVER_OPTIONS } from "./types.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Confidence Utilities
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CONFIDENCE_ORDER: Record<CodeLocation['confidence'], number> = {
+const CONFIDENCE_ORDER: Record<CodeLocation["confidence"], number> = {
   high: 0,
   medium: 1,
   low: 2,
@@ -33,14 +33,20 @@ const CONFIDENCE_ORDER: Record<CodeLocation['confidence'], number> = {
 /**
  * Compare confidence levels for sorting (higher confidence = lower value = sorts first).
  */
-export function compareConfidence(a: CodeLocation['confidence'], b: CodeLocation['confidence']): number {
+export function compareConfidence(
+  a: CodeLocation["confidence"],
+  b: CodeLocation["confidence"],
+): number {
   return CONFIDENCE_ORDER[a] - CONFIDENCE_ORDER[b];
 }
 
 /**
  * Check if a location meets the minimum confidence threshold.
  */
-export function meetsMinConfidence(location: CodeLocation, minConfidence: CodeLocation['confidence']): boolean {
+export function meetsMinConfidence(
+  location: CodeLocation,
+  minConfidence: CodeLocation["confidence"],
+): boolean {
   return CONFIDENCE_ORDER[location.confidence] <= CONFIDENCE_ORDER[minConfidence];
 }
 
@@ -75,7 +81,7 @@ export function dedupeLocations(locations: CodeLocation[]): CodeLocation[] {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class StrategyResolver {
-  private strategies: LocatorStrategy[] = [];
+  private readonly strategies: LocatorStrategy[] = [];
 
   /**
    * Register a locator strategy.
@@ -106,7 +112,9 @@ export class StrategyResolver {
       const strategiesUsed: string[] = [];
 
       const applicableStrategies =
-        opts.strategies.length > 0 ? this.strategies.filter((s) => opts.strategies.includes(s.name)) : this.strategies;
+        opts.strategies.length > 0
+          ? this.strategies.filter((s) => opts.strategies.includes(s.name))
+          : this.strategies;
 
       for (const strategy of applicableStrategies) {
         if (!strategy.canHandle(issue, ctx)) {
@@ -126,7 +134,7 @@ export class StrategyResolver {
         allLocations.push(...locations);
 
         // Early exit if we have enough high-confidence matches
-        const highConfidenceCount = allLocations.filter((l) => l.confidence === 'high').length;
+        const highConfidenceCount = allLocations.filter((l) => l.confidence === "high").length;
         if (highConfidenceCount >= opts.maxLocationsPerIssue) {
           break;
         }
@@ -165,7 +173,7 @@ export class StrategyResolver {
         results.push(result);
       }
 
-      const byConfidence: Record<CodeLocation['confidence'], number> = {
+      const byConfidence: Record<CodeLocation["confidence"], number> = {
         high: 0,
         medium: 0,
         low: 0,

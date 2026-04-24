@@ -2,29 +2,34 @@
  * Grid overlay operation - adds cell reference grid to an image.
  */
 
-import { Effect } from 'effect';
-import sharp from 'sharp';
-import { addGridOverlay } from '../../core/overlays.js';
-import type { ImageArtifact } from '../../core/types.js';
-import { type Operation, OperationError } from '../types.js';
+import type { ImageArtifact } from "../../core/types.js";
+import type { Operation } from "../types.js";
+import { Effect } from "effect";
+import sharp from "sharp";
+import { addGridOverlay } from "../../core/overlays.js";
+import { OperationError } from "../types.js";
 
-export interface OverlayGridConfig {
+export type OverlayGridConfig = {
   readonly showLabels?: boolean;
-}
+};
 
-export interface OverlayGridInput {
+export type OverlayGridInput = {
   readonly image: ImageArtifact;
-}
+};
 
-export interface OverlayGridOutput {
+export type OverlayGridOutput = {
   readonly image: ImageArtifact;
-}
+};
 
-export const overlayGridOperation: Operation<OverlayGridInput, OverlayGridOutput, OverlayGridConfig> = {
-  name: 'overlay-grid',
-  description: 'Add cell reference grid overlay to image',
-  inputTypes: ['image'],
-  outputTypes: ['image'],
+export const overlayGridOperation: Operation<
+  OverlayGridInput,
+  OverlayGridOutput,
+  OverlayGridConfig
+> = {
+  name: "overlay-grid",
+  description: "Add cell reference grid overlay to image",
+  inputTypes: ["image"],
+  outputTypes: ["image"],
 
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
@@ -33,35 +38,53 @@ export const overlayGridOperation: Operation<OverlayGridInput, OverlayGridOutput
       ctx.logger.info(`Adding grid overlay to ${input.image.path}`);
 
       const imageBuffer = yield* Effect.tryPromise({
-        try: () => sharp(input.image.path).toBuffer(),
-        catch: (e) => new OperationError({ operation: 'overlay-grid', detail: 'Failed to read image', cause: e }),
+        try: async () => sharp(input.image.path).toBuffer(),
+        catch: (e) =>
+          new OperationError({
+            operation: "overlay-grid",
+            detail: "Failed to read image",
+            cause: e,
+          }),
       });
 
       const gridBuffer = yield* Effect.tryPromise({
-        try: () => addGridOverlay(imageBuffer, { showLabels }),
-        catch: (e) => new OperationError({ operation: 'overlay-grid', detail: 'Failed to add grid overlay', cause: e }),
+        try: async () => addGridOverlay(imageBuffer, { showLabels }),
+        catch: (e) =>
+          new OperationError({
+            operation: "overlay-grid",
+            detail: "Failed to add grid overlay",
+            cause: e,
+          }),
       });
 
-      const outputPath = yield* ctx
-        .getArtifactPath('withGrid')
-        .pipe(
-          Effect.mapError(
-            (e) => new OperationError({ operation: 'overlay-grid', detail: 'Failed to get output path', cause: e }),
-          ),
-        );
+      const outputPath = yield* ctx.getArtifactPath("withGrid").pipe(
+        Effect.mapError(
+          (e) =>
+            new OperationError({
+              operation: "overlay-grid",
+              detail: "Failed to get output path",
+              cause: e,
+            }),
+        ),
+      );
 
       yield* Effect.tryPromise({
-        try: () => sharp(gridBuffer).toFile(outputPath),
-        catch: (e) => new OperationError({ operation: 'overlay-grid', detail: 'Failed to save grid image', cause: e }),
+        try: async () => sharp(gridBuffer).toFile(outputPath),
+        catch: (e) =>
+          new OperationError({
+            operation: "overlay-grid",
+            detail: "Failed to save grid image",
+            cause: e,
+          }),
       });
 
       const artifact: ImageArtifact = {
-        _kind: 'artifact',
+        _kind: "artifact",
         id: crypto.randomUUID(),
-        type: 'image',
+        type: "image",
         path: outputPath,
         createdAt: new Date().toISOString(),
-        createdBy: 'overlay-grid',
+        createdBy: "overlay-grid",
         metadata: {
           ...input.image.metadata,
           hasGrid: true,

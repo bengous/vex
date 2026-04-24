@@ -6,13 +6,13 @@
  * Migrated to @effect/cli with Effect Schema validation.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { Args, Command } from '@effect/cli';
-import { Effect, Option } from 'effect';
-import { verifyChanges } from '../../loop/verify.js';
-import type { PipelineState } from '../../pipeline/types.js';
-import { baselineOption, currentOption, jsonOption } from '../options.js';
+import type { PipelineState } from "../../pipeline/types.js";
+import { Args, Command } from "@effect/cli";
+import { Effect, Option } from "effect";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { verifyChanges } from "../../loop/verify.js";
+import { baselineOption, currentOption, jsonOption } from "../options.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Session Argument
@@ -21,22 +21,22 @@ import { baselineOption, currentOption, jsonOption } from '../options.js';
 /**
  * Session directory positional argument.
  */
-const sessionArg = Args.directory({ name: 'session' });
+const sessionArg = Args.directory({ name: "session" });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Helper Functions
 // ═══════════════════════════════════════════════════════════════════════════
 
-function loadIterationState(sessionDir: string, iteration: number | 'latest'): PipelineState {
-  const statePath = join(sessionDir, 'state.json');
+function loadIterationState(sessionDir: string, iteration: number | "latest"): PipelineState {
+  const statePath = join(sessionDir, "state.json");
   if (!existsSync(statePath)) {
     throw new Error(`Session state not found: ${statePath}`);
   }
 
-  const state = JSON.parse(readFileSync(statePath, 'utf-8'));
+  const state = JSON.parse(readFileSync(statePath, "utf-8"));
 
   if (state.iterationHistory && Array.isArray(state.iterationHistory)) {
-    const idx = iteration === 'latest' ? state.iterationHistory.length - 1 : iteration;
+    const idx = iteration === "latest" ? state.iterationHistory.length - 1 : iteration;
     const iterState = state.iterationHistory[idx];
     if (!iterState) {
       throw new Error(`Iteration ${iteration} not found`);
@@ -56,7 +56,7 @@ function loadIterationState(sessionDir: string, iteration: number | 'latest'): P
  * Verify command implementation.
  */
 export const verifyCommand = Command.make(
-  'verify',
+  "verify",
   {
     session: sessionArg,
     baseline: baselineOption,
@@ -73,7 +73,10 @@ export const verifyCommand = Command.make(
       }
 
       const baselineIteration = Option.getOrElse(args.baseline, () => 0);
-      const currentIteration: number | 'latest' = Option.getOrElse(args.current, () => 'latest' as const);
+      const currentIteration: number | "latest" = Option.getOrElse(
+        args.current,
+        () => "latest" as const,
+      );
 
       console.log(`Verifying session ${sessionDir}`);
       console.log(`Baseline: iteration ${baselineIteration}`);
@@ -100,10 +103,10 @@ export const verifyCommand = Command.make(
 
         console.log(`\nUnchanged: ${result.unchanged.length}`);
 
-        console.log('\nMetrics:');
+        console.log("\nMetrics:");
         console.log(`  Baseline issues: ${result.metrics.baselineIssueCount}`);
         console.log(`  Current issues: ${result.metrics.currentIssueCount}`);
         console.log(`  Improvement: ${result.metrics.improvementPercent}%`);
       }
     }),
-).pipe(Command.withDescription('Compare iterations in a session and show verification'));
+).pipe(Command.withDescription("Compare iterations in a session and show verification"));

@@ -2,21 +2,21 @@
  * Capture operation - takes a screenshot of a URL.
  */
 
-import { dirname } from 'node:path';
-import { Effect } from 'effect';
-import { chromium } from 'playwright';
-import {
-  type CaptureResult,
-  captureScreenshot,
-  captureWithDOM,
-  type DOMCaptureResult,
-  type FullPageScrollFixOptions,
-  type PlaceholderMediaOptions,
-} from '../../core/capture.js';
-import type { DOMSnapshotArtifact, ImageArtifact, ViewportConfig } from '../../core/types.js';
-import { type Operation, OperationError } from '../types.js';
+import type {
+  CaptureResult,
+  DOMCaptureResult,
+  FullPageScrollFixOptions,
+  PlaceholderMediaOptions,
+} from "../../core/capture.js";
+import type { DOMSnapshotArtifact, ImageArtifact, ViewportConfig } from "../../core/types.js";
+import type { Operation } from "../types.js";
+import { Effect } from "effect";
+import { dirname } from "node:path";
+import { chromium } from "playwright";
+import { captureScreenshot, captureWithDOM } from "../../core/capture.js";
+import { OperationError } from "../types.js";
 
-export interface CaptureConfig {
+export type CaptureConfig = {
   readonly url: string;
   readonly viewport: ViewportConfig;
   readonly withDOM?: boolean;
@@ -24,23 +24,23 @@ export interface CaptureConfig {
   readonly placeholderMedia?: PlaceholderMediaOptions;
   /** Expand internal scroll container(s) before fullPage capture */
   readonly fullPageScrollFix?: FullPageScrollFixOptions;
-}
+};
 
-export interface CaptureOutput {
+export type CaptureOutput = {
   readonly image: ImageArtifact;
   /** DOM snapshot artifact, present when withDOM: true */
   readonly domSnapshot?: DOMSnapshotArtifact;
-}
+};
 
 function hasDOMSnapshot(result: CaptureResult | DOMCaptureResult): result is DOMCaptureResult {
-  return 'domSnapshot' in result;
+  return "domSnapshot" in result;
 }
 
 export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
-  name: 'capture',
-  description: 'Capture a screenshot of a URL',
+  name: "capture",
+  description: "Capture a screenshot of a URL",
   inputTypes: [],
-  outputTypes: ['image'],
+  outputTypes: ["image"],
 
   execute: (_, config, ctx) => {
     const { url, viewport, withDOM = false, placeholderMedia, fullPageScrollFix } = config;
@@ -50,36 +50,44 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
     return Effect.acquireUseRelease(
       // acquire: launch browser
       Effect.tryPromise({
-        try: () => chromium.launch(),
-        catch: (e) => new OperationError({ operation: 'capture', detail: 'Failed to launch browser', cause: e }),
+        try: async () => chromium.launch(),
+        catch: (e) =>
+          new OperationError({
+            operation: "capture",
+            detail: "Failed to launch browser",
+            cause: e,
+          }),
       }),
 
       // use: all capture logic — browser.close() is NOT called here
       (browser) =>
         Effect.gen(function* () {
-          const screenshotPath = yield* ctx
-            .getArtifactPath('screenshot')
-            .pipe(
-              Effect.mapError(
-                (e) => new OperationError({ operation: 'capture', detail: 'Failed to get screenshot path', cause: e }),
-              ),
-            );
+          const screenshotPath = yield* ctx.getArtifactPath("screenshot").pipe(
+            Effect.mapError(
+              (e) =>
+                new OperationError({
+                  operation: "capture",
+                  detail: "Failed to get screenshot path",
+                  cause: e,
+                }),
+            ),
+          );
 
           const capture = withDOM ? captureWithDOM : captureScreenshot;
           const result: CaptureResult | DOMCaptureResult = yield* Effect.tryPromise({
-            try: () =>
+            try: async () =>
               capture(browser, {
                 url,
                 viewport,
                 outputDir: dirname(screenshotPath),
-                filename: '01-screenshot.png',
+                filename: "01-screenshot.png",
                 placeholderMedia,
                 fullPageScrollFix,
               }),
             catch: (e) =>
               new OperationError({
-                operation: 'capture',
-                detail: withDOM ? 'Failed to capture with DOM' : 'Failed to capture screenshot',
+                operation: "capture",
+                detail: withDOM ? "Failed to capture with DOM" : "Failed to capture screenshot",
                 cause: e,
               }),
           });
@@ -92,33 +100,43 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
           ctx.storeArtifact(artifact);
 
           if (withDOM) {
-            const domPath = yield* ctx
-              .getArtifactPath('dom')
-              .pipe(
-                Effect.mapError(
-                  (e) => new OperationError({ operation: 'capture', detail: 'Failed to get DOM path', cause: e }),
-                ),
-              );
+            const domPath = yield* ctx.getArtifactPath("dom").pipe(
+              Effect.mapError(
+                (e) =>
+                  new OperationError({
+                    operation: "capture",
+                    detail: "Failed to get DOM path",
+                    cause: e,
+                  }),
+              ),
+            );
 
             if (!hasDOMSnapshot(result)) {
               return yield* Effect.fail(
-                new OperationError({ operation: 'capture', detail: 'Capture completed without DOM snapshot' }),
+                new OperationError({
+                  operation: "capture",
+                  detail: "Capture completed without DOM snapshot",
+                }),
               );
             }
 
             yield* Effect.tryPromise({
-              try: () => Bun.write(domPath, JSON.stringify(result.domSnapshot, null, 2)),
+              try: async () => Bun.write(domPath, JSON.stringify(result.domSnapshot, null, 2)),
               catch: (e) =>
-                new OperationError({ operation: 'capture', detail: 'Failed to save DOM snapshot', cause: e }),
+                new OperationError({
+                  operation: "capture",
+                  detail: "Failed to save DOM snapshot",
+                  cause: e,
+                }),
             });
 
             const domArtifact: DOMSnapshotArtifact = {
-              _kind: 'artifact',
+              _kind: "artifact",
               id: crypto.randomUUID(),
-              type: 'dom-snapshot',
+              type: "dom-snapshot",
               path: domPath,
               createdAt: new Date().toISOString(),
-              createdBy: 'capture',
+              createdBy: "capture",
               metadata: {
                 url: result.domSnapshot.url,
                 elementCount: result.domSnapshot.elements.length,
@@ -135,7 +153,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
         }),
 
       // release: guaranteed cleanup even on error
-      (browser) => Effect.promise(() => browser.close()).pipe(Effect.orDie),
+      (browser) => Effect.promise(async () => browser.close()).pipe(Effect.orDie),
     );
   },
 };

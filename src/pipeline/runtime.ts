@@ -2,19 +2,29 @@
  * Pipeline runtime - DAG executor for composable operations.
  */
 
-import { join } from 'node:path';
-import { FileSystem } from '@effect/platform';
-import type { PlatformError } from '@effect/platform/Error';
-import { Effect } from 'effect';
-import type { Artifact, ViewportConfig } from '../core/types.js';
-import { ARTIFACT_NAMES, getViewportDirName } from '../core/types.js';
-import { analyzeOperation } from './operations/analyze.js';
-import { annotateOperation } from './operations/annotate.js';
-import { captureOperation } from './operations/capture.js';
-import { diffOperation } from './operations/diff.js';
-import { overlayFoldsOperation } from './operations/overlay-folds.js';
-import { overlayGridOperation } from './operations/overlay-grid.js';
-import { renderOperation } from './operations/render.js';
+import type { Artifact, ViewportConfig } from "../core/types.js";
+import type { NodeResult } from "./state.js";
+import type {
+  DataKey,
+  DataValue,
+  Logger,
+  Operation,
+  PipelineContext,
+  PipelineDefinition,
+  PipelineState,
+} from "./types.js";
+import type { PlatformError } from "@effect/platform/Error";
+import { FileSystem } from "@effect/platform";
+import { Effect } from "effect";
+import { join } from "node:path";
+import { ARTIFACT_NAMES, getViewportDirName } from "../core/types.js";
+import { analyzeOperation } from "./operations/analyze.js";
+import { annotateOperation } from "./operations/annotate.js";
+import { captureOperation } from "./operations/capture.js";
+import { diffOperation } from "./operations/diff.js";
+import { overlayFoldsOperation } from "./operations/overlay-folds.js";
+import { overlayGridOperation } from "./operations/overlay-grid.js";
+import { renderOperation } from "./operations/render.js";
 import {
   createSessionDir,
   getReadyNodes,
@@ -23,47 +33,34 @@ import {
   isComplete,
   loadPipelineState,
   mergeNodeResults,
-  type NodeResult,
   savePipelineState,
   storeArtifact,
   storeData,
   storeSemanticName,
   updateNodeState,
-} from './state.js';
-import {
-  type DataKey,
-  type DataValue,
-  type Logger,
-  type Operation,
-  OperationError,
-  type PipelineContext,
-  type PipelineDefinition,
-  PipelineError,
-  type PipelineState,
-} from './types.js';
+} from "./state.js";
+import { OperationError, PipelineError } from "./types.js";
 
 /**
  * Internal extension of PipelineContext with methods for artifact/data mapping.
  * Used by the runtime to wire operation outputs to edges.
  */
-interface InternalPipelineContext extends PipelineContext {
+type InternalPipelineContext = {
   readonly _semanticNames: Map<string, Artifact>;
   readonly _dataMap: Map<string, unknown>;
-}
+} & PipelineContext;
 
-export type ArtifactLayout = 'viewport-subdir' | 'session-root';
+export type ArtifactLayout = "viewport-subdir" | "session-root";
 
-export interface RunPipelineOptions {
+export type RunPipelineOptions = {
   readonly sessionId?: string;
   readonly artifactLayout?: ArtifactLayout;
-}
+};
 
-// Operation registry - use any to avoid complex generic constraints
-// biome-ignore lint/suspicious/noExplicitAny: Operations have varying signatures
 const OPERATIONS: Record<string, Operation<any, any, any>> = {
   capture: captureOperation,
-  'overlay-grid': overlayGridOperation,
-  'overlay-folds': overlayFoldsOperation,
+  "overlay-grid": overlayGridOperation,
+  "overlay-folds": overlayFoldsOperation,
   analyze: analyzeOperation,
   annotate: annotateOperation,
   render: renderOperation,
@@ -71,7 +68,6 @@ const OPERATIONS: Record<string, Operation<any, any, any>> = {
 };
 
 /** @internal Test-only: register a mock operation for unit tests. */
-// biome-ignore lint/suspicious/noExplicitAny: Test operations have varying signatures
 export function registerTestOperation(name: string, operation: Operation<any, any, any>): void {
   OPERATIONS[name] = operation;
 }
@@ -81,7 +77,11 @@ export function unregisterTestOperation(name: string): void {
   delete OPERATIONS[name];
 }
 
-function makeError(phase: PipelineError['phase'], detail: string, cause?: OperationError): PipelineError {
+function makeError(
+  phase: PipelineError["phase"],
+  detail: string,
+  cause?: OperationError,
+): PipelineError {
   return new PipelineError({ phase, detail, cause });
 }
 
@@ -90,8 +90,10 @@ function makeError(phase: PipelineError['phase'], detail: string, cause?: Operat
  * Looks for a capture node and returns its viewport config.
  */
 function extractViewport(definition: PipelineDefinition): ViewportConfig | undefined {
-  const captureNode = definition.nodes.find((n) => n.operation === 'capture');
-  if (!captureNode) return undefined;
+  const captureNode = definition.nodes.find((n) => n.operation === "capture");
+  if (!captureNode) {
+    return undefined;
+  }
 
   const config = captureNode.config as { viewport?: ViewportConfig };
   return config.viewport;
@@ -137,7 +139,7 @@ function createContext(
   state: PipelineState,
   viewport: ViewportConfig | undefined,
   fs: FileSystem.FileSystem,
-  artifactLayout: ArtifactLayout = 'viewport-subdir',
+  artifactLayout: ArtifactLayout = "viewport-subdir",
 ): InternalPipelineContext {
   const artifacts = new Map<string, Artifact>();
   const semanticNames = new Map<string, Artifact>();
@@ -147,7 +149,7 @@ function createContext(
   const createdDirs = new Set<string>();
 
   const getViewportDir = (): Effect.Effect<string, PlatformError> => {
-    if (artifactLayout === 'session-root') {
+    if (artifactLayout === "session-root") {
       return Effect.succeed(state.sessionDir);
     }
 
@@ -166,8 +168,12 @@ function createContext(
     );
   };
 
-  const getArtifactPath = (name: keyof typeof ARTIFACT_NAMES): Effect.Effect<string, PlatformError> => {
-    return getViewportDir().pipe(Effect.map((viewportDir) => join(viewportDir, ARTIFACT_NAMES[name])));
+  const getArtifactPath = (
+    name: keyof typeof ARTIFACT_NAMES,
+  ): Effect.Effect<string, PlatformError> => {
+    return getViewportDir().pipe(
+      Effect.map((viewportDir) => join(viewportDir, ARTIFACT_NAMES[name])),
+    );
   };
 
   return {
@@ -202,18 +208,23 @@ function executeNode(
   return Effect.gen(function* () {
     const node = state.definition.nodes.find((n) => n.id === nodeId);
     if (!node) {
-      return yield* Effect.fail(new OperationError({ operation: nodeId, detail: `Node not found: ${nodeId}` }));
+      return yield* Effect.fail(
+        new OperationError({ operation: nodeId, detail: `Node not found: ${nodeId}` }),
+      );
     }
 
     const operation = OPERATIONS[node.operation];
     if (!operation) {
       return yield* Effect.fail(
-        new OperationError({ operation: node.operation, detail: `Unknown operation: ${node.operation}` }),
+        new OperationError({
+          operation: node.operation,
+          detail: `Unknown operation: ${node.operation}`,
+        }),
       );
     }
 
     let currentState = updateNodeState(state, nodeId, {
-      status: 'running',
+      status: "running",
       startedAt: new Date().toISOString(),
     });
 
@@ -246,7 +257,7 @@ function executeNode(
     const outputArtifacts: string[] = [];
     const resultObj = result as Record<string, unknown>;
     for (const [key, value] of Object.entries(resultObj)) {
-      if (value && typeof value === 'object' && '_kind' in value && value._kind === 'artifact') {
+      if (value && typeof value === "object" && "_kind" in value && value._kind === "artifact") {
         // This is an artifact - store in artifacts channel
         const artifact = value as Artifact;
         currentState = storeArtifact(currentState, artifact);
@@ -262,23 +273,28 @@ function executeNode(
     }
 
     // Populate state.issues from analysis result for external consumers
-    if (node.operation === 'analyze') {
+    if (node.operation === "analyze") {
       const dataKey = `${nodeId}:result`;
       const analysisResult = currentState.data[dataKey] as { issues?: unknown[] } | undefined;
       if (analysisResult && Array.isArray(analysisResult.issues)) {
-        currentState = { ...currentState, issues: analysisResult.issues as typeof currentState.issues };
+        currentState = {
+          ...currentState,
+          issues: analysisResult.issues as typeof currentState.issues,
+        };
       }
     }
 
     currentState = updateNodeState(currentState, nodeId, {
-      status: 'completed',
+      status: "completed",
       completedAt: new Date().toISOString(),
       outputArtifacts,
     });
 
     return {
       nodeId,
-      artifacts: outputArtifacts.map((id) => currentState.artifacts[id]).filter((a): a is Artifact => a !== undefined),
+      artifacts: outputArtifacts
+        .map((id) => currentState.artifacts[id])
+        .filter((a): a is Artifact => a !== undefined),
       state: currentState,
     };
   });
@@ -287,7 +303,11 @@ function executeNode(
 /** @internal Exported for testing only. */
 export function syncContextFromState(
   state: PipelineState,
-  ctx: { artifacts: Map<string, Artifact>; _semanticNames: Map<string, Artifact>; _dataMap: Map<string, unknown> },
+  ctx: {
+    artifacts: Map<string, Artifact>;
+    _semanticNames: Map<string, Artifact>;
+    _dataMap: Map<string, unknown>;
+  },
 ): void {
   populateContextMaps(state, ctx.artifacts, ctx._semanticNames, ctx._dataMap);
 }
@@ -309,7 +329,9 @@ function executePipelineLoop(
       const readyNodes = getReadyNodes(state);
 
       if (readyNodes.length === 0 && !isComplete(state)) {
-        return yield* Effect.fail(makeError('execution', 'Pipeline deadlock: no ready nodes but not complete'));
+        return yield* Effect.fail(
+          makeError("execution", "Pipeline deadlock: no ready nodes but not complete"),
+        );
       }
 
       // Execute ready nodes in parallel — independent nodes at the same
@@ -323,39 +345,41 @@ function executePipelineLoop(
             Effect.catchAll((e) =>
               Effect.gen(function* () {
                 const failedState = updateNodeState(baseState, nodeId, {
-                  status: 'failed',
+                  status: "failed",
                   error: e,
                 });
                 yield* savePipelineState({
                   ...failedState,
-                  status: 'failed',
+                  status: "failed",
                   completedAt: new Date().toISOString(),
                 }).pipe(Effect.catchAll(() => Effect.succeed(undefined)));
                 return yield* Effect.fail(e);
               }),
             ),
-            Effect.mapError((e) => makeError('execution', `Node ${nodeId} failed: ${e.message}`, e)),
+            Effect.mapError((e) =>
+              makeError("execution", `Node ${nodeId} failed: ${e.message}`, e),
+            ),
           ),
         ),
-        { concurrency: 'unbounded' },
+        { concurrency: "unbounded" },
       );
 
       state = mergeNodeResults(baseState, results);
       syncContextFromState(state, ctx);
 
       yield* savePipelineState(state).pipe(
-        Effect.mapError((e) => makeError('persistence', `Failed to save state: ${e.message}`)),
+        Effect.mapError((e) => makeError("persistence", `Failed to save state: ${e.message}`)),
       );
     }
 
     state = {
       ...state,
       completedAt: new Date().toISOString(),
-      status: hasFailed(state) ? 'failed' : 'completed',
+      status: hasFailed(state) ? "failed" : "completed",
     };
 
     yield* savePipelineState(state).pipe(
-      Effect.mapError((e) => makeError('persistence', `Failed to save final state: ${e.message}`)),
+      Effect.mapError((e) => makeError("persistence", `Failed to save final state: ${e.message}`)),
     );
 
     return state;
@@ -373,17 +397,19 @@ export function runPipeline(
 ): Effect.Effect<PipelineState, PipelineError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     if (definition.nodes.length === 0) {
-      return yield* Effect.fail(makeError('validation', 'Pipeline has no nodes'));
+      return yield* Effect.fail(makeError("validation", "Pipeline has no nodes"));
     }
 
     const sessionDir = yield* createSessionDir(baseDir, options?.sessionId).pipe(
-      Effect.mapError((e) => makeError('execution', `Failed to create session directory: ${e.message}`, undefined)),
+      Effect.mapError((e) =>
+        makeError("execution", `Failed to create session directory: ${e.message}`),
+      ),
     );
 
     const fs = yield* FileSystem.FileSystem;
     const state = initializePipelineState(definition, sessionDir);
     const viewport = extractViewport(definition);
-    const ctx = createContext(state, viewport, fs, options?.artifactLayout ?? 'viewport-subdir');
+    const ctx = createContext(state, viewport, fs, options?.artifactLayout ?? "viewport-subdir");
 
     ctx.logger.info(`Starting pipeline: ${definition.name}`);
     ctx.logger.info(`Session: ${sessionDir}`);
@@ -395,13 +421,15 @@ export function runPipeline(
 /**
  * Resume a paused pipeline.
  */
-export function resumePipeline(sessionDir: string): Effect.Effect<PipelineState, PipelineError, FileSystem.FileSystem> {
+export function resumePipeline(
+  sessionDir: string,
+): Effect.Effect<PipelineState, PipelineError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     const loaded = yield* loadPipelineState(sessionDir).pipe(
-      Effect.mapError((e) => makeError('execution', `Failed to load pipeline state: ${e.message}`)),
+      Effect.mapError((e) => makeError("execution", `Failed to load pipeline state: ${e.message}`)),
     );
 
-    if (loaded.status === 'completed' || loaded.status === 'failed') {
+    if (loaded.status === "completed" || loaded.status === "failed") {
       return loaded;
     }
 
@@ -410,7 +438,7 @@ export function resumePipeline(sessionDir: string): Effect.Effect<PipelineState,
     const ctx = createContext(loaded, viewport, fs);
     ctx.logger.info(`Resuming pipeline from ${sessionDir}`);
 
-    const state = { ...loaded, status: 'running' as const };
+    const state = { ...loaded, status: "running" as const };
 
     return yield* executePipelineLoop(state, ctx);
   });

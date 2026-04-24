@@ -9,25 +9,25 @@
  * at the runtime boundary (via BunContext.layer in cli/index.ts).
  */
 
-import { Command } from '@effect/platform';
-import { CommandExecutor } from '@effect/platform/CommandExecutor';
-import { Chunk, Context, Data, Duration, Effect, Layer, Stream } from 'effect';
+import { Command } from "@effect/platform";
+import { CommandExecutor } from "@effect/platform/CommandExecutor";
+import { Chunk, Context, Data, Duration, Effect, Layer, Stream } from "effect";
 
-export class SubprocessError extends Data.TaggedError('SubprocessError')<{
+export class SubprocessError extends Data.TaggedError("SubprocessError")<{
   readonly command: string;
   readonly exitCode: number | null;
   readonly stderr: string;
   readonly timedOut: boolean;
 }> {}
 
-export interface SubprocessResult {
+export type SubprocessResult = {
   readonly stdout: string;
   readonly stderr: string;
   readonly exitCode: number;
   readonly durationMs: number;
-}
+};
 
-export interface SubprocessService {
+export type SubprocessService = {
   /**
    * Execute a command with timeout.
    * Returns stdout/stderr on success, SubprocessError on failure.
@@ -44,16 +44,16 @@ export interface SubprocessService {
    * Check if a command exists (via 'which').
    * Never fails - returns false on error.
    */
-  readonly commandExists: (command: string) => Effect.Effect<boolean, never>;
-}
+  readonly commandExists: (command: string) => Effect.Effect<boolean>;
+};
 
-export class Subprocess extends Context.Tag('Subprocess')<Subprocess, SubprocessService>() {}
+export class Subprocess extends Context.Tag("Subprocess")<Subprocess, SubprocessService>() {}
 
 const collectStreamAsUtf8 = <E, R>(stream: Stream.Stream<Uint8Array, E, R>) =>
   stream.pipe(
     Stream.runCollect,
     Effect.map((chunks) => {
-      const decoder = new TextDecoder('utf-8');
+      const decoder = new TextDecoder("utf-8");
       const arr = Chunk.toReadonlyArray(chunks);
       const totalLength = arr.reduce((acc, c) => acc + c.length, 0);
       const combined = new Uint8Array(totalLength);
@@ -67,7 +67,7 @@ const collectStreamAsUtf8 = <E, R>(stream: Stream.Stream<Uint8Array, E, R>) =>
   );
 
 const cmdLabel = (command: string, args: readonly string[]) =>
-  args.length > 3 ? `${command} ${args.slice(0, 3).join(' ')}...` : `${command} ${args.join(' ')}`;
+  args.length > 3 ? `${command} ${args.slice(0, 3).join(" ")}...` : `${command} ${args.join(" ")}`;
 
 /**
  * SubprocessLive using @effect/platform Command.
@@ -89,7 +89,7 @@ export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = L
         // Some CLIs probe stdin even when all inputs are passed as args.
         // Feeding an empty string guarantees EOF so the child does not wait
         // forever on an open pipe (notably `codex exec` in non-TTY mode).
-        cmd = Command.feed(cmd, '');
+        cmd = Command.feed(cmd, "");
 
         // Merge provided env vars with process.env
         if (env && Object.keys(env).length > 0) {
@@ -125,7 +125,7 @@ export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = L
                 new SubprocessError({
                   command: label,
                   exitCode: null,
-                  stderr: '',
+                  stderr: "",
                   timedOut: true,
                 }),
               ),
@@ -171,7 +171,7 @@ export const SubprocessLive: Layer.Layer<Subprocess, never, CommandExecutor> = L
       },
 
       commandExists: (cmd) =>
-        executor.exitCode(Command.make('which', cmd)).pipe(
+        executor.exitCode(Command.make("which", cmd)).pipe(
           Effect.map((code) => code === 0),
           Effect.catchAll(() => Effect.succeed(false)),
         ),

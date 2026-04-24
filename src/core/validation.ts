@@ -6,14 +6,14 @@
  * 2. Partial recovery keeps valid issues when some are malformed
  */
 
-import { Data, Effect, Either, ParseResult, Schema } from 'effect';
-import * as S from './schema.js';
+import { Data, Effect, Either, ParseResult, Schema } from "effect";
+import * as S from "./schema.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Error Types
 // ═══════════════════════════════════════════════════════════════════════════
 
-export class IssueParseError extends Data.TaggedError('IssueParseError')<{
+export class IssueParseError extends Data.TaggedError("IssueParseError")<{
   readonly message: string;
   readonly raw?: unknown;
 }> {}
@@ -22,8 +22,8 @@ export class IssueParseError extends Data.TaggedError('IssueParseError')<{
  * Error indicating validation failed and retry may help.
  * Contains details for constructing a schema-reminder retry prompt.
  */
-export class ValidationRetryNeeded extends Data.TaggedError('ValidationRetryNeeded')<{
-  readonly reason: 'no_json' | 'json_parse_error' | 'schema_validation_error';
+export class ValidationRetryNeeded extends Data.TaggedError("ValidationRetryNeeded")<{
+  readonly reason: "no_json" | "json_parse_error" | "schema_validation_error";
   readonly details: string;
   readonly partialIssues: S.Issue[];
 }> {
@@ -64,10 +64,10 @@ export function validateIssues(raw: unknown): Effect.Effect<S.Issue[], IssuePars
 export function validateIssuesWithPartialRecovery(
   raw: unknown,
   logger?: { warn: (msg: string) => void },
-): Effect.Effect<S.Issue[], never, never> {
+): Effect.Effect<S.Issue[]> {
   // First, check if raw is an array
   if (!Array.isArray(raw)) {
-    logger?.warn('Issue data is not an array, returning empty');
+    logger?.warn("Issue data is not an array, returning empty");
     return Effect.succeed([]);
   }
 
@@ -79,7 +79,7 @@ export function validateIssuesWithPartialRecovery(
   }
 
   // Full validation failed - try each item individually
-  logger?.warn('Full issue array validation failed, attempting partial recovery');
+  logger?.warn("Full issue array validation failed, attempting partial recovery");
 
   const validIssues: S.Issue[] = [];
   for (let i = 0; i < raw.length; i++) {
@@ -106,13 +106,15 @@ export function validateIssuesWithPartialRecovery(
  * - json_parse_error: JSON is malformed
  * - schema_validation_error: JSON parses but doesn't match Issue schema
  */
-export function parseIssuesStrict(response: string): Effect.Effect<S.Issue[], ValidationRetryNeeded, never> {
+export function parseIssuesStrict(
+  response: string,
+): Effect.Effect<S.Issue[], ValidationRetryNeeded> {
   // Extract JSON from response
   const jsonMatch = response.match(/\{[\s\S]*"issues"[\s\S]*\}/);
   if (!jsonMatch) {
     return Effect.fail(
       new ValidationRetryNeeded({
-        reason: 'no_json',
+        reason: "no_json",
         details: 'No JSON object with "issues" field found in response',
         partialIssues: [],
       }),
@@ -126,7 +128,7 @@ export function parseIssuesStrict(response: string): Effect.Effect<S.Issue[], Va
   } catch (e) {
     return Effect.fail(
       new ValidationRetryNeeded({
-        reason: 'json_parse_error',
+        reason: "json_parse_error",
         details: e instanceof Error ? e.message : String(e),
         partialIssues: [],
       }),
@@ -134,11 +136,11 @@ export function parseIssuesStrict(response: string): Effect.Effect<S.Issue[], Va
   }
 
   // Extract issues array from parsed object
-  if (typeof parsed !== 'object' || parsed === null) {
+  if (typeof parsed !== "object" || parsed === null) {
     return Effect.fail(
       new ValidationRetryNeeded({
-        reason: 'json_parse_error',
-        details: 'Parsed JSON is not an object',
+        reason: "json_parse_error",
+        details: "Parsed JSON is not an object",
         partialIssues: [],
       }),
     );
@@ -148,7 +150,7 @@ export function parseIssuesStrict(response: string): Effect.Effect<S.Issue[], Va
   if (issues === undefined) {
     return Effect.fail(
       new ValidationRetryNeeded({
-        reason: 'no_json',
+        reason: "no_json",
         details: 'JSON object missing "issues" field',
         partialIssues: [],
       }),
@@ -159,7 +161,7 @@ export function parseIssuesStrict(response: string): Effect.Effect<S.Issue[], Va
   if (!Array.isArray(issues)) {
     return Effect.fail(
       new ValidationRetryNeeded({
-        reason: 'schema_validation_error',
+        reason: "schema_validation_error",
         details: '"issues" field is not an array',
         partialIssues: [],
       }),
@@ -183,7 +185,7 @@ export function parseIssuesStrict(response: string): Effect.Effect<S.Issue[], Va
 
   return Effect.fail(
     new ValidationRetryNeeded({
-      reason: 'schema_validation_error',
+      reason: "schema_validation_error",
       details: formatParseError(fullResult.left),
       partialIssues,
     }),
@@ -200,7 +202,7 @@ export function parseIssuesStrict(response: string): Effect.Effect<S.Issue[], Va
 export function parseIssuesFromResponse(
   response: string,
   logger?: { warn: (msg: string) => void },
-): Effect.Effect<S.Issue[], never, never> {
+): Effect.Effect<S.Issue[]> {
   // Extract JSON from response
   const jsonMatch = response.match(/\{[\s\S]*"issues"[\s\S]*\}/);
   if (!jsonMatch) {
@@ -218,8 +220,8 @@ export function parseIssuesFromResponse(
   }
 
   // Extract issues array from parsed object
-  if (typeof parsed !== 'object' || parsed === null) {
-    logger?.warn('Parsed JSON is not an object');
+  if (typeof parsed !== "object" || parsed === null) {
+    logger?.warn("Parsed JSON is not an object");
     return Effect.succeed([]);
   }
 
@@ -237,10 +239,10 @@ export function parseIssuesFromResponse(
 // Retry Prompt Builder
 // ═══════════════════════════════════════════════════════════════════════════
 
-const ERROR_MESSAGES: Record<ValidationRetryNeeded['reason'], string> = {
+const ERROR_MESSAGES: Record<ValidationRetryNeeded["reason"], string> = {
   no_json: 'Your response did not contain valid JSON with an "issues" array.',
-  json_parse_error: 'Your response contained malformed JSON that could not be parsed.',
-  schema_validation_error: 'Some issues in your response did not match the required schema.',
+  json_parse_error: "Your response contained malformed JSON that could not be parsed.",
+  schema_validation_error: "Some issues in your response did not match the required schema.",
 };
 
 const ISSUE_SCHEMA_EXAMPLE = `{
@@ -261,7 +263,7 @@ const ISSUE_SCHEMA_EXAMPLE = `{
  */
 export function buildRetryPrompt(originalPrompt: string, error: ValidationRetryNeeded): string {
   const errorMessage = ERROR_MESSAGES[error.reason];
-  const detailLine = error.details ? `\nDetails: ${error.details}` : '';
+  const detailLine = error.details ? `\nDetails: ${error.details}` : "";
 
   return `${originalPrompt}
 

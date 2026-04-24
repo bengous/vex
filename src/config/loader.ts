@@ -5,11 +5,12 @@
  * Validates with Effect Schema and returns typed config.
  */
 
-import { dirname, join, resolve } from 'node:path';
-import { FileSystem } from '@effect/platform';
-import { Data, Effect, ParseResult, Schema as S } from 'effect';
-import { BUILTIN_PROFILES, type CodexProfile } from '../providers/codex-cli/schema.js';
-import { VexConfig } from './schema.js';
+import type { CodexProfile } from "../providers/codex-cli/schema.js";
+import { FileSystem } from "@effect/platform";
+import { Data, Effect, ParseResult, Schema as S } from "effect";
+import { dirname, join, resolve } from "node:path";
+import { BUILTIN_PROFILES } from "../providers/codex-cli/schema.js";
+import { VexConfig } from "./schema.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Error Types
@@ -18,8 +19,8 @@ import { VexConfig } from './schema.js';
 /**
  * Configuration error - Effect-style tagged error.
  */
-export class ConfigError extends Data.TaggedError('ConfigError')<{
-  readonly kind: 'not_found' | 'invalid_schema' | 'preset_not_found' | 'missing_required';
+export class ConfigError extends Data.TaggedError("ConfigError")<{
+  readonly kind: "not_found" | "invalid_schema" | "preset_not_found" | "missing_required";
   readonly message: string;
   readonly path?: string;
   readonly availablePresets?: readonly string[];
@@ -32,7 +33,9 @@ export class ConfigError extends Data.TaggedError('ConfigError')<{
 /**
  * Find project root by looking for package.json.
  */
-export function findProjectRoot(startDir: string = process.cwd()): Effect.Effect<string, never, FileSystem.FileSystem> {
+export function findProjectRoot(
+  startDir: string = process.cwd(),
+): Effect.Effect<string, never, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     let current = resolve(startDir);
@@ -40,7 +43,9 @@ export function findProjectRoot(startDir: string = process.cwd()): Effect.Effect
 
     while (current !== root) {
       // Treat any error (permission denied, I/O error, etc.) as "not found" - continue searching upward
-      const found = yield* fs.exists(join(current, 'package.json')).pipe(Effect.orElseSucceed(() => false));
+      const found = yield* fs
+        .exists(join(current, "package.json"))
+        .pipe(Effect.orElseSucceed(() => false));
       if (found) {
         return current;
       }
@@ -61,10 +66,10 @@ export function findProjectRoot(startDir: string = process.cwd()): Effect.Effect
 function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError> {
   return Effect.gen(function* () {
     const module = yield* Effect.tryPromise({
-      try: () => import(configPath),
+      try: async () => import(configPath),
       catch: (error) =>
         new ConfigError({
-          kind: 'invalid_schema',
+          kind: "invalid_schema",
           message: `Failed to load ${configPath}: ${error instanceof Error ? error.message : String(error)}`,
           path: configPath,
         }),
@@ -74,7 +79,7 @@ function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError>
     if (!raw) {
       return yield* Effect.fail(
         new ConfigError({
-          kind: 'invalid_schema',
+          kind: "invalid_schema",
           message: `${configPath} must have a default export`,
           path: configPath,
         }),
@@ -85,7 +90,7 @@ function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError>
       Effect.mapError((parseError) => {
         const formatted = formatParseError(parseError);
         return new ConfigError({
-          kind: 'invalid_schema',
+          kind: "invalid_schema",
           message: `Invalid config at ${configPath}:\n${formatted}`,
           path: configPath,
         });
@@ -99,13 +104,16 @@ function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError>
 /**
  * Load .vexrc.json (legacy format).
  */
-function loadJsonConfig(configPath: string): Effect.Effect<VexConfig, ConfigError, FileSystem.FileSystem> {
+function loadJsonConfig(
+  configPath: string,
+): Effect.Effect<VexConfig, ConfigError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const content = yield* fs.readFileString(configPath).pipe(
       Effect.mapError((e) => {
         // Preserve NotFound vs other errors for loadConfigOptional
-        const kind = e._tag === 'SystemError' && e.reason === 'NotFound' ? 'not_found' : 'invalid_schema';
+        const kind =
+          e._tag === "SystemError" && e.reason === "NotFound" ? "not_found" : "invalid_schema";
         return new ConfigError({
           kind,
           message: `Failed to read ${configPath}: ${e.message}`,
@@ -118,7 +126,7 @@ function loadJsonConfig(configPath: string): Effect.Effect<VexConfig, ConfigErro
       try: () => JSON.parse(content) as unknown,
       catch: () =>
         new ConfigError({
-          kind: 'invalid_schema',
+          kind: "invalid_schema",
           message: `Invalid JSON in ${configPath}`,
           path: configPath,
         }),
@@ -128,7 +136,7 @@ function loadJsonConfig(configPath: string): Effect.Effect<VexConfig, ConfigErro
       Effect.mapError((parseError) => {
         const formatted = formatParseError(parseError);
         return new ConfigError({
-          kind: 'invalid_schema',
+          kind: "invalid_schema",
           message: `Invalid config at ${configPath}:\n${formatted}`,
           path: configPath,
         });
@@ -161,17 +169,19 @@ function formatParseError(error: ParseResult.ParseError): string {
  * @param projectRoot - Project root directory (defaults to auto-detected)
  * @returns Effect containing validated VexConfig or ConfigError
  */
-export function loadConfig(projectRoot?: string): Effect.Effect<VexConfig, ConfigError, FileSystem.FileSystem> {
+export function loadConfig(
+  projectRoot?: string,
+): Effect.Effect<VexConfig, ConfigError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const root = projectRoot ?? (yield* findProjectRoot());
 
-    const tsConfigPath = join(root, 'vex.config.ts');
+    const tsConfigPath = join(root, "vex.config.ts");
     if (yield* fs.exists(tsConfigPath).pipe(Effect.orElseSucceed(() => false))) {
       return yield* loadTsConfig(tsConfigPath);
     }
 
-    const jsonConfigPath = join(root, '.vexrc.json');
+    const jsonConfigPath = join(root, ".vexrc.json");
     if (yield* fs.exists(jsonConfigPath).pipe(Effect.orElseSucceed(() => false))) {
       return yield* loadJsonConfig(jsonConfigPath);
     }
@@ -180,8 +190,8 @@ export function loadConfig(projectRoot?: string): Effect.Effect<VexConfig, Confi
     // Return a minimal config that can be merged with CLI options
     return yield* Effect.fail(
       new ConfigError({
-        kind: 'not_found',
-        message: 'No configuration file found (vex.config.ts or .vexrc.json)',
+        kind: "not_found",
+        message: "No configuration file found (vex.config.ts or .vexrc.json)",
       }),
     );
   });
@@ -195,8 +205,8 @@ export function loadConfigOptional(
   projectRoot?: string,
 ): Effect.Effect<VexConfig | undefined, ConfigError, FileSystem.FileSystem> {
   return loadConfig(projectRoot).pipe(
-    Effect.catchTag('ConfigError', (error) =>
-      error.kind === 'not_found' ? Effect.succeed(undefined) : Effect.fail(error),
+    Effect.catchTag("ConfigError", (error) =>
+      error.kind === "not_found" ? Effect.succeed(undefined) : Effect.fail(error),
     ),
   );
 }
@@ -207,7 +217,7 @@ export function loadConfigOptional(
 export function getScanPreset(
   config: VexConfig,
   presetName: string,
-): Effect.Effect<NonNullable<VexConfig['scanPresets']>[string], ConfigError> {
+): Effect.Effect<NonNullable<VexConfig["scanPresets"]>[string], ConfigError> {
   return Effect.gen(function* () {
     const presets = config.scanPresets ?? {};
     const preset = presets[presetName];
@@ -216,10 +226,10 @@ export function getScanPreset(
       const available = Object.keys(presets);
       return yield* Effect.fail(
         new ConfigError({
-          kind: 'preset_not_found',
+          kind: "preset_not_found",
           message:
             available.length > 0
-              ? `Unknown scan preset '${presetName}'. Available: ${available.join(', ')}`
+              ? `Unknown scan preset '${presetName}'. Available: ${available.join(", ")}`
               : `Unknown scan preset '${presetName}'. No scan presets defined in config.`,
           availablePresets: available,
         }),
@@ -236,7 +246,7 @@ export function getScanPreset(
 export function getLoopPreset(
   config: VexConfig,
   presetName: string,
-): Effect.Effect<NonNullable<VexConfig['loopPresets']>[string], ConfigError> {
+): Effect.Effect<NonNullable<VexConfig["loopPresets"]>[string], ConfigError> {
   return Effect.gen(function* () {
     const presets = config.loopPresets ?? {};
     const preset = presets[presetName];
@@ -245,10 +255,10 @@ export function getLoopPreset(
       const available = Object.keys(presets);
       return yield* Effect.fail(
         new ConfigError({
-          kind: 'preset_not_found',
+          kind: "preset_not_found",
           message:
             available.length > 0
-              ? `Unknown loop preset '${presetName}'. Available: ${available.join(', ')}`
+              ? `Unknown loop preset '${presetName}'. Available: ${available.join(", ")}`
               : `Unknown loop preset '${presetName}'. No loop presets defined in config.`,
           availablePresets: available,
         }),
@@ -273,7 +283,10 @@ export function getLoopPreset(
  * @param name - Profile name
  * @param config - Optional vex config (for user-defined profiles)
  */
-export function loadCodexProfile(name: string, config?: VexConfig): Effect.Effect<CodexProfile, ConfigError> {
+export function loadCodexProfile(
+  name: string,
+  config?: VexConfig,
+): Effect.Effect<CodexProfile, ConfigError> {
   return Effect.gen(function* () {
     // Check built-in profiles first
     if (name in BUILTIN_PROFILES) {
@@ -294,10 +307,10 @@ export function loadCodexProfile(name: string, config?: VexConfig): Effect.Effec
 
     return yield* Effect.fail(
       new ConfigError({
-        kind: 'preset_not_found',
+        kind: "preset_not_found",
         message:
           allAvailable.length > 0
-            ? `Unknown codex profile '${name}'. Available: ${allAvailable.join(', ')}`
+            ? `Unknown codex profile '${name}'. Available: ${allAvailable.join(", ")}`
             : `Unknown codex profile '${name}'. No profiles available.`,
         availablePresets: allAvailable,
       }),

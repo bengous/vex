@@ -9,7 +9,7 @@
  * - https://developers.openai.com/codex/security/ (sandbox and approval behavior)
  */
 
-import { Schema as S } from 'effect';
+import { Schema as S } from "effect";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Profile Field Schemas
@@ -21,7 +21,7 @@ import { Schema as S } from 'effect';
  * - workspace-write: Can write to workspace only
  * - danger-full-access: Full system access (dangerous)
  */
-export const CodexSandbox = S.Literal('read-only', 'workspace-write', 'danger-full-access');
+export const CodexSandbox = S.Literal("read-only", "workspace-write", "danger-full-access");
 export type CodexSandbox = S.Schema.Type<typeof CodexSandbox>;
 
 /**
@@ -31,7 +31,7 @@ export type CodexSandbox = S.Schema.Type<typeof CodexSandbox>;
  * - on-request: Approve when codex asks
  * - never: Auto-approve all (fastest)
  */
-export const CodexApproval = S.Literal('untrusted', 'on-failure', 'on-request', 'never');
+export const CodexApproval = S.Literal("untrusted", "on-failure", "on-request", "never");
 export type CodexApproval = S.Schema.Type<typeof CodexApproval>;
 
 /**
@@ -40,7 +40,7 @@ export type CodexApproval = S.Schema.Type<typeof CodexApproval>;
  * - cached: Use cached results only
  * - live: Live web searches
  */
-export const CodexWebSearch = S.Literal('disabled', 'cached', 'live');
+export const CodexWebSearch = S.Literal("disabled", "cached", "live");
 export type CodexWebSearch = S.Schema.Type<typeof CodexWebSearch>;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -72,21 +72,21 @@ export type CodexProfile = S.Schema.Type<typeof CodexProfile>;
  */
 export const BUILTIN_PROFILES = {
   minimal: {
-    sandbox: 'read-only',
-    approval: 'on-request',
-    webSearch: 'disabled',
+    sandbox: "read-only",
+    approval: "on-request",
+    webSearch: "disabled",
     mcpServers: {},
   },
   fast: {
-    sandbox: 'workspace-write',
-    approval: 'never',
-    webSearch: 'disabled',
+    sandbox: "workspace-write",
+    approval: "never",
+    webSearch: "disabled",
     mcpServers: {},
   },
   safe: {
-    sandbox: 'read-only',
-    approval: 'untrusted',
-    webSearch: 'cached',
+    sandbox: "read-only",
+    approval: "untrusted",
+    webSearch: "cached",
     mcpServers: {},
   },
 } as const satisfies Record<string, CodexProfile>;

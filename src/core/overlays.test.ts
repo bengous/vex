@@ -5,7 +5,8 @@
  * using a cell reference system (A1-Z99).
  */
 
-import { describe, expect, test } from 'bun:test';
+import type { GridConfig } from "./types.js";
+import { describe, expect, test } from "bun:test";
 import {
   calculateGrid,
   cellCenter,
@@ -14,16 +15,15 @@ import {
   isValidCellRef,
   parseCellRef,
   pixelsToCell,
-} from './overlays.js';
-import type { GridConfig } from './types.js';
-import { GRID_CONFIG } from './types.js';
+} from "./overlays.js";
+import { GRID_CONFIG } from "./types.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // calculateGrid Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('calculateGrid', () => {
-  test('standard viewport (1920x1080)', () => {
+describe("calculateGrid", () => {
+  test("standard viewport (1920x1080)", () => {
     const grid = calculateGrid(1920, 1080);
 
     // 1920/200 = 9.6 → ceil = 10, below maxColumns.
@@ -35,7 +35,7 @@ describe('calculateGrid', () => {
     expect(grid.gridHeight).toBe(6 * GRID_CONFIG.cellSize);
   });
 
-  test('small viewport clamps to available cells', () => {
+  test("small viewport clamps to available cells", () => {
     const grid = calculateGrid(100, 100);
 
     // 100/200 = 0.5 → ceil = 1
@@ -43,7 +43,7 @@ describe('calculateGrid', () => {
     expect(grid.rows).toBe(1);
   });
 
-  test('large viewport respects maxColumns/maxRows', () => {
+  test("large viewport respects maxColumns/maxRows", () => {
     // Very large viewport
     const grid = calculateGrid(6000, 25000);
 
@@ -53,7 +53,7 @@ describe('calculateGrid', () => {
     expect(grid.rows).toBe(GRID_CONFIG.maxRows);
   });
 
-  test('custom config overrides defaults', () => {
+  test("custom config overrides defaults", () => {
     const customConfig: GridConfig = {
       cellSize: 100,
       maxColumns: 5,
@@ -71,45 +71,45 @@ describe('calculateGrid', () => {
 // isValidCellRef Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('isValidCellRef', () => {
-  test('valid: A1', () => {
-    expect(isValidCellRef('A1')).toBe(true);
+describe("isValidCellRef", () => {
+  test("valid: A1", () => {
+    expect(isValidCellRef("A1")).toBe(true);
   });
 
-  test('valid: Z99 (max valid)', () => {
-    expect(isValidCellRef('Z99')).toBe(true);
+  test("valid: Z99 (max valid)", () => {
+    expect(isValidCellRef("Z99")).toBe(true);
   });
 
-  test('valid: B10', () => {
-    expect(isValidCellRef('B10')).toBe(true);
+  test("valid: B10", () => {
+    expect(isValidCellRef("B10")).toBe(true);
   });
 
-  test('invalid: AA1 (two-letter columns unsupported)', () => {
-    expect(isValidCellRef('AA1')).toBe(false);
+  test("invalid: AA1 (two-letter columns unsupported)", () => {
+    expect(isValidCellRef("AA1")).toBe(false);
   });
 
-  test('invalid: A0 (row 0 not allowed)', () => {
-    expect(isValidCellRef('A0')).toBe(false);
+  test("invalid: A0 (row 0 not allowed)", () => {
+    expect(isValidCellRef("A0")).toBe(false);
   });
 
-  test('invalid: A100 (row > 99)', () => {
-    expect(isValidCellRef('A100')).toBe(false);
+  test("invalid: A100 (row > 99)", () => {
+    expect(isValidCellRef("A100")).toBe(false);
   });
 
-  test('invalid: empty string', () => {
-    expect(isValidCellRef('')).toBe(false);
+  test("invalid: empty string", () => {
+    expect(isValidCellRef("")).toBe(false);
   });
 
-  test('invalid: lowercase', () => {
-    expect(isValidCellRef('a1')).toBe(false);
+  test("invalid: lowercase", () => {
+    expect(isValidCellRef("a1")).toBe(false);
   });
 
-  test('invalid: just letter', () => {
-    expect(isValidCellRef('A')).toBe(false);
+  test("invalid: just letter", () => {
+    expect(isValidCellRef("A")).toBe(false);
   });
 
-  test('invalid: just number', () => {
-    expect(isValidCellRef('1')).toBe(false);
+  test("invalid: just number", () => {
+    expect(isValidCellRef("1")).toBe(false);
   });
 });
 
@@ -117,30 +117,30 @@ describe('isValidCellRef', () => {
 // parseCellRef Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('parseCellRef', () => {
-  test('A1 → {col: 0, row: 0}', () => {
-    expect(parseCellRef('A1')).toEqual({ col: 0, row: 0 });
+describe("parseCellRef", () => {
+  test("A1 → {col: 0, row: 0}", () => {
+    expect(parseCellRef("A1")).toEqual({ col: 0, row: 0 });
   });
 
-  test('Z99 → {col: 25, row: 98}', () => {
-    expect(parseCellRef('Z99')).toEqual({ col: 25, row: 98 });
+  test("Z99 → {col: 25, row: 98}", () => {
+    expect(parseCellRef("Z99")).toEqual({ col: 25, row: 98 });
   });
 
-  test('B2 → {col: 1, row: 1}', () => {
-    expect(parseCellRef('B2')).toEqual({ col: 1, row: 1 });
+  test("B2 → {col: 1, row: 1}", () => {
+    expect(parseCellRef("B2")).toEqual({ col: 1, row: 1 });
   });
 
-  test('E50 → {col: 4, row: 49}', () => {
-    expect(parseCellRef('E50')).toEqual({ col: 4, row: 49 });
+  test("E50 → {col: 4, row: 49}", () => {
+    expect(parseCellRef("E50")).toEqual({ col: 4, row: 49 });
   });
 
-  test('invalid throws with clear message', () => {
-    expect(() => parseCellRef('invalid')).toThrow('Invalid cell reference');
-    expect(() => parseCellRef('AA1')).toThrow('Invalid cell reference');
+  test("invalid throws with clear message", () => {
+    expect(() => parseCellRef("invalid")).toThrow("Invalid cell reference");
+    expect(() => parseCellRef("AA1")).toThrow("Invalid cell reference");
     // A0 matches pattern but row 0 - 1 = -1 fails row range check
-    expect(() => parseCellRef('A0')).toThrow('Invalid row number');
+    expect(() => parseCellRef("A0")).toThrow("Invalid row number");
     // A100 has 3 digits, doesn't match \d{1,2} pattern
-    expect(() => parseCellRef('A100')).toThrow('Invalid cell reference');
+    expect(() => parseCellRef("A100")).toThrow("Invalid cell reference");
   });
 });
 
@@ -148,11 +148,11 @@ describe('parseCellRef', () => {
 // cellToPixels Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('cellToPixels', () => {
+describe("cellToPixels", () => {
   const cellSize = GRID_CONFIG.cellSize; // 200
 
-  test('A1 → {x: 0, y: 0, width: cellSize, height: cellSize}', () => {
-    const box = cellToPixels('A1');
+  test("A1 → {x: 0, y: 0, width: cellSize, height: cellSize}", () => {
+    const box = cellToPixels("A1");
     expect(box).toEqual({
       x: 0,
       y: 0,
@@ -161,8 +161,8 @@ describe('cellToPixels', () => {
     });
   });
 
-  test('B2 → offset by cellSize', () => {
-    const box = cellToPixels('B2');
+  test("B2 → offset by cellSize", () => {
+    const box = cellToPixels("B2");
     expect(box).toEqual({
       x: cellSize, // col 1 * 200
       y: cellSize, // row 1 * 200
@@ -171,8 +171,8 @@ describe('cellToPixels', () => {
     });
   });
 
-  test('Z99 → far corner', () => {
-    const box = cellToPixels('Z99');
+  test("Z99 → far corner", () => {
+    const box = cellToPixels("Z99");
     expect(box).toEqual({
       x: 25 * cellSize, // col 25
       y: 98 * cellSize, // row 98
@@ -181,13 +181,13 @@ describe('cellToPixels', () => {
     });
   });
 
-  test('custom config respected', () => {
+  test("custom config respected", () => {
     const customConfig: GridConfig = {
       cellSize: 100,
       maxColumns: 26,
       maxRows: 99,
     };
-    const box = cellToPixels('B2', customConfig);
+    const box = cellToPixels("B2", customConfig);
     expect(box).toEqual({
       x: 100,
       y: 100,
@@ -201,17 +201,17 @@ describe('cellToPixels', () => {
 // cellRangeToPixels Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('cellRangeToPixels', () => {
+describe("cellRangeToPixels", () => {
   const cellSize = GRID_CONFIG.cellSize;
 
-  test('single cell (no end) → same as cellToPixels', () => {
-    const single = cellRangeToPixels('A1');
-    const direct = cellToPixels('A1');
+  test("single cell (no end) → same as cellToPixels", () => {
+    const single = cellRangeToPixels("A1");
+    const direct = cellToPixels("A1");
     expect(single).toEqual(direct);
   });
 
-  test('range A1:C3 → combined bounding box', () => {
-    const box = cellRangeToPixels('A1', 'C3');
+  test("range A1:C3 → combined bounding box", () => {
+    const box = cellRangeToPixels("A1", "C3");
     expect(box).toEqual({
       x: 0, // min(A, C) = 0
       y: 0, // min(1, 3) = 0
@@ -220,8 +220,8 @@ describe('cellRangeToPixels', () => {
     });
   });
 
-  test('reversed range C3:A1 → still correct box', () => {
-    const box = cellRangeToPixels('C3', 'A1');
+  test("reversed range C3:A1 → still correct box", () => {
+    const box = cellRangeToPixels("C3", "A1");
     expect(box).toEqual({
       x: 0,
       y: 0,
@@ -230,8 +230,8 @@ describe('cellRangeToPixels', () => {
     });
   });
 
-  test('horizontal range A1:D1', () => {
-    const box = cellRangeToPixels('A1', 'D1');
+  test("horizontal range A1:D1", () => {
+    const box = cellRangeToPixels("A1", "D1");
     expect(box).toEqual({
       x: 0,
       y: 0,
@@ -240,8 +240,8 @@ describe('cellRangeToPixels', () => {
     });
   });
 
-  test('vertical range A1:A5', () => {
-    const box = cellRangeToPixels('A1', 'A5');
+  test("vertical range A1:A5", () => {
+    const box = cellRangeToPixels("A1", "A5");
     expect(box).toEqual({
       x: 0,
       y: 0,
@@ -255,20 +255,20 @@ describe('cellRangeToPixels', () => {
 // cellCenter Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('cellCenter', () => {
+describe("cellCenter", () => {
   const cellSize = GRID_CONFIG.cellSize;
   const halfCell = cellSize / 2;
 
-  test('A1 → center of first cell', () => {
-    const center = cellCenter('A1');
+  test("A1 → center of first cell", () => {
+    const center = cellCenter("A1");
     expect(center).toEqual({
       x: halfCell,
       y: halfCell,
     });
   });
 
-  test('B2 → center offset by one cell', () => {
-    const center = cellCenter('B2');
+  test("B2 → center offset by one cell", () => {
+    const center = cellCenter("B2");
     expect(center).toEqual({
       x: cellSize + halfCell,
       y: cellSize + halfCell,
@@ -280,53 +280,53 @@ describe('cellCenter', () => {
 // pixelsToCell Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('pixelsToCell', () => {
+describe("pixelsToCell", () => {
   const cellSize = GRID_CONFIG.cellSize;
 
-  test('(0, 0) → A1', () => {
-    expect(pixelsToCell(0, 0)).toBe('A1');
+  test("(0, 0) → A1", () => {
+    expect(pixelsToCell(0, 0)).toBe("A1");
   });
 
-  test('(cellSize, cellSize) → B2', () => {
-    expect(pixelsToCell(cellSize, cellSize)).toBe('B2');
+  test("(cellSize, cellSize) → B2", () => {
+    expect(pixelsToCell(cellSize, cellSize)).toBe("B2");
   });
 
-  test('point inside A1 cell → A1', () => {
-    expect(pixelsToCell(50, 50)).toBe('A1');
-    expect(pixelsToCell(199, 199)).toBe('A1');
+  test("point inside A1 cell → A1", () => {
+    expect(pixelsToCell(50, 50)).toBe("A1");
+    expect(pixelsToCell(199, 199)).toBe("A1");
   });
 
-  test('point at cell boundary → next cell', () => {
-    expect(pixelsToCell(200, 0)).toBe('B1');
-    expect(pixelsToCell(0, 200)).toBe('A2');
+  test("point at cell boundary → next cell", () => {
+    expect(pixelsToCell(200, 0)).toBe("B1");
+    expect(pixelsToCell(0, 200)).toBe("A2");
   });
 
-  test('out of bounds → clamped to max', () => {
+  test("out of bounds → clamped to max", () => {
     // Very large x → clamped to Z (col 25)
-    expect(pixelsToCell(50000, 0)).toBe('Z1');
+    expect(pixelsToCell(50000, 0)).toBe("Z1");
     // Very large y → clamped to row 99
-    expect(pixelsToCell(0, 50000)).toBe('A99');
+    expect(pixelsToCell(0, 50000)).toBe("A99");
     // Both out of bounds
-    expect(pixelsToCell(50000, 50000)).toBe('Z99');
+    expect(pixelsToCell(50000, 50000)).toBe("Z99");
   });
 
-  test('negative coords produce invalid cell refs (undefined behavior)', () => {
+  test("negative coords produce invalid cell refs (undefined behavior)", () => {
     // Implementation does NOT clamp negative inputs to 0.
     // Math.floor(-50/200) = -1 → col -1 → charCode(65-1) = '@'
     // This produces invalid cell refs like '@0' which fail isValidCellRef().
     //
     // This is documented undefined behavior - callers must ensure x >= 0, y >= 0.
     // We test the actual output to prevent silent changes to this edge case.
-    expect(pixelsToCell(-50, -50)).toBe('@0');
-    expect(pixelsToCell(-200, 0)).toBe('@1');
-    expect(pixelsToCell(0, -200)).toBe('A0');
+    expect(pixelsToCell(-50, -50)).toBe("@0");
+    expect(pixelsToCell(-200, 0)).toBe("@1");
+    expect(pixelsToCell(0, -200)).toBe("A0");
 
     // Verify these are indeed invalid
-    expect(isValidCellRef('@0')).toBe(false);
-    expect(isValidCellRef('A0')).toBe(false);
+    expect(isValidCellRef("@0")).toBe(false);
+    expect(isValidCellRef("A0")).toBe(false);
   });
 
-  test('round-trip: cellToPixels(pixelsToCell(x,y)) contains original point', () => {
+  test("round-trip: cellToPixels(pixelsToCell(x,y)) contains original point", () => {
     // Test that converting pixel to cell and back gives a box containing the pixel
     const testPoints = [
       { x: 0, y: 0 },
@@ -341,7 +341,10 @@ describe('pixelsToCell', () => {
 
       // Point should be inside or on boundary of box
       const contained =
-        point.x >= box.x && point.x < box.x + box.width && point.y >= box.y && point.y < box.y + box.height;
+        point.x >= box.x &&
+        point.x < box.x + box.width &&
+        point.y >= box.y &&
+        point.y < box.y + box.height;
 
       expect(contained).toBe(true);
     }
@@ -352,8 +355,8 @@ describe('pixelsToCell', () => {
 // Edge Cases & Boundary Conditions
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('Edge Cases', () => {
-  test('all valid column letters', () => {
+describe("Edge Cases", () => {
+  test("all valid column letters", () => {
     const columns = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
     for (const col of columns) {
       expect(isValidCellRef(`${col}1`)).toBe(true);
@@ -361,10 +364,10 @@ describe('Edge Cases', () => {
     }
   });
 
-  test('row boundaries', () => {
-    expect(isValidCellRef('A1')).toBe(true);
-    expect(isValidCellRef('A99')).toBe(true);
-    expect(isValidCellRef('A0')).toBe(false);
-    expect(isValidCellRef('A100')).toBe(false);
+  test("row boundaries", () => {
+    expect(isValidCellRef("A1")).toBe(true);
+    expect(isValidCellRef("A99")).toBe(true);
+    expect(isValidCellRef("A0")).toBe(false);
+    expect(isValidCellRef("A100")).toBe(false);
   });
 });

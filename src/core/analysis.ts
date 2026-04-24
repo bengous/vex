@@ -5,9 +5,14 @@
  * validation failures in LLM responses.
  */
 
-import { Effect } from 'effect';
-import type { Issue } from './schema.js';
-import { buildRetryPrompt, parseIssuesFromResponse, parseIssuesStrict, ValidationRetryNeeded } from './validation.js';
+import type { Issue } from "./schema.js";
+import { Effect } from "effect";
+import {
+  buildRetryPrompt,
+  parseIssuesFromResponse,
+  parseIssuesStrict,
+  ValidationRetryNeeded,
+} from "./validation.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -16,19 +21,19 @@ import { buildRetryPrompt, parseIssuesFromResponse, parseIssuesStrict, Validatio
 /**
  * Base vision result from a provider.
  */
-export interface VisionResult {
+export type VisionResult = {
   readonly response: string;
   readonly durationMs: number;
   readonly model: string;
   readonly provider: string;
-}
+};
 
 /**
  * Vision result with parsed issues.
  */
-export interface VisionResultWithIssues extends VisionResult {
+export type VisionResultWithIssues = {
   readonly issues: readonly Issue[];
-}
+} & VisionResult;
 
 /**
  * Options for analyzeWithRetry.
@@ -38,11 +43,11 @@ export interface VisionResultWithIssues extends VisionResult {
  * @property prompt - The analysis prompt to send
  * @property logger - Optional logger for retry messages
  */
-export interface AnalyzeWithRetryOptions<E> {
+export type AnalyzeWithRetryOptions<E> = {
   readonly analyze: (prompt: string) => Effect.Effect<VisionResult, E>;
   readonly prompt: string;
   readonly logger?: { warn: (msg: string) => void };
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Core Function
@@ -70,7 +75,9 @@ export interface AnalyzeWithRetryOptions<E> {
  * const result = yield* analyzeWithRetry({ analyze, prompt, logger });
  * ```
  */
-export function analyzeWithRetry<E>(options: AnalyzeWithRetryOptions<E>): Effect.Effect<VisionResultWithIssues, E> {
+export function analyzeWithRetry<E>(
+  options: AnalyzeWithRetryOptions<E>,
+): Effect.Effect<VisionResultWithIssues, E> {
   const { analyze, prompt, logger } = options;
 
   // Strict analysis: calls VLM and parses with strict validation
@@ -100,7 +107,7 @@ export function analyzeWithRetry<E>(options: AnalyzeWithRetryOptions<E>): Effect
         const retryPrompt = buildRetryPrompt(prompt, err);
         return analyzeWithRecovery(retryPrompt);
       }
-      return Effect.fail(err as E);
+      return Effect.fail(err);
     }),
   );
 }

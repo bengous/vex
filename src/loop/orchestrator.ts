@@ -10,35 +10,35 @@
  * 6. REPEAT - Until resolved, max iterations, or aborted
  */
 
-import type { FileSystem } from '@effect/platform';
-import { Effect } from 'effect';
-import { loadDOMSnapshotFromPath } from '../core/dom-snapshot-loader.js';
-import type { CodeLocation, DOMSnapshot, Issue, ViewportConfig } from '../core/types.js';
-import { createResolverWithStrategies } from '../locator/resolver.js';
-import { DEFAULT_FILE_PATTERNS, domTracerStrategy } from '../locator/strategies/dom-tracer.js';
-import type { LocatorContext } from '../locator/types.js';
-import type { PipelineState } from '../pipeline/types.js';
-import { evaluateGates, filterByAction } from './gates.js';
+import type { CodeLocation, DOMSnapshot, Issue, ViewportConfig } from "../core/types.js";
+import type { LocatorContext } from "../locator/types.js";
+import type { PipelineState } from "../pipeline/types.js";
+import type {
+  AppliedFix,
+  GateConfig,
+  GateDecision,
+  HumanResponse,
+  IterationState,
+  LoopOptions,
+  LoopResult,
+  LoopStatus,
+  VerificationResult,
+} from "./types.js";
+import type { FileSystem } from "@effect/platform";
+import { Effect } from "effect";
+import { loadDOMSnapshotFromPath } from "../core/dom-snapshot-loader.js";
+import { createResolverWithStrategies } from "../locator/resolver.js";
+import { DEFAULT_FILE_PATTERNS, domTracerStrategy } from "../locator/strategies/dom-tracer.js";
+import { evaluateGates, filterByAction } from "./gates.js";
 // Metrics can be calculated from iterationHistory using calculateLoopMetrics if needed
-import {
-  type AppliedFix,DEFAULT_GATE_CONFIG, DEFAULT_LOOP_OPTIONS,
-  type GateConfig,
-  type GateDecision,
-  type HumanResponse,
-  type IterationState,
-  LoopError,
-  type LoopOptions,
-  type LoopResult,
-  type LoopStatus,
-  type VerificationResult
-} from './types.js';
-import { verifyChanges } from './verify.js';
+import { DEFAULT_GATE_CONFIG, DEFAULT_LOOP_OPTIONS, LoopError } from "./types.js";
+import { verifyChanges } from "./verify.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Error Construction
 // ═══════════════════════════════════════════════════════════════════════════
 
-function makeError(phase: LoopError['phase'], detail: string, cause?: unknown): LoopError {
+function makeError(phase: LoopError["phase"], detail: string, cause?: unknown): LoopError {
   return new LoopError({ phase, detail, cause });
 }
 
@@ -46,20 +46,20 @@ function makeError(phase: LoopError['phase'], detail: string, cause?: unknown): 
 // Types
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface LoopCaptureResult {
+export type LoopCaptureResult = {
   state: PipelineState;
   issues: Issue[];
-}
+};
 
-export interface LocateResult {
+export type LocateResult = {
   issuesWithLocations: Array<{ issue: Issue; locations: readonly CodeLocation[] }>;
-}
+};
 
 /**
  * Callbacks for pipeline operations.
  * These abstract the actual capture/analyze/fix implementations.
  */
-export interface LoopCallbacks {
+export type LoopCallbacks = {
   /** Capture screenshot and analyze for issues */
   capture: (
     url: string,
@@ -67,7 +67,11 @@ export interface LoopCallbacks {
   ) => Effect.Effect<LoopCaptureResult, LoopError, FileSystem.FileSystem>;
 
   /** Apply a fix to the codebase */
-  applyFix: (issue: Issue, location: CodeLocation, decision: GateDecision) => Effect.Effect<AppliedFix, LoopError>;
+  applyFix: (
+    issue: Issue,
+    location: CodeLocation,
+    decision: GateDecision,
+  ) => Effect.Effect<AppliedFix, LoopError>;
 
   /** Prompt human for review decision */
   promptHuman: (
@@ -78,7 +82,7 @@ export interface LoopCallbacks {
 
   /** Called when iteration completes */
   onIterationComplete?: (state: IterationState) => void;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Orchestrator
@@ -90,7 +94,11 @@ export class LoopOrchestrator {
   private readonly callbacks: LoopCallbacks;
   private readonly resolver = createResolverWithStrategies([domTracerStrategy]);
 
-  constructor(options: LoopOptions, callbacks: LoopCallbacks, gateConfig: Partial<GateConfig> = {}) {
+  constructor(
+    options: LoopOptions,
+    callbacks: LoopCallbacks,
+    gateConfig: Partial<GateConfig> = {},
+  ) {
     this.options = { ...DEFAULT_LOOP_OPTIONS, ...options } as Required<LoopOptions>;
     this.gateConfig = { ...DEFAULT_GATE_CONFIG, ...gateConfig };
     this.callbacks = callbacks;
@@ -104,7 +112,7 @@ export class LoopOrchestrator {
       const startedAt = new Date().toISOString();
       const iterationHistory: IterationState[] = [];
       let baseline: PipelineState | null = null;
-      let status: LoopStatus = 'running';
+      let status: LoopStatus = "running";
       let initialIssueCount = 0;
 
       for (let iteration = 0; iteration < this.options.maxIterations; iteration++) {
@@ -113,7 +121,7 @@ export class LoopOrchestrator {
         // 1. CAPTURE & ANALYZE
         const viewport = this.options.viewports[0];
         if (!viewport) {
-          return yield* Effect.fail(makeError('capture', 'No viewport configured'));
+          return yield* Effect.fail(makeError("capture", "No viewport configured"));
         }
 
         const captureResult = yield* this.callbacks.capture(this.options.url, viewport);
@@ -125,8 +133,14 @@ export class LoopOrchestrator {
         }
 
         if (issues.length === 0) {
-          status = 'completed-resolved';
-          const iterationState = this.createIterationState(iteration, iterationStartedAt, currentState, issues, []);
+          status = "completed-resolved";
+          const iterationState = this.createIterationState(
+            iteration,
+            iterationStartedAt,
+            currentState,
+            issues,
+            [],
+          );
           iterationHistory.push(iterationState);
           this.callbacks.onIterationComplete?.(iterationState);
           break;
@@ -135,15 +149,19 @@ export class LoopOrchestrator {
         // 2. LOCATE code for issues
         // Extract DOM snapshot from pipeline state artifacts
         const domSnapshotArtifact = Object.values(currentState.artifacts).find(
-          (a) => a.type === 'dom-snapshot'
+          (a) => a.type === "dom-snapshot",
         );
-        const domSnapshotPath = domSnapshotArtifact?.path as string | undefined;
+        const domSnapshotPath = domSnapshotArtifact?.path;
         let domSnapshot: DOMSnapshot | undefined;
 
-        if (domSnapshotPath) {
+        if (domSnapshotPath !== undefined) {
           const domResult = yield* Effect.tryPromise({
-            try: () => loadDOMSnapshotFromPath(domSnapshotPath),
-            catch: (e) => makeError('locate', `Failed to load DOM snapshot: ${e}`),
+            try: async () => loadDOMSnapshotFromPath(domSnapshotPath),
+            catch: (e: unknown) =>
+              makeError(
+                "locate",
+                `Failed to load DOM snapshot: ${e instanceof Error ? e.message : String(e)}`,
+              ),
           });
           if (domResult.snapshot) {
             domSnapshot = domResult.snapshot;
@@ -160,7 +178,7 @@ export class LoopOrchestrator {
 
         const locateResult = yield* this.resolver
           .locateAll(issues, locatorCtx)
-          .pipe(Effect.mapError((e) => makeError('locate', e.message, e)));
+          .pipe(Effect.mapError((e) => makeError("locate", e.message, e)));
 
         const issuesWithLocations = locateResult.results.map((r) => ({
           issue: r.issue,
@@ -169,8 +187,8 @@ export class LoopOrchestrator {
 
         // 3. GATE decisions
         const decisions = evaluateGates(issuesWithLocations, this.gateConfig);
-        const autoFixes = filterByAction(decisions, 'auto-fix');
-        const humanReviews = filterByAction(decisions, 'human-review');
+        const autoFixes = filterByAction(decisions, "auto-fix");
+        const humanReviews = filterByAction(decisions, "human-review");
 
         // 4. FIX
         const fixesApplied: AppliedFix[] = [];
@@ -184,22 +202,27 @@ export class LoopOrchestrator {
 
         if (this.options.interactive && humanReviews.length > 0) {
           for (const decision of humanReviews) {
-            const locations = issuesWithLocations.find((i) => i.issue.id === decision.issue.id)?.locations ?? [];
+            const locations =
+              issuesWithLocations.find((i) => i.issue.id === decision.issue.id)?.locations ?? [];
 
             const response = yield* this.callbacks.promptHuman(decision.issue, locations, decision);
 
-            if (response.action === 'abort') {
-              status = 'aborted';
+            if (response.action === "abort") {
+              status = "aborted";
               break;
             }
 
-            if (response.action === 'apply' && response.location) {
-              const fix = yield* this.callbacks.applyFix(decision.issue, response.location, decision);
+            if (response.action === "apply" && response.location) {
+              const fix = yield* this.callbacks.applyFix(
+                decision.issue,
+                response.location,
+                decision,
+              );
               fixesApplied.push(fix);
             }
           }
 
-          if (status === 'aborted') {
+          if (status === "aborted") {
             const iterationState = this.createIterationState(
               iteration,
               iterationStartedAt,
@@ -216,17 +239,20 @@ export class LoopOrchestrator {
         let verification: VerificationResult | undefined;
         if (baseline) {
           verification = yield* verifyChanges(baseline, currentState).pipe(
-            Effect.mapError((e) => makeError('verify', e.message, e)),
+            Effect.mapError((e) => makeError("verify", e.message, e)),
           );
 
-          if (verification.verdict === 'regressed') {
+          if (verification.verdict === "regressed") {
             console.warn(`Regression detected: ${verification.introduced.length} new issues`);
           }
 
           // No improvement after fix attempts.
           // In dry-run mode, treat "applied" fixes as simulated/no-op, so unchanged should stop the loop.
-          if (verification.verdict === 'unchanged' && (fixesApplied.length === 0 || this.options.dryRun === true)) {
-            status = 'completed-no-improvement';
+          if (
+            verification.verdict === "unchanged" &&
+            (fixesApplied.length === 0 || this.options.dryRun)
+          ) {
+            status = "completed-no-improvement";
             const iterationState = this.createIterationState(
               iteration,
               iterationStartedAt,
@@ -255,23 +281,23 @@ export class LoopOrchestrator {
         baseline = currentState;
       }
 
-      if (status === 'running') {
-        status = 'completed-max-iterations';
+      if (status === "running") {
+        status = "completed-max-iterations";
       }
 
-      const finalIssues = iterationHistory[iterationHistory.length - 1]?.issuesFound ?? [];
+      const finalIssues = iterationHistory.at(-1)?.issuesFound ?? [];
 
       return {
         status,
         iterations: iterationHistory.length,
-        sessionDir: this.options.sessionDir ?? '',
+        sessionDir: this.options.sessionDir ?? "",
         startedAt,
         completedAt: new Date().toISOString(),
         initialIssueCount,
         finalIssueCount: finalIssues.length,
         totalFixesApplied: iterationHistory.reduce((sum, i) => sum + i.fixesApplied.length, 0),
         iterationHistory,
-        finalVerification: iterationHistory[iterationHistory.length - 1]?.verification,
+        finalVerification: iterationHistory.at(-1)?.verification,
       };
     });
   }
@@ -282,7 +308,7 @@ export class LoopOrchestrator {
     pipelineState: PipelineState,
     issuesFound: Issue[],
     fixesApplied: AppliedFix[],
-    verification?: IterationState['verification'],
+    verification?: IterationState["verification"],
   ): IterationState {
     return {
       number,
