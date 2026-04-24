@@ -7,3 +7,5 @@ bun.lock
 .env
 .env.local
 .worktrees/
+.claude/worktrees/
+.codex
