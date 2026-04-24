@@ -218,13 +218,13 @@ export async function applyPlaceholderMedia(
         div.className = "placeholder-media-box";
         div.style.width = `${width}px`;
         div.style.height = `${height}px`;
-        div.style.display = display === "inline" || !display ? "inline-block" : display;
+        div.style.display = display === "inline" || display.length === 0 ? "inline-block" : display;
         return div;
       }
 
       function shouldPreserve(el: Element): boolean {
         for (const selector of preserveSelectors) {
-          if (el.matches(selector) || el.closest(selector)) {
+          if (el.matches(selector) || el.closest(selector) !== null) {
             return true;
           }
         }
@@ -381,7 +381,12 @@ export async function cropScreenshotToViewportWidth(
   viewport: Pick<ViewportConfig, "width" | "deviceScaleFactor">,
 ): Promise<Buffer> {
   const metadata = await sharp(buffer).metadata();
-  if (!metadata.width || !metadata.height) {
+  if (
+    metadata.width === undefined ||
+    metadata.height === undefined ||
+    metadata.width === 0 ||
+    metadata.height === 0
+  ) {
     return buffer;
   }
 
@@ -455,7 +460,7 @@ async function captureDOMSnapshot(
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
       let node: Node | null = walker.currentNode;
 
-      while (node) {
+      while (node !== null) {
         if (node instanceof HTMLElement) {
           const rect = node.getBoundingClientRect();
           if (rect.width > 0 && rect.height > 0) {
@@ -468,14 +473,14 @@ async function captureDOMSnapshot(
             const attrs: Record<string, string> = {};
             for (let i = 0; i < node.attributes.length; i++) {
               const attr = node.attributes[i];
-              if (attr) {
+              if (attr !== undefined) {
                 attrs[attr.name] = attr.value;
               }
             }
 
             results.push({
               tagName: node.tagName.toLowerCase(),
-              id: node.id || undefined,
+              id: node.id.length > 0 ? node.id : undefined,
               classes: Array.from(node.classList),
               boundingBox: {
                 x: rect.x + window.scrollX,
@@ -553,7 +558,7 @@ async function runCapture(
       timeout: navigationTimeout,
     });
 
-    if (!response?.ok()) {
+    if (response === null || !response.ok()) {
       throw new Error(`HTTP ${response?.status()}: ${response?.statusText()}`);
     }
 
@@ -562,7 +567,7 @@ async function runCapture(
     });
 
     await cleanupOverlays(page);
-    if (fullPageScrollFix?.enabled) {
+    if (fullPageScrollFix?.enabled === true) {
       await applyFullPageScrollFix(page, fullPageScrollFix);
     }
 
@@ -570,16 +575,16 @@ async function runCapture(
       ? await captureDOMSnapshot(page, url, viewport, captureStyles)
       : undefined;
 
-    if (placeholderMedia?.enabled) {
+    if (placeholderMedia?.enabled === true) {
       await applyPlaceholderMedia(page, placeholderMedia);
     }
 
-    if (fullPageScrollFix?.enabled && !fullPageScrollFix.preserveHorizontalOverflow) {
+    if (fullPageScrollFix?.enabled === true && !fullPageScrollFix.preserveHorizontalOverflow) {
       await enforceHorizontalOverflowClamp(page, fullPageScrollFix.selectors);
     }
 
     let buffer = await page.screenshot({ fullPage });
-    if (fullPageScrollFix?.enabled && !fullPageScrollFix.preserveHorizontalOverflow) {
+    if (fullPageScrollFix?.enabled === true && !fullPageScrollFix.preserveHorizontalOverflow) {
       buffer = await cropScreenshotToViewportWidth(buffer, viewport);
     }
     const dimensions = await getImageDimensionsFromBuffer(buffer, viewport);
@@ -659,7 +664,7 @@ export async function captureWithDOM(
     createdBy: "capture-with-dom",
   });
 
-  if (!result.domSnapshot) {
+  if (result.domSnapshot === undefined) {
     throw new Error("DOM snapshot was not captured");
   }
 
