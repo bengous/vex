@@ -9,3 +9,4 @@ bun.lock
 .worktrees/
 .claude/worktrees/
 .codex
+.bun-forge/

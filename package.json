@@ -17,19 +17,46 @@
     "test": "bun test src/ --ignore \"**/*e2e*/**\"",
     "test:all": "RUN_E2E=1 bun test src/",
     "test:watch": "bun test --watch src/ --ignore \"**/*e2e*/**\"",
-    "test:e2e": "RUN_E2E=1 bun test src/e2e/"
+    "test:e2e": "RUN_E2E=1 bun test src/e2e/",
+    "lint:errors": "oxlint -c .oxlintrc.jsonc --quiet --format=unix src/ scripts/",
+    "lint:arch": "dependency-cruiser --config .dependency-cruiser.cjs --output-type err src scripts",
+    "lint:dead": "knip --include files,dependencies,unlisted,binaries --reporter compact",
+    "lint:dupes": "jscpd --config .jscpd.json",
+    "format": "oxfmt --write -c .oxfmtrc.jsonc 'src/**/*.{ts,tsx,js,jsx,mjs}' 'scripts/**/*.{ts,tsx,js,jsx,mjs}'",
+    "format:check": "oxfmt --check -c .oxfmtrc.jsonc 'src/**/*.{ts,tsx,js,jsx,mjs}' 'scripts/**/*.{ts,tsx,js,jsx,mjs}'",
+    "autofix": "oxlint -c .oxlintrc.jsonc --fix src/ scripts/ && oxfmt --write -c .oxfmtrc.jsonc 'src/**/*.{ts,tsx,js,jsx,mjs}' 'scripts/**/*.{ts,tsx,js,jsx,mjs}'",
+    "lint:audit": "bun scripts/quality/audit-oxlint-rules.ts",
+    "check:links": "bun scripts/quality/check-links-local.ts",
+    "agents:sync": "bun scripts/agents/sync-agents-md.ts --write --preserve-root",
+    "agents:check": "bun scripts/agents/sync-agents-md.ts --check --preserve-root",
+    "effect:diagnose": "effect-language-service diagnostics --project tsconfig.json",
+    "effect:quickfixes": "effect-language-service quickfixes --project tsconfig.json",
+    "repo:bootstrap": "bun scripts/setup/bootstrap-git-config.ts",
+    "prepare": "bun scripts/setup/bootstrap-prepare.ts",
+    "validate": "bun scripts/validation/validate.ts",
+    "validate:scale": "bun run --silent validate && bun run --silent lint:dead && bun run --silent lint:arch && bun run --silent lint:dupes && bun run --silent check:links"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.13",
     "@types/bun": "^1.3.8",
     "bun-types": "^1.3.8",
     "playwright": "^1.58.1",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "@effect/language-service": "0.84.2",
+    "dependency-cruiser": "17.3.10",
+    "jscpd": "4.0.8",
+    "knip": "6.6.2",
+    "lefthook": "2.1.4",
+    "oxfmt": "0.46.0",
+    "oxlint": "1.61.0",
+    "oxlint-plugin-complexity": "2.0.3",
+    "oxlint-tsgolint": "0.19.0"
   },
   "dependencies": {
     "@effect/cli": "^0.73.1",
     "@effect/platform-bun": "^0.87.1",
     "effect": "^3.19.15",
-    "sharp": "^0.34.5"
+    "sharp": "^0.34.5",
+    "@effect/platform": "0.96.0"
   }
 }
