@@ -20,8 +20,12 @@ export type AnnotateInput = {
 };
 
 export type AnnotateOutput = {
-  readonly toolCalls: readonly ToolCall[];
-  readonly annotations: AnnotationsArtifact;
+  readonly artifacts: {
+    readonly annotations: AnnotationsArtifact;
+  };
+  readonly data: {
+    readonly toolCalls: readonly ToolCall[];
+  };
 };
 
 const ANNOTATION_PROMPT = `Based on the following issues, generate annotation tool calls to visually mark them on the screenshot.
@@ -125,7 +129,7 @@ function normalizeToolCall(call: typeof ToolCallSchema.Type): ToolCall {
 
 /**
  * Creates an annotations artifact from tool calls.
- * Writes the file and stores the artifact in context.
+ * Writes the file and returns the artifact for runtime storage.
  */
 function createAnnotationsArtifact(
   toolCalls: readonly ToolCall[],
@@ -154,20 +158,16 @@ function createAnnotationsArtifact(
         }),
     });
 
-    const artifact: AnnotationsArtifact = {
-      _kind: "artifact",
-      id: crypto.randomUUID(),
+    const artifact = ctx.createArtifact<AnnotationsArtifact>({
       type: "annotations",
       path: outputPath,
-      createdAt: new Date().toISOString(),
       createdBy: "annotate",
       metadata: {
         toolCallCount: toolCalls.length,
         issueCount,
       },
-    };
+    });
 
-    ctx.storeArtifact(artifact);
     return artifact;
   });
 }
@@ -175,8 +175,13 @@ function createAnnotationsArtifact(
 export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, AnnotateConfig> = {
   name: "annotate",
   description: "Generate annotation tool calls from analysis",
-  inputTypes: ["analysis"],
-  outputTypes: ["annotations"],
+  inputSpecs: {
+    result: { channel: "data" },
+  },
+  outputSpecs: {
+    annotations: { channel: "artifact", type: "annotations" },
+    toolCalls: { channel: "data" },
+  },
 
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
@@ -186,7 +191,7 @@ export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, Annotat
       if (issues.length === 0) {
         ctx.logger.info("No issues to annotate");
         const artifact = yield* createAnnotationsArtifact([], 0, ctx);
-        return { toolCalls: [], annotations: artifact };
+        return { artifacts: { annotations: artifact }, data: { toolCalls: [] } };
       }
 
       ctx.logger.info(`Generating annotations for ${issues.length} issues`);
@@ -215,6 +220,6 @@ export const annotateOperation: Operation<AnnotateInput, AnnotateOutput, Annotat
       ctx.logger.info(`Generated ${toolCalls.length} annotations`);
 
       const artifact = yield* createAnnotationsArtifact(toolCalls, issues.length, ctx);
-      return { toolCalls, annotations: artifact };
+      return { artifacts: { annotations: artifact }, data: { toolCalls } };
     }),
 };

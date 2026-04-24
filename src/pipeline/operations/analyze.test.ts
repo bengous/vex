@@ -104,8 +104,8 @@ describe("analyzeOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.analysis.type).toBe("analysis");
-        expect(exit.value.analysis.createdBy).toBe("analyze");
+        expect(exit.value.artifacts.analysis.type).toBe("analysis");
+        expect(exit.value.artifacts.analysis.createdBy).toBe("analyze");
       }
     });
 
@@ -127,13 +127,13 @@ describe("analyzeOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.result.issues.length).toBe(2);
-        expect(exit.value.result.issues[0]?.severity).toBe("high");
-        expect(exit.value.analysis.metadata.issueCount).toBe(2);
+        expect(exit.value.data.result.issues.length).toBe(2);
+        expect(exit.value.data.result.issues[0]?.severity).toBe("high");
+        expect(exit.value.artifacts.analysis.metadata.issueCount).toBe(2);
       }
     });
 
-    test("stores artifact in context", async () => {
+    test("returns artifact for runtime storage without mutating context", async () => {
       const providerName = `test-analyze-store-${Date.now()}`;
       const mockResult = createMockVisionResult({
         provider: providerName,
@@ -150,9 +150,8 @@ describe("analyzeOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        const storedArtifact = ctx.getArtifact(exit.value.analysis.id);
-        expect(storedArtifact).toBeDefined();
-        expect(storedArtifact?.id).toBe(exit.value.analysis.id);
+        expect(exit.value.artifacts.analysis.id).toBeDefined();
+        expect(ctx.artifacts.size).toBe(0);
       }
     });
 
@@ -193,9 +192,9 @@ describe("analyzeOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.analysis.metadata.provider).toBe(providerName);
-        expect(exit.value.analysis.metadata.model).toBe("test-model-v1");
-        expect(exit.value.analysis.metadata.durationMs).toBe(250);
+        expect(exit.value.artifacts.analysis.metadata.provider).toBe(providerName);
+        expect(exit.value.artifacts.analysis.metadata.model).toBe("test-model-v1");
+        expect(exit.value.artifacts.analysis.metadata.durationMs).toBe(250);
       }
     });
   });

@@ -18,7 +18,9 @@ export type OverlayGridInput = {
 };
 
 export type OverlayGridOutput = {
-  readonly image: ImageArtifact;
+  readonly artifacts: {
+    readonly image: ImageArtifact;
+  };
 };
 
 export const overlayGridOperation: Operation<
@@ -28,8 +30,12 @@ export const overlayGridOperation: Operation<
 > = {
   name: "overlay-grid",
   description: "Add cell reference grid overlay to image",
-  inputTypes: ["image"],
-  outputTypes: ["image"],
+  inputSpecs: {
+    image: { channel: "artifact", type: "image" },
+  },
+  outputSpecs: {
+    image: { channel: "artifact", type: "image" },
+  },
 
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
@@ -78,20 +84,16 @@ export const overlayGridOperation: Operation<
           }),
       });
 
-      const artifact: ImageArtifact = {
-        _kind: "artifact",
-        id: crypto.randomUUID(),
+      const artifact = ctx.createArtifact<ImageArtifact>({
         type: "image",
         path: outputPath,
-        createdAt: new Date().toISOString(),
         createdBy: "overlay-grid",
         metadata: {
           ...input.image.metadata,
           hasGrid: true,
         },
-      };
+      });
 
-      ctx.storeArtifact(artifact);
-      return { image: artifact };
+      return { artifacts: { image: artifact } };
     }),
 };

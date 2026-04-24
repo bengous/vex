@@ -60,12 +60,12 @@ describe("captureOperation", () => {
       captureOperation.execute(undefined, { url: server.url.href, viewport, withDOM: false }, ctx),
     );
 
-    expect(output.image.type).toBe("image");
-    expect(output.image.path).toBe(join(testDir, ARTIFACT_NAMES.screenshot));
-    expect(output.domSnapshot).toBeUndefined();
-    expect(existsSync(output.image.path)).toBe(true);
+    expect(output.artifacts.image.type).toBe("image");
+    expect(output.artifacts.image.path).toBe(join(testDir, ARTIFACT_NAMES.screenshot));
+    expect(output.artifacts.domSnapshot).toBeUndefined();
+    expect(existsSync(output.artifacts.image.path)).toBe(true);
     expect(existsSync(join(testDir, ARTIFACT_NAMES.dom))).toBe(false);
-    expect(ctx.artifacts.size).toBe(1);
+    expect(ctx.artifacts.size).toBe(0);
   });
 
   test("writes and stores DOM artifact only when requested", async () => {
@@ -75,16 +75,16 @@ describe("captureOperation", () => {
       captureOperation.execute(undefined, { url: server.url.href, viewport, withDOM: true }, ctx),
     );
 
-    expect(output.image.type).toBe("image");
-    expect(output.domSnapshot?.type).toBe("dom-snapshot");
-    expect(output.domSnapshot?.path).toBe(join(testDir, ARTIFACT_NAMES.dom));
-    expect(existsSync(output.image.path)).toBe(true);
+    expect(output.artifacts.image.type).toBe("image");
+    expect(output.artifacts.domSnapshot?.type).toBe("dom-snapshot");
+    expect(output.artifacts.domSnapshot?.path).toBe(join(testDir, ARTIFACT_NAMES.dom));
+    expect(existsSync(output.artifacts.image.path)).toBe(true);
     expect(existsSync(join(testDir, ARTIFACT_NAMES.dom))).toBe(true);
-    expect(ctx.artifacts.size).toBe(2);
+    expect(ctx.artifacts.size).toBe(0);
 
     const dom = JSON.parse(readFileSync(join(testDir, ARTIFACT_NAMES.dom), "utf8"));
     expect(dom.url).toBe(server.url.href);
     expect(dom.html).toContain("Capture operation");
-    expect(output.domSnapshot?.metadata.elementCount).toBeGreaterThan(0);
+    expect(output.artifacts.domSnapshot?.metadata.elementCount).toBeGreaterThan(0);
   });
 });

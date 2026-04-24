@@ -3,7 +3,7 @@
  */
 
 import type { Artifact } from "../core/types.js";
-import type { PipelineDefinition, PipelineState } from "./types.js";
+import type { PipelineDefinition, PipelineState, StoredOutput } from "./types.js";
 import type { PlatformError } from "@effect/platform/Error";
 import { FileSystem } from "@effect/platform";
 import { Data, Effect } from "effect";
@@ -73,9 +73,8 @@ export function initializePipelineState(
     status: "running",
     nodes,
     artifacts: {},
-    data: {},
+    outputs: {},
     issues: [],
-    semanticNames: {},
   };
 }
 
@@ -127,31 +126,18 @@ export function storeArtifact(state: PipelineState, artifact: Artifact): Pipelin
 }
 
 /**
- * Store a semantic name mapping in the state.
+ * Store a named operation output in the state.
  */
-export function storeSemanticName(
+export function storeOutput(
   state: PipelineState,
-  name: string,
-  artifactId: string,
+  key: string,
+  output: StoredOutput,
 ): PipelineState {
   return {
     ...state,
-    semanticNames: {
-      ...state.semanticNames,
-      [name]: artifactId,
-    },
-  };
-}
-
-/**
- * Store non-artifact data in the state.
- */
-export function storeData(state: PipelineState, key: string, value: unknown): PipelineState {
-  return {
-    ...state,
-    data: {
-      ...state.data,
-      [key]: value,
+    outputs: {
+      ...state.outputs,
+      [key]: output,
     },
   };
 }
@@ -238,8 +224,7 @@ export type NodeResult = {
  * Safe because parallel nodes write to disjoint key spaces:
  * - nodes[nodeId] — unique per node
  * - artifacts[uuid] — unique IDs
- * - semanticNames["nodeId:field"] — node-prefixed
- * - data["nodeId:field"] — node-prefixed
+ * - outputs["nodeId:field"] — node-prefixed
  */
 export function mergeNodeResults(
   base: PipelineState,
@@ -261,8 +246,7 @@ export function mergeNodeResults(
         ...(changedNode !== undefined ? { [result.nodeId]: changedNode } : {}),
       },
       artifacts: { ...merged.artifacts, ...result.state.artifacts },
-      semanticNames: { ...merged.semanticNames, ...result.state.semanticNames },
-      data: { ...merged.data, ...result.state.data },
+      outputs: { ...merged.outputs, ...result.state.outputs },
       issues: [...merged.issues, ...result.state.issues],
     };
   }

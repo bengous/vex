@@ -27,9 +27,11 @@ export type CaptureConfig = {
 };
 
 export type CaptureOutput = {
-  readonly image: ImageArtifact;
-  /** DOM snapshot artifact, present when withDOM: true */
-  readonly domSnapshot?: DOMSnapshotArtifact;
+  readonly artifacts: {
+    readonly image: ImageArtifact;
+    /** DOM snapshot artifact, present when withDOM: true */
+    readonly domSnapshot?: DOMSnapshotArtifact;
+  };
 };
 
 function hasDOMSnapshot(result: CaptureResult | DOMCaptureResult): result is DOMCaptureResult {
@@ -39,8 +41,11 @@ function hasDOMSnapshot(result: CaptureResult | DOMCaptureResult): result is DOM
 export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
   name: "capture",
   description: "Capture a screenshot of a URL",
-  inputTypes: [],
-  outputTypes: ["image"],
+  inputSpecs: {},
+  outputSpecs: {
+    image: { channel: "artifact", type: "image" },
+    domSnapshot: { channel: "artifact", type: "dom-snapshot", optional: true },
+  },
 
   execute: (_, config, ctx) => {
     const { url, viewport, withDOM = false, placeholderMedia, fullPageScrollFix } = config;
@@ -92,12 +97,12 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
               }),
           });
 
-          const artifact: ImageArtifact = {
-            ...result.artifact,
+          const artifact = ctx.createArtifact<ImageArtifact>({
+            type: "image",
             path: screenshotPath,
-          };
-
-          ctx.storeArtifact(artifact);
+            metadata: result.artifact.metadata,
+            createdBy: "capture",
+          });
 
           if (withDOM) {
             const domPath = yield* ctx.getArtifactPath("dom").pipe(
@@ -128,26 +133,21 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
                 }),
             });
 
-            const domArtifact: DOMSnapshotArtifact = {
-              _kind: "artifact",
-              id: crypto.randomUUID(),
+            const domArtifact = ctx.createArtifact<DOMSnapshotArtifact>({
               type: "dom-snapshot",
               path: domPath,
-              createdAt: new Date().toISOString(),
               createdBy: "capture",
               metadata: {
                 url: result.domSnapshot.url,
                 elementCount: result.domSnapshot.elements.length,
                 viewport,
               },
-            };
+            });
 
-            ctx.storeArtifact(domArtifact);
-
-            return { image: artifact, domSnapshot: domArtifact };
+            return { artifacts: { image: artifact, domSnapshot: domArtifact } };
           }
 
-          return { image: artifact };
+          return { artifacts: { image: artifact } };
         }),
 
       // release: guaranteed cleanup even on error

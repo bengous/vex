@@ -18,16 +18,25 @@ export type DiffInput = {
 };
 
 export type DiffOutput = {
-  readonly report: DiffReportArtifact;
-  readonly diffImage?: ImageArtifact;
-  readonly pixelDiffPercent: number;
+  readonly artifacts: {
+    readonly report: DiffReportArtifact;
+  };
+  readonly data: {
+    readonly pixelDiffPercent: number;
+  };
 };
 
 export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
   name: "diff",
   description: "Compare two images for visual differences",
-  inputTypes: ["image", "image"],
-  outputTypes: ["diff-report"],
+  inputSpecs: {
+    baseImage: { channel: "artifact", type: "image" },
+    compareImage: { channel: "artifact", type: "image" },
+  },
+  outputSpecs: {
+    report: { channel: "artifact", type: "diff-report" },
+    pixelDiffPercent: { channel: "data" },
+  },
 
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
@@ -108,21 +117,17 @@ export const diffOperation: Operation<DiffInput, DiffOutput, DiffConfig> = {
           new OperationError({ operation: "diff", detail: "Failed to save diff report", cause: e }),
       });
 
-      const artifact: DiffReportArtifact = {
-        _kind: "artifact",
-        id: crypto.randomUUID(),
+      const artifact = ctx.createArtifact<DiffReportArtifact>({
         type: "diff-report",
         path: reportPath,
-        createdAt: new Date().toISOString(),
         createdBy: "diff",
         metadata: {
           baseImageId: input.baseImage.id,
           compareImageId: input.compareImage.id,
           pixelDiffPercent,
         },
-      };
+      });
 
-      ctx.storeArtifact(artifact);
-      return { report: artifact, pixelDiffPercent };
+      return { artifacts: { report: artifact }, data: { pixelDiffPercent } };
     }),
 };
