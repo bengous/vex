@@ -86,7 +86,7 @@ function main(): void {
   }
 
   const lycheeCommand = resolveLycheeCommand();
-  if (!lycheeCommand) {
+  if (lycheeCommand === undefined) {
     console.error("Lychee is required for local checks. Run `mise install` from the repo root.");
     process.exit(1);
   }
