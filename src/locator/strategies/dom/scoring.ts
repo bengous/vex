@@ -1,5 +1,6 @@
 import type { CodeLocation, DOMElement } from "../../../core/types.js";
 import type { GrepMatch } from "../../types.js";
+import { compareConfidence } from "../../../core/schema.js";
 
 export function calculateConfidence(
   selector: string,
@@ -51,6 +52,5 @@ export function buildReasoning(selector: string, _match: GrepMatch, element: DOM
 }
 
 export function sortByConfidence(locations: CodeLocation[]): void {
-  const confidenceOrder = { high: 0, medium: 1, low: 2 };
-  locations.sort((a, b) => confidenceOrder[a.confidence] - confidenceOrder[b.confidence]);
+  locations.sort((a, b) => compareConfidence(a.confidence, b.confidence));
 }
