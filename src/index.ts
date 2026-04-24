@@ -168,6 +168,7 @@ export {
 } from "./pipeline/presets.js";
 
 // Runtime
+export { checkProviderInstalled } from "./pipeline/preflight.js";
 export { resumePipeline, runPipeline } from "./pipeline/runtime.js";
 
 // State management

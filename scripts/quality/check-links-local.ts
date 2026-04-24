@@ -8,6 +8,32 @@ const processModule = process;
 void processModule;
 
 const DOC_EXTENSIONS = new Set([".md", ".html"]);
+const MISE_ENV = {
+  ...Bun.env,
+  BUN_INSTALL: Bun.env.BUN_INSTALL ?? "/tmp/bun-install",
+  BUN_TMPDIR: Bun.env.BUN_TMPDIR ?? "/tmp",
+};
+
+function resolveLycheeCommand(): string[] | undefined {
+  const direct = Bun.spawnSync(["lychee", "--version"], {
+    stdout: "ignore",
+    stderr: "ignore",
+  });
+  if (direct.exitCode === 0) {
+    return ["lychee"];
+  }
+
+  const mise = Bun.spawnSync(["mise", "exec", "--", "lychee", "--version"], {
+    env: MISE_ENV,
+    stdout: "ignore",
+    stderr: "ignore",
+  });
+  if (mise.exitCode === 0) {
+    return ["mise", "exec", "--", "lychee"];
+  }
+
+  return undefined;
+}
 
 function normalizePath(filePath: string): string {
   return filePath.replaceAll("\\", "/");
@@ -59,22 +85,15 @@ function main(): void {
     process.exit(1);
   }
 
-  const versionCheck = Bun.spawnSync(["mise", "exec", "--", "lychee", "--version"], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-
-  if (versionCheck.exitCode !== 0) {
+  const lycheeCommand = resolveLycheeCommand();
+  if (!lycheeCommand) {
     console.error("Lychee is required for local checks. Run `mise install` from the repo root.");
     process.exit(1);
   }
 
   const lint = Bun.spawnSync(
     [
-      "mise",
-      "exec",
-      "--",
-      "lychee",
+      ...lycheeCommand,
       "--offline",
       "--no-progress",
       "--format",
@@ -83,7 +102,7 @@ function main(): void {
       ".",
       ...files,
     ],
-    { stdout: "inherit", stderr: "inherit" },
+    { env: MISE_ENV, stdout: "inherit", stderr: "inherit" },
   );
 
   process.exit(lint.exitCode);

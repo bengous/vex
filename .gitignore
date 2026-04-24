@@ -10,3 +10,4 @@ bun.lock
 .claude/worktrees/
 .codex
 .bun-forge/
+.mise/

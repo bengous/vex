@@ -380,9 +380,9 @@ Use --output flag, set VEX_OUTPUT_DIR env var, or create vex.config.ts`,
  */
 export function resolveCommonOptions(
   cliArgs: CommonCliArgs,
-  preset?: CommonPresetFields | undefined,
-  config?: VexConfig | undefined,
-  presetName?: string | undefined,
+  preset?: CommonPresetFields,
+  config?: VexConfig,
+  presetName?: string,
 ): Effect.Effect<ResolvedCommonOptions, ConfigError | ProfileNotFoundError> {
   return Effect.gen(function* () {
     // Resolve URLs: CLI > preset > error
