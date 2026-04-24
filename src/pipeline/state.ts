@@ -8,6 +8,7 @@ import type { PlatformError } from "@effect/platform/Error";
 import { FileSystem } from "@effect/platform";
 import { Data, Effect } from "effect";
 import { join } from "node:path";
+import { decodeJson, encodeJson } from "../core/json.js";
 import { SESSION_STRUCTURE } from "../core/types.js";
 
 /**
@@ -86,7 +87,7 @@ export function savePipelineState(
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const statePath = join(state.sessionDir, SESSION_STRUCTURE.stateFile);
-    yield* fs.writeFileString(statePath, JSON.stringify(state, null, 2));
+    yield* fs.writeFileString(statePath, encodeJson(state));
   });
 }
 
@@ -101,7 +102,7 @@ export function loadPipelineState(
     const statePath = join(sessionDir, SESSION_STRUCTURE.stateFile);
     const content = yield* fs.readFileString(statePath);
     return yield* Effect.try({
-      try: () => JSON.parse(content) as PipelineState,
+      try: () => decodeJson(content) as PipelineState,
       catch: (e) =>
         new JsonParseError({
           message: `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`,

@@ -13,6 +13,7 @@ import { Effect, Option } from "effect";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { loadDOMSnapshot } from "../../core/dom-snapshot-loader.js";
+import { decodeJson, encodeJson } from "../../core/json.js";
 import { createResolverWithStrategies } from "../../locator/resolver.js";
 import { domTracerStrategy } from "../../locator/strategies/dom-tracer.js";
 import { jsonOption, patternsOption, projectOption } from "../options.js";
@@ -70,7 +71,7 @@ function loadIssuesFromAnalysisArtifacts(
   }
 
   try {
-    const analysis = JSON.parse(readFileSync(analysisPath, "utf-8")) as {
+    const analysis = decodeJson(readFileSync(analysisPath, "utf-8")) as {
       issues?: unknown;
     };
     return Array.isArray(analysis.issues) ? (analysis.issues as Issue[]) : [];
@@ -109,7 +110,7 @@ export function loadLocateSessionContext(sessionDir: string): LocateSessionConte
     throw new Error(`Session state not found: ${statePath}`);
   }
 
-  const state = JSON.parse(readFileSync(statePath, "utf-8")) as unknown;
+  const state = decodeJson(readFileSync(statePath, "utf-8"));
   const stateObj = asObject(state);
   if (stateObj === undefined) {
     return { issues: [], domSessionDir: sessionDir };
@@ -246,7 +247,7 @@ export const locateCommand = Command.make(
         const result = yield* resolver.locateAll(target.issues, ctx);
 
         if (jsonOutput) {
-          console.log(JSON.stringify(result, null, 2));
+          console.log(encodeJson(result));
         } else {
           console.log(
             `\nLocated ${result.summary.issuesWithLocations}/${result.summary.issuesProcessed} issues`,
@@ -319,7 +320,7 @@ export const locateCommand = Command.make(
       };
 
       if (jsonOutput) {
-        console.log(JSON.stringify(auditResult, null, 2));
+        console.log(encodeJson(auditResult));
       } else {
         console.log(
           `\nTargets with issues: ${auditResult.summary.targetsWithIssues}/${auditResult.summary.targetsProcessed}`,
