@@ -4,7 +4,22 @@
   "ignore": [
     "**/*.test.ts",
     "**/*.e2e.test.ts",
-    ".claude/**"
+    ".claude/**",
+    "**/.claude/**",
+    "AI.md",
+    "**/AI.md",
+    "GEMINI.md",
+    "**/GEMINI.md",
+    "**/AGENTS.md",
+    "**/CLAUDE.md",
+    "src/providers/codex-cli/shell_snapshots/**",
+    "**/shell_snapshots/**",
+    "src/providers/codex-cli/skills/**/LICENSE*",
+    "src/providers/codex-cli/skills/**/license*",
+    "**/LICENSE.txt",
+    "**/license.txt",
+    "src/fixtures/**",
+    "**/fixtures/**"
   ],
   "minLines": 20,
   "minTokens": 100,

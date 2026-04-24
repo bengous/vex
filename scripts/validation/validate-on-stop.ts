@@ -2,22 +2,7 @@
 
 import { CODE_PATTERN, classifyScopes, expandConfigScope, getChangedFiles } from "./detect-scope";
 import { resolveBin, resolveProjectRoot } from "./resolve-bin";
-
-function run(label: string, cmd: string[], cwd: string, errors: string[]): void {
-  const result = Bun.spawnSync(cmd, {
-    cwd,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  if (result.exitCode !== 0) {
-    const output = [result.stderr.toString(), result.stdout.toString()]
-      .filter(Boolean)
-      .join("\n")
-      .trim();
-    errors.push(`[${label}] ${output || `exited with code ${result.exitCode}`}`);
-  }
-}
+import { runCommand } from "./run-command";
 
 async function main(): Promise<void> {
   const projectRoot = resolveProjectRoot(import.meta.dir);
@@ -33,24 +18,29 @@ async function main(): Promise<void> {
   const errors: string[] = [];
 
   if (scopes.has("backend") || scopes.has("scripts")) {
-    run(
+    runCommand(
       "lint:errors",
       [oxlint, "-c", ".oxlintrc.jsonc", "--quiet", "--format=unix", "src/", "scripts/"],
       projectRoot,
       errors,
     );
-    run("format:check", ["bun", "run", "--silent", "format:check"], projectRoot, errors);
+    runCommand("format:check", ["bun", "run", "--silent", "format:check"], projectRoot, errors);
   }
   if (scopes.has("frontend")) {
-    run(
+    runCommand(
       "typecheck:frontend",
       ["bun", "run", "--silent", "typecheck:frontend"],
       projectRoot,
       errors,
     );
-    run("lint:frontend", ["bun", "run", "--silent", "lint:frontend"], projectRoot, errors);
-    run("lint:css:frontend", ["bun", "run", "--silent", "lint:css:frontend"], projectRoot, errors);
-    run(
+    runCommand("lint:frontend", ["bun", "run", "--silent", "lint:frontend"], projectRoot, errors);
+    runCommand(
+      "lint:css:frontend",
+      ["bun", "run", "--silent", "lint:css:frontend"],
+      projectRoot,
+      errors,
+    );
+    runCommand(
       "format:check:frontend",
       ["bun", "run", "--silent", "format:check:frontend"],
       projectRoot,
