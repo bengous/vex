@@ -1,6 +1,170 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
+import { existsSync, mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import sharp from 'sharp';
-import { cropScreenshotToViewportWidth, getImageDimensionsFromBuffer } from './capture.js';
+import {
+  captureScreenshot,
+  captureWithDOM,
+  cropScreenshotToViewportWidth,
+  type FullPageScrollFixOptions,
+  getImageDimensionsFromBuffer,
+  type PlaceholderMediaOptions,
+} from './capture.js';
+import type { ViewportConfig } from './types.js';
+
+const tempDirs: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
+
+const viewport: ViewportConfig = {
+  width: 320,
+  height: 568,
+  deviceScaleFactor: 2,
+  isMobile: true,
+  hasTouch: true,
+};
+
+const placeholderMedia: PlaceholderMediaOptions = {
+  enabled: true,
+  svgMinSize: 64,
+  preserve: ['.preserve-me'],
+};
+
+const fullPageScrollFix: FullPageScrollFixOptions = {
+  enabled: true,
+  selectors: ['main'],
+  settleMs: 50,
+  preserveHorizontalOverflow: false,
+};
+
+function createTempDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'capture-test-'));
+  tempDirs.push(dir);
+  return dir;
+}
+
+async function createScreenshotBuffer(width = 658, height = 1200): Promise<Buffer> {
+  return sharp({
+    create: {
+      width,
+      height,
+      channels: 3,
+      background: '#ffffff',
+    },
+  })
+    .png()
+    .toBuffer();
+}
+
+class FakeResponse {
+  ok(): boolean {
+    return true;
+  }
+
+  status(): number {
+    return 200;
+  }
+
+  statusText(): string {
+    return 'OK';
+  }
+}
+
+class FakePage {
+  readonly steps: string[] = [];
+
+  constructor(private readonly screenshotBuffer: Buffer) {}
+
+  async goto(): Promise<FakeResponse> {
+    return new FakeResponse();
+  }
+
+  waitForLoadState(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  async waitForTimeout(): Promise<void> {}
+
+  async addStyleTag({ content }: { content: string }): Promise<void> {
+    if (content.includes('.placeholder-media-box')) {
+      this.steps.push('placeholder-css');
+      return;
+    }
+    if (content.includes('flex: none')) {
+      this.steps.push('full-page-scroll-fix');
+      return;
+    }
+    if (content.includes('overflow-x: hidden')) {
+      this.steps.push('overflow-clamp');
+      return;
+    }
+    this.steps.push('cleanup-css');
+  }
+
+  async evaluate(_fn: unknown, arg: unknown): Promise<unknown> {
+    if (Array.isArray(arg)) {
+      if (arg.includes('display')) {
+        this.steps.push('dom-snapshot');
+        return [
+          {
+            tagName: 'main',
+            id: 'content',
+            classes: ['page'],
+            boundingBox: { x: 0, y: 0, width: 320, height: 568 },
+            computedStyles: { display: 'block' },
+            attributes: { id: 'content', class: 'page' },
+          },
+        ];
+      }
+
+      this.steps.push('cleanup-overlays');
+      return undefined;
+    }
+
+    this.steps.push('placeholder-media');
+    return undefined;
+  }
+
+  async content(): Promise<string> {
+    this.steps.push('dom-html');
+    return '<html><body><main id="content" class="page"></main></body></html>';
+  }
+
+  async screenshot(): Promise<Buffer> {
+    this.steps.push('screenshot');
+    return this.screenshotBuffer;
+  }
+}
+
+class FakeContext {
+  constructor(readonly page: FakePage) {}
+
+  async route(): Promise<void> {}
+
+  async newPage(): Promise<FakePage> {
+    return this.page;
+  }
+
+  async close(): Promise<void> {
+    this.page.steps.push('context-close');
+  }
+}
+
+class FakeBrowser {
+  readonly context: FakeContext;
+
+  constructor(page: FakePage) {
+    this.context = new FakeContext(page);
+  }
+
+  async newContext(): Promise<FakeContext> {
+    return this.context;
+  }
+}
 
 describe('getImageDimensionsFromBuffer', () => {
   test('uses actual image dimensions from screenshot buffer', async () => {
@@ -34,5 +198,68 @@ describe('getImageDimensionsFromBuffer', () => {
     const cropped = await cropScreenshotToViewportWidth(buffer, { width: 320, deviceScaleFactor: 2 });
     const dimensions = await getImageDimensionsFromBuffer(cropped, { width: 320, height: 568 });
     expect(dimensions).toEqual({ width: 640, height: 1200 });
+  });
+});
+
+describe('capture wrappers', () => {
+  test('captureWithDOM preserves mutation sequence before screenshot', async () => {
+    const outputDir = createTempDir();
+    const page = new FakePage(await createScreenshotBuffer());
+    const browser = new FakeBrowser(page);
+
+    const result = await captureWithDOM(browser as unknown as Parameters<typeof captureWithDOM>[0], {
+      url: 'https://example.test/',
+      viewport,
+      outputDir,
+      filename: 'capture.png',
+      placeholderMedia,
+      fullPageScrollFix,
+    });
+
+    expect(page.steps).toEqual([
+      'cleanup-css',
+      'cleanup-overlays',
+      'full-page-scroll-fix',
+      'dom-snapshot',
+      'dom-html',
+      'placeholder-css',
+      'placeholder-media',
+      'overflow-clamp',
+      'screenshot',
+      'context-close',
+    ]);
+    expect(result.artifact.createdBy).toBe('capture-with-dom');
+    expect(result.artifact.metadata.width).toBe(640);
+    expect(result.domSnapshot.elements).toHaveLength(1);
+    expect(existsSync(join(outputDir, 'capture.png'))).toBe(true);
+  });
+
+  test('captureScreenshot uses the same screenshot path without DOM capture', async () => {
+    const outputDir = createTempDir();
+    const page = new FakePage(await createScreenshotBuffer(640, 900));
+    const browser = new FakeBrowser(page);
+
+    const result = await captureScreenshot(browser as unknown as Parameters<typeof captureScreenshot>[0], {
+      url: 'https://example.test/',
+      viewport,
+      outputDir,
+      filename: 'capture.png',
+      placeholderMedia,
+      fullPageScrollFix,
+    });
+
+    expect(page.steps).toEqual([
+      'cleanup-css',
+      'cleanup-overlays',
+      'full-page-scroll-fix',
+      'placeholder-css',
+      'placeholder-media',
+      'overflow-clamp',
+      'screenshot',
+      'context-close',
+    ]);
+    expect(result.artifact.createdBy).toBe('capture');
+    expect(result.artifact.metadata.width).toBe(640);
+    expect(existsSync(join(outputDir, 'capture.png'))).toBe(true);
   });
 });

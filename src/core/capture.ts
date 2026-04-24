@@ -385,13 +385,97 @@ export interface CaptureResult {
   readonly buffer: Buffer;
 }
 
-/**
- * Captures a screenshot of a URL.
- */
-export async function captureScreenshot(
-  browser: Awaited<ReturnType<typeof chromium.launch>>,
-  options: CaptureOptions,
-): Promise<CaptureResult> {
+type Browser = Awaited<ReturnType<typeof chromium.launch>>;
+
+interface InternalCaptureOptions extends CaptureOptions {
+  readonly captureDOM: boolean;
+  readonly captureStyles: readonly string[];
+  readonly createdBy: string;
+}
+
+interface InternalCaptureResult extends CaptureResult {
+  readonly domSnapshot?: DOMSnapshot;
+}
+
+async function captureDOMSnapshot(
+  page: Page,
+  url: string,
+  viewport: ViewportConfig,
+  captureStyles: readonly string[],
+): Promise<DOMSnapshot> {
+  const elements = await page.evaluate(
+    (styleProps) => {
+      const results: Array<{
+        tagName: string;
+        id?: string;
+        classes: string[];
+        boundingBox: { x: number; y: number; width: number; height: number };
+        computedStyles: Record<string, string>;
+        attributes: Record<string, string>;
+      }> = [];
+
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+      let node: Node | null = walker.currentNode;
+
+      while (node) {
+        if (node instanceof HTMLElement) {
+          const rect = node.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            const computed = window.getComputedStyle(node);
+            const styles: Record<string, string> = {};
+            for (const prop of styleProps) {
+              styles[prop] = computed.getPropertyValue(prop);
+            }
+
+            const attrs: Record<string, string> = {};
+            for (let i = 0; i < node.attributes.length; i++) {
+              const attr = node.attributes[i];
+              if (attr) attrs[attr.name] = attr.value;
+            }
+
+            results.push({
+              tagName: node.tagName.toLowerCase(),
+              id: node.id || undefined,
+              classes: Array.from(node.classList),
+              boundingBox: {
+                x: rect.x + window.scrollX,
+                y: rect.y + window.scrollY,
+                width: rect.width,
+                height: rect.height,
+              },
+              computedStyles: styles,
+              attributes: attrs,
+            });
+          }
+        }
+        node = walker.nextNode();
+      }
+
+      return results;
+    },
+    [...captureStyles],
+  );
+
+  const html = await page.content();
+  const domElements: DOMElement[] = elements.map((el) => ({
+    tagName: el.tagName,
+    id: el.id,
+    classes: el.classes,
+    boundingBox: el.boundingBox as BoundingBox,
+    computedStyles: el.computedStyles,
+    attributes: el.attributes,
+  }));
+
+  return {
+    url,
+    timestamp: new Date().toISOString(),
+    viewport,
+    html,
+    elements: domElements,
+  };
+}
+
+async function runCapture(browser: Browser, options: InternalCaptureOptions): Promise<InternalCaptureResult> {
   const {
     url,
     viewport,
@@ -402,6 +486,9 @@ export async function captureScreenshot(
     fullPageScrollFix,
     navigationTimeout = 30000,
     loadStateTimeout = 10000,
+    captureDOM,
+    captureStyles,
+    createdBy,
   } = options;
 
   await mkdir(outputDir, { recursive: true });
@@ -436,6 +523,8 @@ export async function captureScreenshot(
       await applyFullPageScrollFix(page, fullPageScrollFix);
     }
 
+    const domSnapshot = captureDOM ? await captureDOMSnapshot(page, url, viewport, captureStyles) : undefined;
+
     if (placeholderMedia?.enabled) {
       await applyPlaceholderMedia(page, placeholderMedia);
     }
@@ -458,7 +547,7 @@ export async function captureScreenshot(
       type: 'image',
       path: outputPath,
       createdAt: new Date().toISOString(),
-      createdBy: 'capture',
+      createdBy,
       metadata: {
         width: dimensions.width,
         height: dimensions.height,
@@ -470,10 +559,26 @@ export async function captureScreenshot(
       },
     };
 
-    return { artifact, buffer };
+    return { artifact, buffer, domSnapshot };
   } finally {
     await context.close();
   }
+}
+
+/**
+ * Captures a screenshot of a URL.
+ */
+export async function captureScreenshot(
+  browser: Browser,
+  options: CaptureOptions,
+): Promise<CaptureResult> {
+  const result = await runCapture(browser, {
+    ...options,
+    captureDOM: false,
+    captureStyles: [],
+    createdBy: 'capture',
+  });
+  return { artifact: result.artifact, buffer: result.buffer };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -492,164 +597,19 @@ export interface DOMCaptureResult extends CaptureResult {
  * Captures a screenshot with DOM snapshot for code location.
  */
 export async function captureWithDOM(
-  browser: Awaited<ReturnType<typeof chromium.launch>>,
+  browser: Browser,
   options: DOMCaptureOptions,
 ): Promise<DOMCaptureResult> {
-  const {
-    url,
-    viewport,
-    outputDir,
-    filename,
-    fullPage = true,
-    placeholderMedia,
-    fullPageScrollFix,
-    navigationTimeout = 30000,
-    loadStateTimeout = 10000,
-    captureStyles = ['display', 'position', 'width', 'height', 'margin', 'padding'],
-  } = options;
-
-  await mkdir(outputDir, { recursive: true });
-
-  const context = await browser.newContext({
-    viewport: { width: viewport.width, height: viewport.height },
-    deviceScaleFactor: viewport.deviceScaleFactor,
-    isMobile: viewport.isMobile,
-    hasTouch: viewport.hasTouch,
-    userAgent: viewport.userAgent,
+  const result = await runCapture(browser, {
+    ...options,
+    captureDOM: true,
+    captureStyles: options.captureStyles ?? ['display', 'position', 'width', 'height', 'margin', 'padding'],
+    createdBy: 'capture-with-dom',
   });
-  await setupNetworkBlocking(context);
-  const page = await context.newPage();
 
-  try {
-    const response = await page.goto(url, {
-      waitUntil: 'domcontentloaded',
-      timeout: navigationTimeout,
-    });
-
-    if (!response?.ok()) {
-      throw new Error(`HTTP ${response?.status()}: ${response?.statusText()}`);
-    }
-
-    await page.waitForLoadState('load', { timeout: loadStateTimeout }).catch(() => {
-      // Ignore timeout, proceed with screenshot
-    });
-
-    // Clean overlays BEFORE DOM capture for accurate code locator mapping
-    await cleanupOverlays(page);
-    if (fullPageScrollFix?.enabled) {
-      await applyFullPageScrollFix(page, fullPageScrollFix);
-    }
-
-    // Capture DOM after cleanup - ensures DOM matches screenshot for locator accuracy
-    const elements = await page.evaluate(
-      (styleProps) => {
-        const results: Array<{
-          tagName: string;
-          id?: string;
-          classes: string[];
-          boundingBox: { x: number; y: number; width: number; height: number };
-          computedStyles: Record<string, string>;
-          attributes: Record<string, string>;
-        }> = [];
-
-        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
-        let node: Node | null = walker.currentNode;
-
-        while (node) {
-          if (node instanceof HTMLElement) {
-            const rect = node.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
-              const computed = window.getComputedStyle(node);
-              const styles: Record<string, string> = {};
-              for (const prop of styleProps) {
-                styles[prop] = computed.getPropertyValue(prop);
-              }
-
-              const attrs: Record<string, string> = {};
-              for (let i = 0; i < node.attributes.length; i++) {
-                const attr = node.attributes[i];
-                if (attr) attrs[attr.name] = attr.value;
-              }
-
-              results.push({
-                tagName: node.tagName.toLowerCase(),
-                id: node.id || undefined,
-                classes: Array.from(node.classList),
-                boundingBox: {
-                  x: rect.x + window.scrollX,
-                  y: rect.y + window.scrollY,
-                  width: rect.width,
-                  height: rect.height,
-                },
-                computedStyles: styles,
-                attributes: attrs,
-              });
-            }
-          }
-          node = walker.nextNode();
-        }
-
-        return results;
-      },
-      [...captureStyles],
-    );
-
-    const html = await page.content();
-
-    if (placeholderMedia?.enabled) {
-      await applyPlaceholderMedia(page, placeholderMedia);
-    }
-
-    if (fullPageScrollFix?.enabled && !fullPageScrollFix.preserveHorizontalOverflow) {
-      await enforceHorizontalOverflowClamp(page, fullPageScrollFix.selectors);
-    }
-
-    let buffer = await page.screenshot({ fullPage });
-    if (fullPageScrollFix?.enabled && !fullPageScrollFix.preserveHorizontalOverflow) {
-      buffer = await cropScreenshotToViewportWidth(buffer, viewport);
-    }
-    const dimensions = await getImageDimensionsFromBuffer(buffer, viewport);
-
-    const outputPath = join(outputDir, filename);
-    await Bun.write(outputPath, buffer);
-
-    const domElements: DOMElement[] = elements.map((el) => ({
-      tagName: el.tagName,
-      id: el.id,
-      classes: el.classes,
-      boundingBox: el.boundingBox as BoundingBox,
-      computedStyles: el.computedStyles,
-      attributes: el.attributes,
-    }));
-
-    const domSnapshot: DOMSnapshot = {
-      url,
-      timestamp: new Date().toISOString(),
-      viewport,
-      html,
-      elements: domElements,
-    };
-
-    const artifact: ImageArtifact = {
-      _kind: 'artifact',
-      id: crypto.randomUUID(),
-      type: 'image',
-      path: outputPath,
-      createdAt: new Date().toISOString(),
-      createdBy: 'capture-with-dom',
-      metadata: {
-        width: dimensions.width,
-        height: dimensions.height,
-        url,
-        viewport,
-        hasGrid: false,
-        hasFoldLines: false,
-        hasAnnotations: false,
-      },
-    };
-
-    return { artifact, buffer, domSnapshot };
-  } finally {
-    await context.close();
+  if (!result.domSnapshot) {
+    throw new Error('DOM snapshot was not captured');
   }
+
+  return { artifact: result.artifact, buffer: result.buffer, domSnapshot: result.domSnapshot };
 }
