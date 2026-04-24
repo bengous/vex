@@ -289,7 +289,7 @@ function parseProviderProfile(
  * Normalize device spec to array.
  */
 function normalizeDevices(spec: DeviceSpec | undefined): readonly string[] | undefined {
-  if (!spec) {
+  if (spec === undefined) {
     return undefined;
   }
   if (Array.isArray(spec)) {
@@ -303,7 +303,7 @@ function normalizeDevices(spec: DeviceSpec | undefined): readonly string[] | und
  * This catches config/schema drift and enforces explicit device IDs only.
  */
 function validateResolvedDevices(devices: readonly string[]): Effect.Effect<void, ConfigError> {
-  const unknown = devices.filter((device) => !lookupDevice(device));
+  const unknown = devices.filter((device) => lookupDevice(device) === undefined);
   if (unknown.length === 0) {
     return Effect.void;
   }
@@ -327,7 +327,7 @@ function extractProviderInfo(spec: ProviderSpec | undefined): {
   model?: string;
   reasoning?: string;
 } {
-  if (!spec) {
+  if (spec === undefined) {
     return {};
   }
   return {
@@ -350,11 +350,11 @@ function resolveOutputDir(
   }
 
   const envDir = process.env.VEX_OUTPUT_DIR;
-  if (envDir) {
+  if (envDir !== undefined && envDir.length > 0) {
     return Effect.succeed(envDir);
   }
 
-  if (config?.outputDir) {
+  if (config?.outputDir !== undefined && config.outputDir.length > 0) {
     return Effect.succeed(config.outputDir);
   }
 
@@ -389,10 +389,13 @@ export function resolveCommonOptions(
     let urls: readonly string[];
     if (Option.isSome(cliArgs.url)) {
       urls = [cliArgs.url.value];
-    } else if (preset?.urls && preset.urls.length > 0) {
+    } else if (preset?.urls !== undefined && preset.urls.length > 0) {
       urls = preset.urls;
     } else {
-      const presetInfo = presetName ? ` Preset '${presetName}' has no 'urls' field.` : "";
+      const presetInfo =
+        presetName !== undefined && presetName.length > 0
+          ? ` Preset '${presetName}' has no 'urls' field.`
+          : "";
       return yield* new ConfigError({
         kind: "missing_required",
         message: `URL required.${presetInfo}
@@ -420,13 +423,17 @@ Either provide a URL argument or add 'urls' field to the preset.`,
     const cliReasoning =
       "reasoning" in cliArgs ? (cliArgs.reasoning as Option.Option<string>) : undefined;
     const reasoning =
-      cliReasoning && Option.isSome(cliReasoning)
+      cliReasoning !== undefined && Option.isSome(cliReasoning)
         ? cliReasoning.value
         : presetProviderInfo.reasoning;
 
     // Resolve profile: CLI > preset.provider.profile > 'minimal'
     let profile = DEFAULTS.profile;
-    if (preset?.provider && typeof preset.provider === "object" && "profile" in preset.provider) {
+    if (
+      preset?.provider !== undefined &&
+      typeof preset.provider === "object" &&
+      "profile" in preset.provider
+    ) {
       profile = preset.provider.profile ?? profile;
     }
 
@@ -437,7 +444,7 @@ Either provide a URL argument or add 'urls' field to the preset.`,
       );
       const expectedPrefix = PROVIDER_TO_PROFILE_PREFIX[provider];
 
-      if (!expectedPrefix || profileProvider !== expectedPrefix) {
+      if (expectedPrefix === undefined || profileProvider !== expectedPrefix) {
         return yield* new ConfigError({
           kind: "invalid_schema",
           message: `Profile '${profileProvider}:${profileName}' doesn't match provider '${provider}'.
@@ -462,9 +469,13 @@ Expected: ${expectedPrefix ?? "unknown"}:${profileName}`,
     }
 
     // Validate model against knownModels
-    if (model) {
+    if (model !== undefined && model.length > 0) {
       const providerMeta = getProviderMetadata(provider);
-      if (providerMeta?.knownModels && !providerMeta.knownModels.includes(model)) {
+      if (
+        providerMeta?.knownModels !== undefined &&
+        providerMeta.knownModels.length > 0 &&
+        !providerMeta.knownModels.includes(model)
+      ) {
         return yield* new ConfigError({
           kind: "invalid_schema",
           message: `Model '${model}' not in known models for '${provider}'.
@@ -510,7 +521,7 @@ export function resolveScanOptions(
 
     let preset: ScanPreset | undefined;
     if (Option.isSome(cliArgs.preset)) {
-      if (!config) {
+      if (config === undefined) {
         return yield* new ConfigError({
           kind: "not_found",
           message: `Cannot use --preset: no vex.config.ts found.
@@ -554,7 +565,7 @@ export function resolveLoopOptions(
 
     let preset: LoopPreset | undefined;
     if (Option.isSome(cliArgs.preset)) {
-      if (!config) {
+      if (config === undefined) {
         return yield* new ConfigError({
           kind: "not_found",
           message: `Cannot use --preset: no vex.config.ts found.
