@@ -127,7 +127,7 @@ export function verifyChanges(
 
   for (const baseIssue of baselineIssues) {
     const match = findSimilarIssue(baseIssue, currentIssues);
-    if (match) {
+    if (match !== null) {
       unchanged.push(baseIssue);
     } else {
       resolved.push(baseIssue);
@@ -136,7 +136,7 @@ export function verifyChanges(
 
   for (const curIssue of currentIssues) {
     const match = findSimilarIssue(curIssue, baselineIssues);
-    if (!match) {
+    if (match === null) {
       introduced.push(curIssue);
     }
   }
@@ -165,14 +165,14 @@ export function isImproved(baseline: PipelineState, current: PipelineState): boo
 
   let resolvedCount = 0;
   for (const issue of baselineIssues) {
-    if (!findSimilarIssue(issue, currentIssues)) {
+    if (findSimilarIssue(issue, currentIssues) === null) {
       resolvedCount++;
     }
   }
 
   let introducedCount = 0;
   for (const issue of currentIssues) {
-    if (!findSimilarIssue(issue, baselineIssues)) {
+    if (findSimilarIssue(issue, baselineIssues) === null) {
       introducedCount++;
     }
   }
