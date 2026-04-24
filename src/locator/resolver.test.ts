@@ -5,10 +5,16 @@
  * and deduplicates code locations by file:line.
  */
 
-import { describe, expect, test } from 'bun:test';
-import { createCodeLocation } from '../testing/factories.js';
-import { compareConfidence, dedupeLocations, meetsMinConfidence, StrategyResolver, toFileLineKey } from './resolver.js';
-import type { LocatorStrategy } from './types.js';
+import type { LocatorStrategy } from "./types.js";
+import { describe, expect, test } from "bun:test";
+import { createCodeLocation } from "../testing/factories.js";
+import {
+  compareConfidence,
+  dedupeLocations,
+  meetsMinConfidence,
+  StrategyResolver,
+  toFileLineKey,
+} from "./resolver.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Fixtures
@@ -21,7 +27,7 @@ function createMockStrategy(name: string, priority: number): LocatorStrategy {
     priority,
     canHandle: () => true,
     locate: () => {
-      throw new Error('Not implemented');
+      throw new Error("Not implemented");
     },
   };
 }
@@ -30,41 +36,41 @@ function createMockStrategy(name: string, priority: number): LocatorStrategy {
 // compareConfidence Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('compareConfidence', () => {
-  test('high < medium (high sorts first)', () => {
-    expect(compareConfidence('high', 'medium')).toBeLessThan(0);
+describe("compareConfidence", () => {
+  test("high < medium (high sorts first)", () => {
+    expect(compareConfidence("high", "medium")).toBeLessThan(0);
   });
 
-  test('medium < low', () => {
-    expect(compareConfidence('medium', 'low')).toBeLessThan(0);
+  test("medium < low", () => {
+    expect(compareConfidence("medium", "low")).toBeLessThan(0);
   });
 
-  test('high < low', () => {
-    expect(compareConfidence('high', 'low')).toBeLessThan(0);
+  test("high < low", () => {
+    expect(compareConfidence("high", "low")).toBeLessThan(0);
   });
 
-  test('same confidence → 0', () => {
-    expect(compareConfidence('high', 'high')).toBe(0);
-    expect(compareConfidence('medium', 'medium')).toBe(0);
-    expect(compareConfidence('low', 'low')).toBe(0);
+  test("same confidence → 0", () => {
+    expect(compareConfidence("high", "high")).toBe(0);
+    expect(compareConfidence("medium", "medium")).toBe(0);
+    expect(compareConfidence("low", "low")).toBe(0);
   });
 
-  test('low > medium (reverse order)', () => {
-    expect(compareConfidence('low', 'medium')).toBeGreaterThan(0);
+  test("low > medium (reverse order)", () => {
+    expect(compareConfidence("low", "medium")).toBeGreaterThan(0);
   });
 
-  test('sorting by confidence', () => {
+  test("sorting by confidence", () => {
     const locations = [
-      createCodeLocation({ confidence: 'low' }),
-      createCodeLocation({ confidence: 'high' }),
-      createCodeLocation({ confidence: 'medium' }),
+      createCodeLocation({ confidence: "low" }),
+      createCodeLocation({ confidence: "high" }),
+      createCodeLocation({ confidence: "medium" }),
     ];
 
     locations.sort((a, b) => compareConfidence(a.confidence, b.confidence));
 
-    expect(locations[0]?.confidence).toBe('high');
-    expect(locations[1]?.confidence).toBe('medium');
-    expect(locations[2]?.confidence).toBe('low');
+    expect(locations[0]?.confidence).toBe("high");
+    expect(locations[1]?.confidence).toBe("medium");
+    expect(locations[2]?.confidence).toBe("low");
   });
 });
 
@@ -72,42 +78,42 @@ describe('compareConfidence', () => {
 // meetsMinConfidence Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('meetsMinConfidence', () => {
-  test('high meets high threshold', () => {
-    const loc = createCodeLocation({ confidence: 'high' });
-    expect(meetsMinConfidence(loc, 'high')).toBe(true);
+describe("meetsMinConfidence", () => {
+  test("high meets high threshold", () => {
+    const loc = createCodeLocation({ confidence: "high" });
+    expect(meetsMinConfidence(loc, "high")).toBe(true);
   });
 
-  test('high meets medium threshold', () => {
-    const loc = createCodeLocation({ confidence: 'high' });
-    expect(meetsMinConfidence(loc, 'medium')).toBe(true);
+  test("high meets medium threshold", () => {
+    const loc = createCodeLocation({ confidence: "high" });
+    expect(meetsMinConfidence(loc, "medium")).toBe(true);
   });
 
-  test('high meets low threshold', () => {
-    const loc = createCodeLocation({ confidence: 'high' });
-    expect(meetsMinConfidence(loc, 'low')).toBe(true);
+  test("high meets low threshold", () => {
+    const loc = createCodeLocation({ confidence: "high" });
+    expect(meetsMinConfidence(loc, "low")).toBe(true);
   });
 
-  test('medium meets medium threshold', () => {
-    const loc = createCodeLocation({ confidence: 'medium' });
-    expect(meetsMinConfidence(loc, 'medium')).toBe(true);
+  test("medium meets medium threshold", () => {
+    const loc = createCodeLocation({ confidence: "medium" });
+    expect(meetsMinConfidence(loc, "medium")).toBe(true);
   });
 
-  test('medium meets low threshold', () => {
-    const loc = createCodeLocation({ confidence: 'medium' });
-    expect(meetsMinConfidence(loc, 'low')).toBe(true);
+  test("medium meets low threshold", () => {
+    const loc = createCodeLocation({ confidence: "medium" });
+    expect(meetsMinConfidence(loc, "low")).toBe(true);
   });
 
-  test('medium does NOT meet high threshold', () => {
-    const loc = createCodeLocation({ confidence: 'medium' });
-    expect(meetsMinConfidence(loc, 'high')).toBe(false);
+  test("medium does NOT meet high threshold", () => {
+    const loc = createCodeLocation({ confidence: "medium" });
+    expect(meetsMinConfidence(loc, "high")).toBe(false);
   });
 
-  test('low meets only low threshold', () => {
-    const loc = createCodeLocation({ confidence: 'low' });
-    expect(meetsMinConfidence(loc, 'low')).toBe(true);
-    expect(meetsMinConfidence(loc, 'medium')).toBe(false);
-    expect(meetsMinConfidence(loc, 'high')).toBe(false);
+  test("low meets only low threshold", () => {
+    const loc = createCodeLocation({ confidence: "low" });
+    expect(meetsMinConfidence(loc, "low")).toBe(true);
+    expect(meetsMinConfidence(loc, "medium")).toBe(false);
+    expect(meetsMinConfidence(loc, "high")).toBe(false);
   });
 });
 
@@ -115,37 +121,37 @@ describe('meetsMinConfidence', () => {
 // toFileLineKey Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('toFileLineKey', () => {
-  test('consistent key for same file:line', () => {
-    const loc1 = createCodeLocation({ file: 'foo.liquid', lineNumber: 42 });
-    const loc2 = createCodeLocation({ file: 'foo.liquid', lineNumber: 42 });
+describe("toFileLineKey", () => {
+  test("consistent key for same file:line", () => {
+    const loc1 = createCodeLocation({ file: "foo.liquid", lineNumber: 42 });
+    const loc2 = createCodeLocation({ file: "foo.liquid", lineNumber: 42 });
 
     expect(toFileLineKey(loc1)).toBe(toFileLineKey(loc2));
-    expect(toFileLineKey(loc1)).toBe('foo.liquid:42');
+    expect(toFileLineKey(loc1)).toBe("foo.liquid:42");
   });
 
-  test('different files → different keys', () => {
-    const loc1 = createCodeLocation({ file: 'foo.liquid', lineNumber: 42 });
-    const loc2 = createCodeLocation({ file: 'bar.liquid', lineNumber: 42 });
+  test("different files → different keys", () => {
+    const loc1 = createCodeLocation({ file: "foo.liquid", lineNumber: 42 });
+    const loc2 = createCodeLocation({ file: "bar.liquid", lineNumber: 42 });
 
     expect(toFileLineKey(loc1)).not.toBe(toFileLineKey(loc2));
   });
 
-  test('different lines → different keys', () => {
-    const loc1 = createCodeLocation({ file: 'foo.liquid', lineNumber: 42 });
-    const loc2 = createCodeLocation({ file: 'foo.liquid', lineNumber: 43 });
+  test("different lines → different keys", () => {
+    const loc1 = createCodeLocation({ file: "foo.liquid", lineNumber: 42 });
+    const loc2 = createCodeLocation({ file: "foo.liquid", lineNumber: 43 });
 
     expect(toFileLineKey(loc1)).not.toBe(toFileLineKey(loc2));
   });
 
-  test('handles missing lineNumber → :0', () => {
-    const loc = createCodeLocation({ file: 'foo.liquid', lineNumber: undefined });
-    expect(toFileLineKey(loc)).toBe('foo.liquid:0');
+  test("handles missing lineNumber → :0", () => {
+    const loc = createCodeLocation({ file: "foo.liquid", lineNumber: undefined });
+    expect(toFileLineKey(loc)).toBe("foo.liquid:0");
   });
 
-  test('handles paths with colons', () => {
-    const loc = createCodeLocation({ file: 'C:\\Users\\foo.liquid', lineNumber: 10 });
-    expect(toFileLineKey(loc)).toBe('C:\\Users\\foo.liquid:10');
+  test("handles paths with colons", () => {
+    const loc = createCodeLocation({ file: "C:\\Users\\foo.liquid", lineNumber: 10 });
+    expect(toFileLineKey(loc)).toBe("C:\\Users\\foo.liquid:10");
   });
 });
 
@@ -153,64 +159,64 @@ describe('toFileLineKey', () => {
 // dedupeLocations Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('dedupeLocations', () => {
-  test('removes duplicates by file:line', () => {
+describe("dedupeLocations", () => {
+  test("removes duplicates by file:line", () => {
     const locations = [
-      createCodeLocation({ file: 'foo.liquid', lineNumber: 10 }),
-      createCodeLocation({ file: 'foo.liquid', lineNumber: 10 }),
-      createCodeLocation({ file: 'foo.liquid', lineNumber: 10 }),
+      createCodeLocation({ file: "foo.liquid", lineNumber: 10 }),
+      createCodeLocation({ file: "foo.liquid", lineNumber: 10 }),
+      createCodeLocation({ file: "foo.liquid", lineNumber: 10 }),
     ];
 
     const deduped = dedupeLocations(locations);
     expect(deduped).toHaveLength(1);
-    expect(deduped[0]?.file).toBe('foo.liquid');
+    expect(deduped[0]?.file).toBe("foo.liquid");
   });
 
-  test('keeps higher confidence when duplicate', () => {
+  test("keeps higher confidence when duplicate", () => {
     const locations = [
-      createCodeLocation({ file: 'foo.liquid', lineNumber: 10, confidence: 'low' }),
-      createCodeLocation({ file: 'foo.liquid', lineNumber: 10, confidence: 'high' }),
-      createCodeLocation({ file: 'foo.liquid', lineNumber: 10, confidence: 'medium' }),
+      createCodeLocation({ file: "foo.liquid", lineNumber: 10, confidence: "low" }),
+      createCodeLocation({ file: "foo.liquid", lineNumber: 10, confidence: "high" }),
+      createCodeLocation({ file: "foo.liquid", lineNumber: 10, confidence: "medium" }),
     ];
 
     const deduped = dedupeLocations(locations);
     expect(deduped).toHaveLength(1);
-    expect(deduped[0]?.confidence).toBe('high');
+    expect(deduped[0]?.confidence).toBe("high");
   });
 
-  test('preserves order of first occurrence', () => {
+  test("preserves order of first occurrence", () => {
     const locations = [
-      createCodeLocation({ file: 'first.liquid', lineNumber: 1, confidence: 'high' }),
-      createCodeLocation({ file: 'second.liquid', lineNumber: 2, confidence: 'high' }),
-      createCodeLocation({ file: 'third.liquid', lineNumber: 3, confidence: 'high' }),
+      createCodeLocation({ file: "first.liquid", lineNumber: 1, confidence: "high" }),
+      createCodeLocation({ file: "second.liquid", lineNumber: 2, confidence: "high" }),
+      createCodeLocation({ file: "third.liquid", lineNumber: 3, confidence: "high" }),
     ];
 
     const deduped = dedupeLocations(locations);
     expect(deduped).toHaveLength(3);
-    expect(deduped.map((l) => l.file)).toEqual(['first.liquid', 'second.liquid', 'third.liquid']);
+    expect(deduped.map((l) => l.file)).toEqual(["first.liquid", "second.liquid", "third.liquid"]);
   });
 
-  test('handles empty array', () => {
+  test("handles empty array", () => {
     expect(dedupeLocations([])).toEqual([]);
   });
 
-  test('mixed scenario: some duplicates, some unique', () => {
+  test("mixed scenario: some duplicates, some unique", () => {
     const locations = [
-      createCodeLocation({ file: 'a.liquid', lineNumber: 1, confidence: 'medium' }),
-      createCodeLocation({ file: 'b.liquid', lineNumber: 2, confidence: 'low' }),
-      createCodeLocation({ file: 'a.liquid', lineNumber: 1, confidence: 'high' }), // duplicate, higher confidence
-      createCodeLocation({ file: 'c.liquid', lineNumber: 3, confidence: 'medium' }),
-      createCodeLocation({ file: 'b.liquid', lineNumber: 2, confidence: 'medium' }), // duplicate, higher confidence
+      createCodeLocation({ file: "a.liquid", lineNumber: 1, confidence: "medium" }),
+      createCodeLocation({ file: "b.liquid", lineNumber: 2, confidence: "low" }),
+      createCodeLocation({ file: "a.liquid", lineNumber: 1, confidence: "high" }), // duplicate, higher confidence
+      createCodeLocation({ file: "c.liquid", lineNumber: 3, confidence: "medium" }),
+      createCodeLocation({ file: "b.liquid", lineNumber: 2, confidence: "medium" }), // duplicate, higher confidence
     ];
 
     const deduped = dedupeLocations(locations);
     expect(deduped).toHaveLength(3);
 
-    const aLoc = deduped.find((l) => l.file === 'a.liquid');
-    const bLoc = deduped.find((l) => l.file === 'b.liquid');
+    const aLoc = deduped.find((l) => l.file === "a.liquid");
+    const bLoc = deduped.find((l) => l.file === "b.liquid");
 
-    expect(aLoc?.confidence).toBe('high');
-    expect(bLoc?.confidence).toBe('medium');
+    expect(aLoc?.confidence).toBe("high");
+    expect(bLoc?.confidence).toBe("medium");
   });
 });
 
@@ -218,28 +224,28 @@ describe('dedupeLocations', () => {
 // StrategyResolver.register Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('StrategyResolver.register', () => {
-  test('sorts by priority (highest first)', () => {
+describe("StrategyResolver.register", () => {
+  test("sorts by priority (highest first)", () => {
     const resolver = new StrategyResolver();
 
-    resolver.register(createMockStrategy('low-priority', 10));
-    resolver.register(createMockStrategy('high-priority', 100));
-    resolver.register(createMockStrategy('medium-priority', 50));
+    resolver.register(createMockStrategy("low-priority", 10));
+    resolver.register(createMockStrategy("high-priority", 100));
+    resolver.register(createMockStrategy("medium-priority", 50));
 
     const names = resolver.getStrategyNames();
 
-    expect(names).toEqual(['high-priority', 'medium-priority', 'low-priority']);
+    expect(names).toEqual(["high-priority", "medium-priority", "low-priority"]);
   });
 
-  test('multiple strategies registered', () => {
+  test("multiple strategies registered", () => {
     const resolver = new StrategyResolver();
 
-    resolver.register(createMockStrategy('strategy-a', 1));
-    resolver.register(createMockStrategy('strategy-b', 2));
+    resolver.register(createMockStrategy("strategy-a", 1));
+    resolver.register(createMockStrategy("strategy-b", 2));
 
     expect(resolver.getStrategyNames().length).toBe(2);
-    expect(resolver.getStrategyNames()).toContain('strategy-a');
-    expect(resolver.getStrategyNames()).toContain('strategy-b');
+    expect(resolver.getStrategyNames()).toContain("strategy-a");
+    expect(resolver.getStrategyNames()).toContain("strategy-b");
   });
 });
 
@@ -247,18 +253,18 @@ describe('StrategyResolver.register', () => {
 // StrategyResolver.getStrategyNames Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('StrategyResolver.getStrategyNames', () => {
-  test('returns names in priority order', () => {
+describe("StrategyResolver.getStrategyNames", () => {
+  test("returns names in priority order", () => {
     const resolver = new StrategyResolver();
 
-    resolver.register(createMockStrategy('z-strategy', 1));
-    resolver.register(createMockStrategy('a-strategy', 100));
+    resolver.register(createMockStrategy("z-strategy", 1));
+    resolver.register(createMockStrategy("a-strategy", 100));
 
     // Despite alphabetical order (a < z), priority determines order
-    expect(resolver.getStrategyNames()).toEqual(['a-strategy', 'z-strategy']);
+    expect(resolver.getStrategyNames()).toEqual(["a-strategy", "z-strategy"]);
   });
 
-  test('empty resolver returns empty array', () => {
+  test("empty resolver returns empty array", () => {
     const resolver = new StrategyResolver();
     expect(resolver.getStrategyNames()).toEqual([]);
   });

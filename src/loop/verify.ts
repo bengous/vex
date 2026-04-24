@@ -8,10 +8,15 @@
  * - Overall improvement verdict
  */
 
-import { Effect } from 'effect';
-import type { Issue } from '../core/types.js';
-import type { PipelineState } from '../pipeline/types.js';
-import type { LoopError, VerificationMetrics, VerificationResult, VerificationVerdict } from './types.js';
+import type { Issue } from "../core/types.js";
+import type { PipelineState } from "../pipeline/types.js";
+import type {
+  LoopError,
+  VerificationMetrics,
+  VerificationResult,
+  VerificationVerdict,
+} from "./types.js";
+import { Effect } from "effect";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Issue Comparison
@@ -22,9 +27,9 @@ import type { LoopError, VerificationMetrics, VerificationResult, VerificationVe
  * Used for fuzzy matching between iterations.
  */
 function issueFingerprint(issue: Issue): string {
-  const descWords = issue.description.toLowerCase().split(/\s+/).slice(0, 5).sort().join(' ');
+  const descWords = issue.description.toLowerCase().split(/\s+/).slice(0, 5).toSorted().join(" ");
   const regionKey =
-    typeof issue.region === 'string'
+    typeof issue.region === "string"
       ? issue.region
       : `${Math.round(issue.region.x / 100)},${Math.round(issue.region.y / 100)}`;
   return `${issue.severity}:${regionKey}:${descWords}`;
@@ -64,7 +69,11 @@ function calculateMetrics(
   const unchangedCount = unchanged.length;
 
   const improvementPercent =
-    baselineCount > 0 ? ((resolvedCount - introducedCount) / baselineCount) * 100 : currentCount === 0 ? 100 : 0;
+    baselineCount > 0
+      ? ((resolvedCount - introducedCount) / baselineCount) * 100
+      : currentCount === 0
+        ? 100
+        : 0;
 
   return {
     baselineIssueCount: baselineCount,
@@ -83,23 +92,23 @@ function determineVerdict(metrics: VerificationMetrics): VerificationVerdict {
   const { resolvedCount, introducedCount, unchangedCount } = metrics;
 
   if (introducedCount === 0 && resolvedCount > 0) {
-    return 'improved';
+    return "improved";
   }
 
   if (introducedCount > 0 && resolvedCount === 0) {
-    return 'regressed';
+    return "regressed";
   }
 
   if (introducedCount > 0 && resolvedCount > 0) {
-    return resolvedCount > introducedCount ? 'mixed' : 'regressed';
+    return resolvedCount > introducedCount ? "mixed" : "regressed";
   }
 
   if (resolvedCount === 0 && introducedCount === 0 && unchangedCount > 0) {
-    return 'unchanged';
+    return "unchanged";
   }
 
   // No issues in either baseline or current
-  return metrics.currentIssueCount === 0 ? 'improved' : 'unchanged';
+  return metrics.currentIssueCount === 0 ? "improved" : "unchanged";
 }
 
 /**

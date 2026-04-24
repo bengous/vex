@@ -5,8 +5,8 @@
  * accept valid input and reject malformed data with appropriate errors.
  */
 
-import { describe, expect, test } from 'bun:test';
-import { Either, Schema } from 'effect';
+import { describe, expect, test } from "bun:test";
+import { Either, Schema } from "effect";
 import {
   AnalysisResponse,
   BoundingBox,
@@ -17,61 +17,63 @@ import {
   IssueArray,
   Region,
   Severity,
-} from './schema.js';
+} from "./schema.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Decode unknown input and return Either (right = success, left = error) */
-const decode = <A, I>(schema: Schema.Schema<A, I, never>) => Schema.decodeUnknownEither(schema);
+const decode = <A, I>(schema: Schema.Schema<A, I>) => Schema.decodeUnknownEither(schema);
 
 /** Check if decode result is success */
-const isSuccess = <A, E>(result: Either.Either<A, E>): result is Either.Right<E, A> => Either.isRight(result);
+const isSuccess = <A, E>(result: Either.Either<A, E>): result is Either.Right<E, A> =>
+  Either.isRight(result);
 
 /** Check if decode result is failure */
-const isFailure = <A, E>(result: Either.Either<A, E>): result is Either.Left<E, A> => Either.isLeft(result);
+const isFailure = <A, E>(result: Either.Either<A, E>): result is Either.Left<E, A> =>
+  Either.isLeft(result);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Severity Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('Severity', () => {
+describe("Severity", () => {
   test('accepts "high"', () => {
-    const result = decode(Severity)('high');
+    const result = decode(Severity)("high");
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
-      expect(result.right).toBe('high');
+      expect(result.right).toBe("high");
     }
   });
 
   test('accepts "medium"', () => {
-    const result = decode(Severity)('medium');
+    const result = decode(Severity)("medium");
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
-      expect(result.right).toBe('medium');
+      expect(result.right).toBe("medium");
     }
   });
 
   test('accepts "low"', () => {
-    const result = decode(Severity)('low');
+    const result = decode(Severity)("low");
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
-      expect(result.right).toBe('low');
+      expect(result.right).toBe("low");
     }
   });
 
-  test('rejects invalid value', () => {
-    const result = decode(Severity)('critical');
+  test("rejects invalid value", () => {
+    const result = decode(Severity)("critical");
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects uppercase', () => {
-    const result = decode(Severity)('HIGH');
+  test("rejects uppercase", () => {
+    const result = decode(Severity)("HIGH");
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects number', () => {
+  test("rejects number", () => {
     const result = decode(Severity)(1);
     expect(isFailure(result)).toBe(true);
   });
@@ -81,16 +83,16 @@ describe('Severity', () => {
 // Confidence Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('Confidence', () => {
-  test('accepts all valid values', () => {
-    for (const value of ['high', 'medium', 'low']) {
+describe("Confidence", () => {
+  test("accepts all valid values", () => {
+    for (const value of ["high", "medium", "low"]) {
       const result = decode(Confidence)(value);
       expect(isSuccess(result)).toBe(true);
     }
   });
 
-  test('rejects invalid value', () => {
-    const result = decode(Confidence)('uncertain');
+  test("rejects invalid value", () => {
+    const result = decode(Confidence)("uncertain");
     expect(isFailure(result)).toBe(true);
   });
 });
@@ -99,8 +101,8 @@ describe('Confidence', () => {
 // BoundingBox Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('BoundingBox', () => {
-  test('accepts valid bounding box', () => {
+describe("BoundingBox", () => {
+  test("accepts valid bounding box", () => {
     const input = { x: 0, y: 0, width: 100, height: 50 };
     const result = decode(BoundingBox)(input);
 
@@ -110,60 +112,60 @@ describe('BoundingBox', () => {
     }
   });
 
-  test('accepts x=0, y=0 (non-negative)', () => {
+  test("accepts x=0, y=0 (non-negative)", () => {
     const input = { x: 0, y: 0, width: 1, height: 1 };
     const result = decode(BoundingBox)(input);
     expect(isSuccess(result)).toBe(true);
   });
 
-  test('accepts positive x, y values', () => {
+  test("accepts positive x, y values", () => {
     const input = { x: 100, y: 200, width: 50, height: 50 };
     const result = decode(BoundingBox)(input);
     expect(isSuccess(result)).toBe(true);
   });
 
-  test('rejects negative x', () => {
+  test("rejects negative x", () => {
     const input = { x: -1, y: 0, width: 100, height: 50 };
     const result = decode(BoundingBox)(input);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects negative y', () => {
+  test("rejects negative y", () => {
     const input = { x: 0, y: -10, width: 100, height: 50 };
     const result = decode(BoundingBox)(input);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects width=0 (must be positive)', () => {
+  test("rejects width=0 (must be positive)", () => {
     const input = { x: 0, y: 0, width: 0, height: 50 };
     const result = decode(BoundingBox)(input);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects height=0 (must be positive)', () => {
+  test("rejects height=0 (must be positive)", () => {
     const input = { x: 0, y: 0, width: 100, height: 0 };
     const result = decode(BoundingBox)(input);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects negative width', () => {
+  test("rejects negative width", () => {
     const input = { x: 0, y: 0, width: -100, height: 50 };
     const result = decode(BoundingBox)(input);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects missing fields', () => {
+  test("rejects missing fields", () => {
     const result = decode(BoundingBox)({ x: 0, y: 0 });
     expect(isFailure(result)).toBe(true);
   });
 
-  test('accepts width=1 (minimum positive)', () => {
+  test("accepts width=1 (minimum positive)", () => {
     const input = { x: 0, y: 0, width: 1, height: 1 };
     const result = decode(BoundingBox)(input);
     expect(isSuccess(result)).toBe(true);
   });
 
-  test('accepts float values', () => {
+  test("accepts float values", () => {
     const input = { x: 10.5, y: 20.5, width: 100.5, height: 50.5 };
     const result = decode(BoundingBox)(input);
     expect(isSuccess(result)).toBe(true);
@@ -174,22 +176,22 @@ describe('BoundingBox', () => {
 // GridRef Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('GridRef', () => {
-  describe('valid references', () => {
+describe("GridRef", () => {
+  describe("valid references", () => {
     test('accepts "A1" (minimum)', () => {
-      const result = decode(GridRef)('A1');
+      const result = decode(GridRef)("A1");
       expect(isSuccess(result)).toBe(true);
       if (isSuccess(result)) {
-        expect(result.right).toBe('A1');
+        expect(result.right).toBe("A1");
       }
     });
 
     test('accepts "Z99" (maximum)', () => {
-      const result = decode(GridRef)('Z99');
+      const result = decode(GridRef)("Z99");
       expect(isSuccess(result)).toBe(true);
     });
 
-    test('accepts all valid column letters A-Z', () => {
+    test("accepts all valid column letters A-Z", () => {
       const columns = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
       for (const col of columns) {
         const result = decode(GridRef)(`${col}1`);
@@ -197,14 +199,14 @@ describe('GridRef', () => {
       }
     });
 
-    test('accepts single digit rows 1-9', () => {
+    test("accepts single digit rows 1-9", () => {
       for (let i = 1; i <= 9; i++) {
         const result = decode(GridRef)(`A${i}`);
         expect(isSuccess(result)).toBe(true);
       }
     });
 
-    test('accepts double digit rows 10-99', () => {
+    test("accepts double digit rows 10-99", () => {
       const samples = [10, 25, 50, 75, 99];
       for (const row of samples) {
         const result = decode(GridRef)(`A${row}`);
@@ -213,66 +215,66 @@ describe('GridRef', () => {
     });
   });
 
-  describe('invalid references', () => {
+  describe("invalid references", () => {
     test('rejects "AA1" (two-letter columns unsupported)', () => {
-      const result = decode(GridRef)('AA1');
+      const result = decode(GridRef)("AA1");
       expect(isFailure(result)).toBe(true);
     });
 
     test('rejects "[1" (invalid column character)', () => {
-      const result = decode(GridRef)('[1');
+      const result = decode(GridRef)("[1");
       expect(isFailure(result)).toBe(true);
     });
 
     test('accepts "A0" (pattern matches, semantic validation happens elsewhere)', () => {
       // Note: GridRef schema only validates pattern, not row range.
       // Row 0 rejection happens in parseCellRef() at runtime.
-      const result = decode(GridRef)('A0');
+      const result = decode(GridRef)("A0");
       expect(isSuccess(result)).toBe(true);
     });
 
     test('rejects "A100" (row > 99, three digits)', () => {
-      const result = decode(GridRef)('A100');
+      const result = decode(GridRef)("A100");
       expect(isFailure(result)).toBe(true);
     });
 
     test('rejects "a1" (lowercase column)', () => {
-      const result = decode(GridRef)('a1');
+      const result = decode(GridRef)("a1");
       expect(isFailure(result)).toBe(true);
     });
 
-    test('rejects empty string', () => {
-      const result = decode(GridRef)('');
+    test("rejects empty string", () => {
+      const result = decode(GridRef)("");
       expect(isFailure(result)).toBe(true);
     });
 
     test('rejects just letter "A"', () => {
-      const result = decode(GridRef)('A');
+      const result = decode(GridRef)("A");
       expect(isFailure(result)).toBe(true);
     });
 
     test('rejects just number "1"', () => {
-      const result = decode(GridRef)('1');
+      const result = decode(GridRef)("1");
       expect(isFailure(result)).toBe(true);
     });
 
     test('rejects "1A" (reversed)', () => {
-      const result = decode(GridRef)('1A');
+      const result = decode(GridRef)("1A");
       expect(isFailure(result)).toBe(true);
     });
 
     test('rejects "AA1" (two letters)', () => {
-      const result = decode(GridRef)('AA1');
+      const result = decode(GridRef)("AA1");
       expect(isFailure(result)).toBe(true);
     });
 
-    test('rejects number type', () => {
+    test("rejects number type", () => {
       const result = decode(GridRef)(11);
       expect(isFailure(result)).toBe(true);
     });
 
-    test('error message contains hint', () => {
-      const result = decode(GridRef)('AA1');
+    test("error message contains hint", () => {
+      const result = decode(GridRef)("AA1");
       expect(isFailure(result)).toBe(true);
       // The schema defines a message for pattern failures
     });
@@ -283,8 +285,8 @@ describe('GridRef', () => {
 // Region Tests (Union of BoundingBox | GridRef)
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('Region', () => {
-  test('accepts BoundingBox variant', () => {
+describe("Region", () => {
+  test("accepts BoundingBox variant", () => {
     const input = { x: 100, y: 200, width: 50, height: 50 };
     const result = decode(Region)(input);
 
@@ -294,32 +296,32 @@ describe('Region', () => {
     }
   });
 
-  test('accepts GridRef variant', () => {
-    const result = decode(Region)('B5');
+  test("accepts GridRef variant", () => {
+    const result = decode(Region)("B5");
 
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
-      expect(result.right).toBe('B5');
+      expect(result.right).toBe("B5");
     }
   });
 
-  test('rejects invalid BoundingBox', () => {
+  test("rejects invalid BoundingBox", () => {
     const input = { x: -1, y: 0, width: 100, height: 50 };
     const result = decode(Region)(input);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects invalid GridRef', () => {
-    const result = decode(Region)('AA1');
+  test("rejects invalid GridRef", () => {
+    const result = decode(Region)("AA1");
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects arbitrary string', () => {
-    const result = decode(Region)('top-left');
+  test("rejects arbitrary string", () => {
+    const result = decode(Region)("top-left");
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects null', () => {
+  test("rejects null", () => {
     const result = decode(Region)(null);
     expect(isFailure(result)).toBe(true);
   });
@@ -329,30 +331,30 @@ describe('Region', () => {
 // CodeLocation Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('CodeLocation', () => {
+describe("CodeLocation", () => {
   const validLocation = {
-    file: 'sections/header.liquid',
-    confidence: 'high',
-    reasoning: 'Matched by CSS selector',
-    strategy: 'dom-tracer',
+    file: "sections/header.liquid",
+    confidence: "high",
+    reasoning: "Matched by CSS selector",
+    strategy: "dom-tracer",
   };
 
-  test('accepts minimal valid location', () => {
+  test("accepts minimal valid location", () => {
     const result = decode(CodeLocation)(validLocation);
 
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
-      expect(result.right.file).toBe('sections/header.liquid');
-      expect(result.right.confidence).toBe('high');
+      expect(result.right.file).toBe("sections/header.liquid");
+      expect(result.right.confidence).toBe("high");
     }
   });
 
-  test('accepts location with all optional fields', () => {
+  test("accepts location with all optional fields", () => {
     const input = {
       ...validLocation,
       lineNumber: 42,
       columnNumber: 10,
-      selector: '.hero-section',
+      selector: ".hero-section",
     };
     const result = decode(CodeLocation)(input);
 
@@ -360,29 +362,29 @@ describe('CodeLocation', () => {
     if (isSuccess(result)) {
       expect(result.right.lineNumber).toBe(42);
       expect(result.right.columnNumber).toBe(10);
-      expect(result.right.selector).toBe('.hero-section');
+      expect(result.right.selector).toBe(".hero-section");
     }
   });
 
-  test('rejects invalid confidence', () => {
-    const input = { ...validLocation, confidence: 'uncertain' };
+  test("rejects invalid confidence", () => {
+    const input = { ...validLocation, confidence: "uncertain" };
     const result = decode(CodeLocation)(input);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects missing file', () => {
+  test("rejects missing file", () => {
     const { file: _, ...withoutFile } = validLocation;
     const result = decode(CodeLocation)(withoutFile);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects missing reasoning', () => {
+  test("rejects missing reasoning", () => {
     const { reasoning: _, ...withoutReasoning } = validLocation;
     const result = decode(CodeLocation)(withoutReasoning);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects missing strategy', () => {
+  test("rejects missing strategy", () => {
     const { strategy: _, ...withoutStrategy } = validLocation;
     const result = decode(CodeLocation)(withoutStrategy);
     expect(isFailure(result)).toBe(true);
@@ -393,27 +395,27 @@ describe('CodeLocation', () => {
 // Issue Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('Issue', () => {
+describe("Issue", () => {
   const validIssue = {
     id: 1,
-    description: 'Button text is too small',
-    severity: 'medium',
-    region: 'A3',
+    description: "Button text is too small",
+    severity: "medium",
+    region: "A3",
   };
 
-  test('accepts minimal valid issue', () => {
+  test("accepts minimal valid issue", () => {
     const result = decode(Issue)(validIssue);
 
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
       expect(result.right.id).toBe(1);
-      expect(result.right.description).toBe('Button text is too small');
-      expect(result.right.severity).toBe('medium');
-      expect(result.right.region).toBe('A3');
+      expect(result.right.description).toBe("Button text is too small");
+      expect(result.right.severity).toBe("medium");
+      expect(result.right.region).toBe("A3");
     }
   });
 
-  test('accepts issue with BoundingBox region', () => {
+  test("accepts issue with BoundingBox region", () => {
     const input = {
       ...validIssue,
       region: { x: 100, y: 200, width: 50, height: 50 },
@@ -426,18 +428,18 @@ describe('Issue', () => {
     }
   });
 
-  test('accepts issue with all optional fields', () => {
+  test("accepts issue with all optional fields", () => {
     const input = {
       ...validIssue,
-      suggestedFix: 'Increase font size to 16px',
-      category: 'accessibility',
+      suggestedFix: "Increase font size to 16px",
+      category: "accessibility",
       codeLocations: [
         {
-          file: 'sections/hero.liquid',
+          file: "sections/hero.liquid",
           lineNumber: 25,
-          confidence: 'high',
-          reasoning: 'Found matching selector',
-          strategy: 'dom-tracer',
+          confidence: "high",
+          reasoning: "Found matching selector",
+          strategy: "dom-tracer",
         },
       ],
     };
@@ -445,58 +447,58 @@ describe('Issue', () => {
 
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
-      expect(result.right.suggestedFix).toBe('Increase font size to 16px');
-      expect(result.right.category).toBe('accessibility');
+      expect(result.right.suggestedFix).toBe("Increase font size to 16px");
+      expect(result.right.category).toBe("accessibility");
       expect(result.right.codeLocations).toHaveLength(1);
     }
   });
 
-  test('rejects missing id', () => {
+  test("rejects missing id", () => {
     const { id: _, ...withoutId } = validIssue;
     const result = decode(Issue)(withoutId);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects missing description', () => {
+  test("rejects missing description", () => {
     const { description: _, ...withoutDesc } = validIssue;
     const result = decode(Issue)(withoutDesc);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects missing severity', () => {
+  test("rejects missing severity", () => {
     const { severity: _, ...withoutSeverity } = validIssue;
     const result = decode(Issue)(withoutSeverity);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects missing region', () => {
+  test("rejects missing region", () => {
     const { region: _, ...withoutRegion } = validIssue;
     const result = decode(Issue)(withoutRegion);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects invalid severity', () => {
-    const input = { ...validIssue, severity: 'critical' };
+  test("rejects invalid severity", () => {
+    const input = { ...validIssue, severity: "critical" };
     const result = decode(Issue)(input);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects invalid region (string not matching GridRef)', () => {
-    const input = { ...validIssue, region: 'top-left' };
+  test("rejects invalid region (string not matching GridRef)", () => {
+    const input = { ...validIssue, region: "top-left" };
     const result = decode(Issue)(input);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects invalid codeLocations item', () => {
+  test("rejects invalid codeLocations item", () => {
     const input = {
       ...validIssue,
-      codeLocations: [{ file: 'test.liquid' }], // missing required fields
+      codeLocations: [{ file: "test.liquid" }], // missing required fields
     };
     const result = decode(Issue)(input);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('accepts empty codeLocations array', () => {
+  test("accepts empty codeLocations array", () => {
     const input = { ...validIssue, codeLocations: [] };
     const result = decode(Issue)(input);
     expect(isSuccess(result)).toBe(true);
@@ -507,15 +509,15 @@ describe('Issue', () => {
 // IssueArray Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('IssueArray', () => {
+describe("IssueArray", () => {
   const validIssue = {
     id: 1,
-    description: 'Test issue',
-    severity: 'medium',
-    region: 'A1',
+    description: "Test issue",
+    severity: "medium",
+    region: "A1",
   };
 
-  test('accepts empty array', () => {
+  test("accepts empty array", () => {
     const result = decode(IssueArray)([]);
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
@@ -523,7 +525,7 @@ describe('IssueArray', () => {
     }
   });
 
-  test('accepts array with single issue', () => {
+  test("accepts array with single issue", () => {
     const result = decode(IssueArray)([validIssue]);
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
@@ -531,11 +533,11 @@ describe('IssueArray', () => {
     }
   });
 
-  test('accepts array with multiple issues', () => {
+  test("accepts array with multiple issues", () => {
     const issues = [
       { ...validIssue, id: 1 },
-      { ...validIssue, id: 2, severity: 'high' },
-      { ...validIssue, id: 3, severity: 'low' },
+      { ...validIssue, id: 2, severity: "high" },
+      { ...validIssue, id: 3, severity: "low" },
     ];
     const result = decode(IssueArray)(issues);
 
@@ -545,18 +547,18 @@ describe('IssueArray', () => {
     }
   });
 
-  test('rejects if any issue is invalid', () => {
-    const issues = [validIssue, { ...validIssue, id: 2, severity: 'invalid' }];
+  test("rejects if any issue is invalid", () => {
+    const issues = [validIssue, { ...validIssue, id: 2, severity: "invalid" }];
     const result = decode(IssueArray)(issues);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects non-array', () => {
+  test("rejects non-array", () => {
     const result = decode(IssueArray)(validIssue);
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects null', () => {
+  test("rejects null", () => {
     const result = decode(IssueArray)(null);
     expect(isFailure(result)).toBe(true);
   });
@@ -566,26 +568,26 @@ describe('IssueArray', () => {
 // AnalysisResponse Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('AnalysisResponse', () => {
-  test('accepts response with empty issues', () => {
+describe("AnalysisResponse", () => {
+  test("accepts response with empty issues", () => {
     const result = decode(AnalysisResponse)({ issues: [] });
     expect(isSuccess(result)).toBe(true);
   });
 
-  test('accepts response with valid issues', () => {
+  test("accepts response with valid issues", () => {
     const input = {
-      issues: [{ id: 1, description: 'Test', severity: 'low', region: 'A1' }],
+      issues: [{ id: 1, description: "Test", severity: "low", region: "A1" }],
     };
     const result = decode(AnalysisResponse)(input);
     expect(isSuccess(result)).toBe(true);
   });
 
-  test('rejects missing issues field', () => {
+  test("rejects missing issues field", () => {
     const result = decode(AnalysisResponse)({});
     expect(isFailure(result)).toBe(true);
   });
 
-  test('rejects issues: null', () => {
+  test("rejects issues: null", () => {
     const result = decode(AnalysisResponse)({ issues: null });
     expect(isFailure(result)).toBe(true);
   });

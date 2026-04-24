@@ -5,11 +5,11 @@
  * ensuring malformed items don't break entire arrays.
  */
 
-import { describe, expect, test } from 'bun:test';
-import { Effect, Exit } from 'effect';
-import { createIssue } from '../testing/factories.js';
-import { createCapturingLogger } from '../testing/mocks/pipeline-context.js';
-import type { Issue } from './schema.js';
+import type { Issue } from "./schema.js";
+import { describe, expect, test } from "bun:test";
+import { Effect, Exit } from "effect";
+import { createIssue } from "../testing/factories.js";
+import { createCapturingLogger } from "../testing/mocks/pipeline-context.js";
 import {
   buildRetryPrompt,
   IssueParseError,
@@ -18,29 +18,29 @@ import {
   ValidationRetryNeeded,
   validateIssues,
   validateIssuesWithPartialRecovery,
-} from './validation.js';
+} from "./validation.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // validateIssues Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('validateIssues', () => {
-  test('succeeds with valid issue array', async () => {
-    const issues = [createIssue({ id: 1 }), createIssue({ id: 2, severity: 'high' })];
+describe("validateIssues", () => {
+  test("succeeds with valid issue array", async () => {
+    const issues = [createIssue({ id: 1 }), createIssue({ id: 2, severity: "high" })];
 
     const result = await Effect.runPromise(validateIssues(issues));
 
     expect(result).toHaveLength(2);
     expect(result[0]?.id).toBe(1);
-    expect(result[1]?.severity).toBe('high');
+    expect(result[1]?.severity).toBe("high");
   });
 
-  test('succeeds with empty array', async () => {
+  test("succeeds with empty array", async () => {
     const result = await Effect.runPromise(validateIssues([]));
     expect(result).toEqual([]);
   });
 
-  test('succeeds with issue containing BoundingBox region', async () => {
+  test("succeeds with issue containing BoundingBox region", async () => {
     const issues = [
       createIssue({
         id: 1,
@@ -54,18 +54,18 @@ describe('validateIssues', () => {
     expect(result[0]?.region).toEqual({ x: 100, y: 200, width: 50, height: 50 });
   });
 
-  test('succeeds with issue containing optional fields', async () => {
+  test("succeeds with issue containing optional fields", async () => {
     const issues = [
       createIssue({
         id: 1,
-        suggestedFix: 'Fix it',
-        category: 'accessibility',
+        suggestedFix: "Fix it",
+        category: "accessibility",
         codeLocations: [
           {
-            file: 'test.liquid',
-            confidence: 'high',
-            reasoning: 'Found selector',
-            strategy: 'dom-tracer',
+            file: "test.liquid",
+            confidence: "high",
+            reasoning: "Found selector",
+            strategy: "dom-tracer",
           },
         ],
       }),
@@ -74,50 +74,50 @@ describe('validateIssues', () => {
     const result = await Effect.runPromise(validateIssues(issues));
 
     expect(result).toHaveLength(1);
-    expect(result[0]?.suggestedFix).toBe('Fix it');
-    expect(result[0]?.category).toBe('accessibility');
+    expect(result[0]?.suggestedFix).toBe("Fix it");
+    expect(result[0]?.category).toBe("accessibility");
     expect(result[0]?.codeLocations).toHaveLength(1);
   });
 
-  test('fails with IssueParseError for invalid issue', async () => {
-    const issues = [{ id: 1, description: 'Test' }]; // missing severity and region
+  test("fails with IssueParseError for invalid issue", async () => {
+    const issues = [{ id: 1, description: "Test" }]; // missing severity and region
 
     const exit = await Effect.runPromiseExit(validateIssues(issues));
 
     expect(Exit.isFailure(exit)).toBe(true);
-    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
-      expect(exit.cause.error._tag).toBe('IssueParseError');
-      expect(exit.cause.error.message).toContain('Invalid issue data');
+    if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
+      expect(exit.cause.error._tag).toBe("IssueParseError");
+      expect(exit.cause.error.message).toContain("Invalid issue data");
     }
   });
 
-  test('fails with IssueParseError for invalid severity', async () => {
-    const issues = [createIssue({ severity: 'critical' as Issue['severity'] })];
+  test("fails with IssueParseError for invalid severity", async () => {
+    const issues = [createIssue({ severity: "critical" as Issue["severity"] })];
 
     const exit = await Effect.runPromiseExit(validateIssues(issues));
 
     expect(Exit.isFailure(exit)).toBe(true);
-    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
-      expect(exit.cause.error._tag).toBe('IssueParseError');
+    if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
+      expect(exit.cause.error._tag).toBe("IssueParseError");
     }
   });
 
-  test('fails with IssueParseError for non-array input', async () => {
+  test("fails with IssueParseError for non-array input", async () => {
     const exit = await Effect.runPromiseExit(validateIssues({ id: 1 }));
 
     expect(Exit.isFailure(exit)).toBe(true);
-    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
-      expect(exit.cause.error._tag).toBe('IssueParseError');
+    if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
+      expect(exit.cause.error._tag).toBe("IssueParseError");
     }
   });
 
-  test('error includes raw input for debugging', async () => {
+  test("error includes raw input for debugging", async () => {
     const invalidInput = { notAnArray: true };
 
     const exit = await Effect.runPromiseExit(validateIssues(invalidInput));
 
     expect(Exit.isFailure(exit)).toBe(true);
-    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
+    if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
       expect(exit.cause.error.raw).toEqual(invalidInput);
     }
   });
@@ -127,8 +127,8 @@ describe('validateIssues', () => {
 // validateIssuesWithPartialRecovery Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('validateIssuesWithPartialRecovery', () => {
-  test('returns all issues when all valid', async () => {
+describe("validateIssuesWithPartialRecovery", () => {
+  test("returns all issues when all valid", async () => {
     const issues = [createIssue({ id: 1 }), createIssue({ id: 2 }), createIssue({ id: 3 })];
 
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery(issues));
@@ -136,13 +136,13 @@ describe('validateIssuesWithPartialRecovery', () => {
     expect(result).toHaveLength(3);
   });
 
-  test('keeps valid issues when some are invalid', async () => {
+  test("keeps valid issues when some are invalid", async () => {
     const issues = [
       createIssue({ id: 1 }),
-      { id: 2, description: 'Invalid - missing fields' }, // invalid
+      { id: 2, description: "Invalid - missing fields" }, // invalid
       createIssue({ id: 3 }),
-      { id: 4, severity: 'wrong' }, // invalid
-      createIssue({ id: 5, severity: 'high' }),
+      { id: 4, severity: "wrong" }, // invalid
+      createIssue({ id: 5, severity: "high" }),
     ];
 
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery(issues));
@@ -151,11 +151,11 @@ describe('validateIssuesWithPartialRecovery', () => {
     expect(result.map((i) => i.id)).toEqual([1, 3, 5]);
   });
 
-  test('returns empty array when all issues invalid', async () => {
+  test("returns empty array when all issues invalid", async () => {
     const issues = [
       { id: 1 }, // missing required fields
-      { description: 'no id' }, // missing id
-      { id: 3, severity: 'invalid' }, // invalid severity
+      { description: "no id" }, // missing id
+      { id: 3, severity: "invalid" }, // invalid severity
     ];
 
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery(issues));
@@ -163,31 +163,31 @@ describe('validateIssuesWithPartialRecovery', () => {
     expect(result).toEqual([]);
   });
 
-  test('returns empty array for non-array input', async () => {
+  test("returns empty array for non-array input", async () => {
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery({ notArray: true }));
     expect(result).toEqual([]);
   });
 
-  test('returns empty array for null input', async () => {
+  test("returns empty array for null input", async () => {
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery(null));
     expect(result).toEqual([]);
   });
 
-  test('returns empty array for undefined input', async () => {
+  test("returns empty array for undefined input", async () => {
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery(undefined));
     expect(result).toEqual([]);
   });
 
-  test('logs warning when full validation fails', async () => {
+  test("logs warning when full validation fails", async () => {
     const logger = createCapturingLogger();
     const issues = [createIssue({ id: 1 }), { id: 2 }]; // second is invalid
 
     await Effect.runPromise(validateIssuesWithPartialRecovery(issues, logger));
 
-    expect(logger.warnings.some((w) => w.includes('partial recovery'))).toBe(true);
+    expect(logger.warnings.some((w) => w.includes("partial recovery"))).toBe(true);
   });
 
-  test('logs warning for each dropped issue', async () => {
+  test("logs warning for each dropped issue", async () => {
     const logger = createCapturingLogger();
     const issues = [
       { id: 1 }, // invalid
@@ -198,19 +198,19 @@ describe('validateIssuesWithPartialRecovery', () => {
     await Effect.runPromise(validateIssuesWithPartialRecovery(issues, logger));
 
     // Should have warnings for index 0 and 2
-    expect(logger.warnings.some((w) => w.includes('index 0'))).toBe(true);
-    expect(logger.warnings.some((w) => w.includes('index 2'))).toBe(true);
+    expect(logger.warnings.some((w) => w.includes("index 0"))).toBe(true);
+    expect(logger.warnings.some((w) => w.includes("index 2"))).toBe(true);
   });
 
-  test('logs warning when input is not array', async () => {
+  test("logs warning when input is not array", async () => {
     const logger = createCapturingLogger();
 
-    await Effect.runPromise(validateIssuesWithPartialRecovery('not an array', logger));
+    await Effect.runPromise(validateIssuesWithPartialRecovery("not an array", logger));
 
-    expect(logger.warnings.some((w) => w.includes('not an array'))).toBe(true);
+    expect(logger.warnings.some((w) => w.includes("not an array"))).toBe(true);
   });
 
-  test('does not log when all issues valid', async () => {
+  test("does not log when all issues valid", async () => {
     const logger = createCapturingLogger();
     const issues = [createIssue({ id: 1 }), createIssue({ id: 2 })];
 
@@ -219,9 +219,9 @@ describe('validateIssuesWithPartialRecovery', () => {
     expect(logger.warnings).toHaveLength(0);
   });
 
-  test('never fails (returns Effect<Issue[], never>)', async () => {
+  test("never fails (returns Effect<Issue[], never>)", async () => {
     // Any input should succeed (possibly with empty array)
-    const inputs = [null, undefined, 'string', 123, {}, [], [{ bad: true }]];
+    const inputs = [null, undefined, "string", 123, {}, [], [{ bad: true }]];
 
     for (const input of inputs) {
       const exit = await Effect.runPromiseExit(validateIssuesWithPartialRecovery(input));
@@ -234,8 +234,8 @@ describe('validateIssuesWithPartialRecovery', () => {
 // parseIssuesFromResponse Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('parseIssuesFromResponse', () => {
-  test('extracts issues from clean JSON', async () => {
+describe("parseIssuesFromResponse", () => {
+  test("extracts issues from clean JSON", async () => {
     const response = JSON.stringify({
       issues: [createIssue({ id: 1 }), createIssue({ id: 2 })],
     });
@@ -245,7 +245,7 @@ describe('parseIssuesFromResponse', () => {
     expect(result).toHaveLength(2);
   });
 
-  test('extracts issues from markdown code block', async () => {
+  test("extracts issues from markdown code block", async () => {
     const response = `Here's my analysis:
 
 \`\`\`json
@@ -261,10 +261,10 @@ That's all the issues I found.`;
     const result = await Effect.runPromise(parseIssuesFromResponse(response));
 
     expect(result).toHaveLength(1);
-    expect(result[0]?.severity).toBe('high');
+    expect(result[0]?.severity).toBe("high");
   });
 
-  test('extracts issues from mixed text response', async () => {
+  test("extracts issues from mixed text response", async () => {
     const response = `I analyzed the screenshot and found:
 
 {"issues": [{"id": 1, "description": "Button too small", "severity": "medium", "region": "B3"}]}
@@ -274,18 +274,18 @@ Let me know if you have questions.`;
     const result = await Effect.runPromise(parseIssuesFromResponse(response));
 
     expect(result).toHaveLength(1);
-    expect(result[0]?.description).toBe('Button too small');
+    expect(result[0]?.description).toBe("Button too small");
   });
 
-  test('returns empty array when no JSON found', async () => {
-    const response = 'I looked at the image but found no issues.';
+  test("returns empty array when no JSON found", async () => {
+    const response = "I looked at the image but found no issues.";
 
     const result = await Effect.runPromise(parseIssuesFromResponse(response));
 
     expect(result).toEqual([]);
   });
 
-  test('returns empty array when JSON has no issues field', async () => {
+  test("returns empty array when JSON has no issues field", async () => {
     const response = '{"analysis": "some data"}';
 
     const result = await Effect.runPromise(parseIssuesFromResponse(response));
@@ -293,7 +293,7 @@ Let me know if you have questions.`;
     expect(result).toEqual([]);
   });
 
-  test('returns empty array for malformed JSON', async () => {
+  test("returns empty array for malformed JSON", async () => {
     const response = '{"issues": [{"id": 1, "description": "test"'; // truncated
 
     const result = await Effect.runPromise(parseIssuesFromResponse(response));
@@ -301,25 +301,25 @@ Let me know if you have questions.`;
     expect(result).toEqual([]);
   });
 
-  test('logs warning when no JSON found', async () => {
+  test("logs warning when no JSON found", async () => {
     const logger = createCapturingLogger();
-    const response = 'No JSON here';
+    const response = "No JSON here";
 
     await Effect.runPromise(parseIssuesFromResponse(response, logger));
 
-    expect(logger.warnings.some((w) => w.includes('No JSON'))).toBe(true);
+    expect(logger.warnings.some((w) => w.includes("No JSON"))).toBe(true);
   });
 
-  test('logs warning for JSON parse error', async () => {
+  test("logs warning for JSON parse error", async () => {
     const logger = createCapturingLogger();
     const response = '{"issues": [bad json}';
 
     await Effect.runPromise(parseIssuesFromResponse(response, logger));
 
-    expect(logger.warnings.some((w) => w.includes('JSON parse error'))).toBe(true);
+    expect(logger.warnings.some((w) => w.includes("JSON parse error"))).toBe(true);
   });
 
-  test('logs warning when parsed JSON is not object', async () => {
+  test("logs warning when parsed JSON is not object", async () => {
     // This case is tricky - we need to match the regex but have non-object
     // The regex requires "issues" in the string, so we craft something that matches
     // but JSON.parse produces something other than object
@@ -335,11 +335,11 @@ Let me know if you have questions.`;
     expect(logger.warnings.length).toBeGreaterThan(0);
   });
 
-  test('applies partial recovery to extracted issues', async () => {
+  test("applies partial recovery to extracted issues", async () => {
     const response = JSON.stringify({
       issues: [
         createIssue({ id: 1 }),
-        { id: 2, description: 'Invalid' }, // missing severity and region
+        { id: 2, description: "Invalid" }, // missing severity and region
         createIssue({ id: 3 }),
       ],
     });
@@ -350,7 +350,7 @@ Let me know if you have questions.`;
     expect(result.map((i) => i.id)).toEqual([1, 3]);
   });
 
-  test('handles empty issues array', async () => {
+  test("handles empty issues array", async () => {
     const response = '{"issues": []}';
 
     const result = await Effect.runPromise(parseIssuesFromResponse(response));
@@ -358,8 +358,16 @@ Let me know if you have questions.`;
     expect(result).toEqual([]);
   });
 
-  test('never fails (returns Effect<Issue[], never>)', async () => {
-    const inputs = ['', 'garbage', '{}', '[]', 'null', '{"issues": null}', '{"issues": "not array"}'];
+  test("never fails (returns Effect<Issue[], never>)", async () => {
+    const inputs = [
+      "",
+      "garbage",
+      "{}",
+      "[]",
+      "null",
+      '{"issues": null}',
+      '{"issues": "not array"}',
+    ];
 
     for (const input of inputs) {
       const exit = await Effect.runPromiseExit(parseIssuesFromResponse(input));
@@ -372,25 +380,25 @@ Let me know if you have questions.`;
 // IssueParseError Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('IssueParseError', () => {
-  test('is tagged error', () => {
-    const error = new IssueParseError({ message: 'Test error' });
-    expect(error._tag).toBe('IssueParseError');
+describe("IssueParseError", () => {
+  test("is tagged error", () => {
+    const error = new IssueParseError({ message: "Test error" });
+    expect(error._tag).toBe("IssueParseError");
   });
 
-  test('includes message', () => {
-    const error = new IssueParseError({ message: 'Validation failed' });
-    expect(error.message).toBe('Validation failed');
+  test("includes message", () => {
+    const error = new IssueParseError({ message: "Validation failed" });
+    expect(error.message).toBe("Validation failed");
   });
 
-  test('includes optional raw data', () => {
-    const raw = { invalid: 'data' };
-    const error = new IssueParseError({ message: 'Test', raw });
+  test("includes optional raw data", () => {
+    const raw = { invalid: "data" };
+    const error = new IssueParseError({ message: "Test", raw });
     expect(error.raw).toEqual(raw);
   });
 
-  test('raw is optional', () => {
-    const error = new IssueParseError({ message: 'Test' });
+  test("raw is optional", () => {
+    const error = new IssueParseError({ message: "Test" });
     expect(error.raw).toBeUndefined();
   });
 });
@@ -399,8 +407,8 @@ describe('IssueParseError', () => {
 // parseIssuesStrict Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('parseIssuesStrict', () => {
-  test('succeeds for valid JSON with all valid issues', async () => {
+describe("parseIssuesStrict", () => {
+  test("succeeds for valid JSON with all valid issues", async () => {
     const response = JSON.stringify({
       issues: [createIssue({ id: 1 }), createIssue({ id: 2 })],
     });
@@ -410,7 +418,7 @@ describe('parseIssuesStrict', () => {
     expect(result).toHaveLength(2);
   });
 
-  test('succeeds for empty issues array (LLM found no issues)', async () => {
+  test("succeeds for empty issues array (LLM found no issues)", async () => {
     const response = '{"issues": []}';
 
     const result = await Effect.runPromise(parseIssuesStrict(response));
@@ -418,61 +426,61 @@ describe('parseIssuesStrict', () => {
     expect(result).toEqual([]);
   });
 
-  test('fails with ValidationRetryNeeded when no JSON found', async () => {
-    const response = 'No JSON here';
+  test("fails with ValidationRetryNeeded when no JSON found", async () => {
+    const response = "No JSON here";
 
     const exit = await Effect.runPromiseExit(parseIssuesStrict(response));
 
     expect(Exit.isFailure(exit)).toBe(true);
-    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
-      expect(exit.cause.error._tag).toBe('ValidationRetryNeeded');
-      expect(exit.cause.error.reason).toBe('no_json');
+    if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
+      expect(exit.cause.error._tag).toBe("ValidationRetryNeeded");
+      expect(exit.cause.error.reason).toBe("no_json");
       expect(exit.cause.error.partialIssues).toEqual([]);
     }
   });
 
-  test('fails with ValidationRetryNeeded for malformed JSON', async () => {
+  test("fails with ValidationRetryNeeded for malformed JSON", async () => {
     const response = '{"issues": [bad json}';
 
     const exit = await Effect.runPromiseExit(parseIssuesStrict(response));
 
     expect(Exit.isFailure(exit)).toBe(true);
-    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
-      expect(exit.cause.error._tag).toBe('ValidationRetryNeeded');
-      expect(exit.cause.error.reason).toBe('json_parse_error');
+    if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
+      expect(exit.cause.error._tag).toBe("ValidationRetryNeeded");
+      expect(exit.cause.error.reason).toBe("json_parse_error");
     }
   });
 
-  test('fails with ValidationRetryNeeded when issues field missing', async () => {
+  test("fails with ValidationRetryNeeded when issues field missing", async () => {
     const response = '{"analysis": "something"}';
 
     const exit = await Effect.runPromiseExit(parseIssuesStrict(response));
 
     expect(Exit.isFailure(exit)).toBe(true);
-    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
-      expect(exit.cause.error._tag).toBe('ValidationRetryNeeded');
-      expect(exit.cause.error.reason).toBe('no_json');
+    if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
+      expect(exit.cause.error._tag).toBe("ValidationRetryNeeded");
+      expect(exit.cause.error.reason).toBe("no_json");
     }
   });
 
-  test('fails with ValidationRetryNeeded when issues is not array', async () => {
+  test("fails with ValidationRetryNeeded when issues is not array", async () => {
     const response = '{"issues": "not an array"}';
 
     const exit = await Effect.runPromiseExit(parseIssuesStrict(response));
 
     expect(Exit.isFailure(exit)).toBe(true);
-    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
-      expect(exit.cause.error._tag).toBe('ValidationRetryNeeded');
-      expect(exit.cause.error.reason).toBe('schema_validation_error');
-      expect(exit.cause.error.details).toContain('not an array');
+    if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
+      expect(exit.cause.error._tag).toBe("ValidationRetryNeeded");
+      expect(exit.cause.error.reason).toBe("schema_validation_error");
+      expect(exit.cause.error.details).toContain("not an array");
     }
   });
 
-  test('fails with ValidationRetryNeeded for partial schema failures, includes partial issues', async () => {
+  test("fails with ValidationRetryNeeded for partial schema failures, includes partial issues", async () => {
     const response = JSON.stringify({
       issues: [
         createIssue({ id: 1 }),
-        { id: 2, description: 'Invalid' }, // missing fields
+        { id: 2, description: "Invalid" }, // missing fields
         createIssue({ id: 3 }),
       ],
     });
@@ -480,15 +488,15 @@ describe('parseIssuesStrict', () => {
     const exit = await Effect.runPromiseExit(parseIssuesStrict(response));
 
     expect(Exit.isFailure(exit)).toBe(true);
-    if (Exit.isFailure(exit) && exit.cause._tag === 'Fail') {
-      expect(exit.cause.error._tag).toBe('ValidationRetryNeeded');
-      expect(exit.cause.error.reason).toBe('schema_validation_error');
+    if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
+      expect(exit.cause.error._tag).toBe("ValidationRetryNeeded");
+      expect(exit.cause.error.reason).toBe("schema_validation_error");
       expect(exit.cause.error.partialIssues).toHaveLength(2); // valid ones
       expect(exit.cause.error.partialIssues.map((i) => i.id)).toEqual([1, 3]);
     }
   });
 
-  test('extracts JSON from markdown code block', async () => {
+  test("extracts JSON from markdown code block", async () => {
     const response = `Here's my analysis:
 
 \`\`\`json
@@ -504,10 +512,10 @@ That's all I found.`;
     const result = await Effect.runPromise(parseIssuesStrict(response));
 
     expect(result).toHaveLength(1);
-    expect(result[0]?.severity).toBe('high');
+    expect(result[0]?.severity).toBe("high");
   });
 
-  test('extracts JSON from mixed text response', async () => {
+  test("extracts JSON from mixed text response", async () => {
     const response = `Found these issues:
 
 {"issues": [{"id": 1, "description": "Button too small", "severity": "medium", "region": "B3"}]}
@@ -517,7 +525,7 @@ Let me know if questions.`;
     const result = await Effect.runPromise(parseIssuesStrict(response));
 
     expect(result).toHaveLength(1);
-    expect(result[0]?.description).toBe('Button too small');
+    expect(result[0]?.description).toBe("Button too small");
   });
 });
 
@@ -525,31 +533,31 @@ Let me know if questions.`;
 // ValidationRetryNeeded Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('ValidationRetryNeeded', () => {
-  test('is tagged error with correct tag', () => {
+describe("ValidationRetryNeeded", () => {
+  test("is tagged error with correct tag", () => {
     const error = new ValidationRetryNeeded({
-      reason: 'no_json',
-      details: 'test',
+      reason: "no_json",
+      details: "test",
       partialIssues: [],
     });
-    expect(error._tag).toBe('ValidationRetryNeeded');
+    expect(error._tag).toBe("ValidationRetryNeeded");
   });
 
-  test('includes reason and details', () => {
+  test("includes reason and details", () => {
     const error = new ValidationRetryNeeded({
-      reason: 'json_parse_error',
-      details: 'Unexpected token',
+      reason: "json_parse_error",
+      details: "Unexpected token",
       partialIssues: [],
     });
-    expect(error.reason).toBe('json_parse_error');
-    expect(error.details).toBe('Unexpected token');
+    expect(error.reason).toBe("json_parse_error");
+    expect(error.details).toBe("Unexpected token");
   });
 
-  test('includes partial issues', () => {
+  test("includes partial issues", () => {
     const partialIssues = [createIssue({ id: 1 }), createIssue({ id: 2 })];
     const error = new ValidationRetryNeeded({
-      reason: 'schema_validation_error',
-      details: 'Some issues invalid',
+      reason: "schema_validation_error",
+      details: "Some issues invalid",
       partialIssues,
     });
     expect(error.partialIssues).toHaveLength(2);
@@ -561,20 +569,20 @@ describe('ValidationRetryNeeded', () => {
 // buildRetryPrompt Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('buildRetryPrompt', () => {
-  const createError = (reason: ValidationRetryNeeded['reason'], details: string) =>
+describe("buildRetryPrompt", () => {
+  const createError = (reason: ValidationRetryNeeded["reason"], details: string) =>
     new ValidationRetryNeeded({ reason, details, partialIssues: [] });
 
-  test('includes original prompt', () => {
-    const error = createError('json_parse_error', 'Unexpected token');
-    const prompt = buildRetryPrompt('Analyze this image for issues', error);
+  test("includes original prompt", () => {
+    const error = createError("json_parse_error", "Unexpected token");
+    const prompt = buildRetryPrompt("Analyze this image for issues", error);
 
-    expect(prompt).toContain('Analyze this image for issues');
+    expect(prompt).toContain("Analyze this image for issues");
   });
 
-  test('includes JSON schema', () => {
-    const error = createError('no_json', 'No JSON found');
-    const prompt = buildRetryPrompt('Original prompt', error);
+  test("includes JSON schema", () => {
+    const error = createError("no_json", "No JSON found");
+    const prompt = buildRetryPrompt("Original prompt", error);
 
     expect(prompt).toContain('"issues"');
     expect(prompt).toContain('"severity"');
@@ -582,35 +590,35 @@ describe('buildRetryPrompt', () => {
     expect(prompt).toContain('"high" | "medium" | "low"');
   });
 
-  test('includes error-specific message for no_json', () => {
-    const error = createError('no_json', 'No JSON found');
-    const prompt = buildRetryPrompt('Original', error);
+  test("includes error-specific message for no_json", () => {
+    const error = createError("no_json", "No JSON found");
+    const prompt = buildRetryPrompt("Original", error);
 
-    expect(prompt).toContain('did not contain valid JSON');
+    expect(prompt).toContain("did not contain valid JSON");
   });
 
-  test('includes error-specific message for json_parse_error', () => {
-    const error = createError('json_parse_error', 'Unexpected token');
-    const prompt = buildRetryPrompt('Original', error);
+  test("includes error-specific message for json_parse_error", () => {
+    const error = createError("json_parse_error", "Unexpected token");
+    const prompt = buildRetryPrompt("Original", error);
 
-    expect(prompt).toContain('malformed JSON');
-    expect(prompt).toContain('Unexpected token');
+    expect(prompt).toContain("malformed JSON");
+    expect(prompt).toContain("Unexpected token");
   });
 
-  test('includes error-specific message for schema_validation_error', () => {
-    const error = createError('schema_validation_error', 'Missing required field');
-    const prompt = buildRetryPrompt('Original', error);
+  test("includes error-specific message for schema_validation_error", () => {
+    const error = createError("schema_validation_error", "Missing required field");
+    const prompt = buildRetryPrompt("Original", error);
 
-    expect(prompt).toContain('did not match the required schema');
-    expect(prompt).toContain('Missing required field');
+    expect(prompt).toContain("did not match the required schema");
+    expect(prompt).toContain("Missing required field");
   });
 
-  test('instructs to return only JSON', () => {
-    const error = createError('no_json', '');
-    const prompt = buildRetryPrompt('Original', error);
+  test("instructs to return only JSON", () => {
+    const error = createError("no_json", "");
+    const prompt = buildRetryPrompt("Original", error);
 
-    expect(prompt).toContain('Return ONLY the JSON object');
-    expect(prompt).toContain('no markdown code blocks');
+    expect(prompt).toContain("Return ONLY the JSON object");
+    expect(prompt).toContain("no markdown code blocks");
   });
 });
 
@@ -618,12 +626,14 @@ describe('buildRetryPrompt', () => {
 // Edge Cases & Integration Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('Edge Cases', () => {
-  test('handles deeply nested invalid codeLocations', async () => {
+describe("Edge Cases", () => {
+  test("handles deeply nested invalid codeLocations", async () => {
     const issues = [
       createIssue({
         id: 1,
-        codeLocations: [{ file: 'test.liquid', confidence: 'invalid' as 'high', reasoning: 'r', strategy: 's' }],
+        codeLocations: [
+          { file: "test.liquid", confidence: "invalid" as "high", reasoning: "r", strategy: "s" },
+        ],
       }),
     ];
 
@@ -632,7 +642,7 @@ describe('Edge Cases', () => {
     expect(result).toEqual([]); // Issue should be dropped due to invalid codeLocation
   });
 
-  test('handles issue with invalid BoundingBox region', async () => {
+  test("handles issue with invalid BoundingBox region", async () => {
     const issues = [
       createIssue({
         id: 1,
@@ -645,7 +655,7 @@ describe('Edge Cases', () => {
     expect(result).toEqual([]);
   });
 
-  test('handles very large arrays', async () => {
+  test("handles very large arrays", async () => {
     const issues = Array.from({ length: 1000 }, (_, i) => createIssue({ id: i + 1 }));
 
     const result = await Effect.runPromise(validateIssuesWithPartialRecovery(issues));
@@ -653,7 +663,7 @@ describe('Edge Cases', () => {
     expect(result).toHaveLength(1000);
   });
 
-  test('preserves issue order after partial recovery', async () => {
+  test("preserves issue order after partial recovery", async () => {
     const issues = [
       createIssue({ id: 5 }),
       { id: 10, invalid: true }, // dropped
@@ -667,7 +677,7 @@ describe('Edge Cases', () => {
     expect(result.map((i) => i.id)).toEqual([5, 15, 25]);
   });
 
-  test('handles unicode in descriptions', async () => {
+  test("handles unicode in descriptions", async () => {
     const issues = [
       createIssue({
         id: 1,
@@ -677,10 +687,10 @@ describe('Edge Cases', () => {
 
     const result = await Effect.runPromise(validateIssues(issues));
 
-    expect(result[0]?.description).toContain('Ajouter au panier');
+    expect(result[0]?.description).toContain("Ajouter au panier");
   });
 
-  test('handles newlines in JSON response', async () => {
+  test("handles newlines in JSON response", async () => {
     const response = `{
       "issues": [
         {
@@ -695,6 +705,6 @@ describe('Edge Cases', () => {
     const result = await Effect.runPromise(parseIssuesFromResponse(response));
 
     expect(result).toHaveLength(1);
-    expect(result[0]?.description).toContain('Multi');
+    expect(result[0]?.description).toContain("Multi");
   });
 });

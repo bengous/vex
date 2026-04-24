@@ -5,20 +5,19 @@
  * for testing analyze and annotate operations in isolation.
  */
 
-import { Effect, Layer } from 'effect';
-import {
-  AnalysisFailed,
-  type ProviderError,
-  VisionProvider,
-  type VisionProviderService,
-  type VisionResult,
-} from '../../providers/shared/service.js';
+import type {
+  ProviderError,
+  VisionProviderService,
+  VisionResult,
+} from "../../providers/shared/service.js";
+import { Effect, Layer } from "effect";
+import { AnalysisFailed, VisionProvider } from "../../providers/shared/service.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface MockVisionProviderOptions {
+export type MockVisionProviderOptions = {
   readonly name?: string;
   readonly displayName?: string;
   /** VisionResult for success, or ProviderError to simulate failure */
@@ -27,7 +26,7 @@ export interface MockVisionProviderOptions {
   readonly models?: readonly string[];
   /** Callback to capture analyze call arguments for assertions */
   readonly onAnalyze?: (images: readonly string[], prompt: string) => void;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Fixture Factories
@@ -37,8 +36,8 @@ export function createMockVisionResult(overrides: Partial<VisionResult> = {}): V
   return {
     response: '{"issues": []}',
     durationMs: 100,
-    model: 'mock-model',
-    provider: 'mock-provider',
+    model: "mock-model",
+    provider: "mock-provider",
     ...overrides,
   };
 }
@@ -46,14 +45,14 @@ export function createMockVisionResult(overrides: Partial<VisionResult> = {}): V
 export function createMockAnalysisError(
   overrides: Partial<{
     provider: string;
-    kind: 'timeout' | 'execution' | 'http' | 'image_read' | 'parse';
+    kind: "timeout" | "execution" | "http" | "image_read" | "parse";
     message: string;
   }> = {},
 ): AnalysisFailed {
   return new AnalysisFailed({
-    provider: 'mock-provider',
-    kind: 'execution',
-    message: 'Mock analysis failed',
+    provider: "mock-provider",
+    kind: "execution",
+    message: "Mock analysis failed",
     ...overrides,
   });
 }
@@ -62,13 +61,15 @@ export function createMockAnalysisError(
 // Mock Service Factory
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function createMockVisionProvider(options: MockVisionProviderOptions = {}): VisionProviderService {
+export function createMockVisionProvider(
+  options: MockVisionProviderOptions = {},
+): VisionProviderService {
   const {
-    name = 'mock-provider',
-    displayName = 'Mock Provider',
+    name = "mock-provider",
+    displayName = "Mock Provider",
     analyzeResponse = createMockVisionResult(),
     isAvailable = true,
-    models = ['mock-model'],
+    models = ["mock-model"],
     onAnalyze,
   } = options;
 
@@ -77,7 +78,7 @@ export function createMockVisionProvider(options: MockVisionProviderOptions = {}
     displayName,
     analyze: (images: readonly string[], prompt: string) => {
       onAnalyze?.(images, prompt);
-      if ('_tag' in analyzeResponse) {
+      if ("_tag" in analyzeResponse) {
         return Effect.fail(analyzeResponse);
       }
       return Effect.succeed(analyzeResponse);
@@ -89,6 +90,8 @@ export function createMockVisionProvider(options: MockVisionProviderOptions = {}
   };
 }
 
-export function createMockVisionProviderLayer(options: MockVisionProviderOptions = {}): Layer.Layer<VisionProvider> {
+export function createMockVisionProviderLayer(
+  options: MockVisionProviderOptions = {},
+): Layer.Layer<VisionProvider> {
   return Layer.succeed(VisionProvider, createMockVisionProvider(options));
 }

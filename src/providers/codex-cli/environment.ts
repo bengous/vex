@@ -21,12 +21,13 @@
  * ```
  */
 
-import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Context, Effect, type Scope } from 'effect';
-import type { CodexProfile } from './schema.js';
-import { generateConfigToml } from './toml.js';
+import type { CodexProfile } from "./schema.js";
+import type { Scope } from "effect";
+import { Context, Effect } from "effect";
+import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
+import { generateConfigToml } from "./toml.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Service Definition
@@ -36,17 +37,17 @@ import { generateConfigToml } from './toml.js';
  * Codex environment context.
  * Provides the CODEX_HOME path for subprocess configuration.
  */
-export interface CodexEnvService {
+export type CodexEnvService = {
   /** Path to the temporary CODEX_HOME directory */
   readonly codexHome: string;
   /** The profile used to create this environment */
   readonly profile: CodexProfile;
-}
+};
 
 /**
  * Effect service tag for Codex environment.
  */
-export class CodexEnv extends Context.Tag('CodexEnv')<CodexEnv, CodexEnvService>() {}
+export class CodexEnv extends Context.Tag("CodexEnv")<CodexEnv, CodexEnvService>() {}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Resource Implementation
@@ -74,7 +75,9 @@ function generateTempDir(): string {
  * @param profile - Codex profile configuration
  * @returns Effect that acquires/releases the environment service
  */
-export function makeCodexEnvResource(profile: CodexProfile): Effect.Effect<CodexEnvService, never, Scope.Scope> {
+export function makeCodexEnvResource(
+  profile: CodexProfile,
+): Effect.Effect<CodexEnvService, never, Scope.Scope> {
   const acquire = Effect.sync(() => {
     const codexHome = generateTempDir();
 
@@ -83,12 +86,12 @@ export function makeCodexEnvResource(profile: CodexProfile): Effect.Effect<Codex
 
     // Write config.toml
     const configToml = generateConfigToml(profile);
-    writeFileSync(join(codexHome, 'config.toml'), configToml, 'utf-8');
+    writeFileSync(join(codexHome, "config.toml"), configToml, "utf-8");
 
     // Symlink auth.json from user's ~/.codex/ if it exists
-    const userAuthPath = join(homedir(), '.codex', 'auth.json');
+    const userAuthPath = join(homedir(), ".codex", "auth.json");
     if (existsSync(userAuthPath)) {
-      symlinkSync(userAuthPath, join(codexHome, 'auth.json'));
+      symlinkSync(userAuthPath, join(codexHome, "auth.json"));
     }
 
     return { codexHome, profile };

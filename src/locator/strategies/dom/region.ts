@@ -1,21 +1,27 @@
-import type { BoundingBox, DOMElement, GridRef, Region } from '../../../core/types.js';
-import { GRID_CONFIG } from '../../../core/types.js';
+import type { BoundingBox, DOMElement, GridRef, Region } from "../../../core/types.js";
+import { GRID_CONFIG } from "../../../core/types.js";
 
 function isGridRef(region: Region): region is GridRef {
-  return typeof region === 'string';
+  return typeof region === "string";
 }
 
-function gridRefToCenter(gridRef: GridRef, imageWidth: number, imageHeight: number): { x: number; y: number } {
+function gridRefToCenter(
+  gridRef: GridRef,
+  imageWidth: number,
+  imageHeight: number,
+): { x: number; y: number } {
   const match = gridRef.match(/^([A-Z])(\d{1,2})$/i);
-  if (!match || !match[1] || !match[2]) {
+  if (!match?.[1] || !match[2]) {
     return { x: imageWidth / 2, y: imageHeight / 2 };
   }
 
   const col = match[1].toUpperCase().charCodeAt(0) - 65;
   const row = Number.parseInt(match[2], 10) - 1;
 
-  const cellWidth = imageWidth / Math.min(GRID_CONFIG.maxColumns, Math.ceil(imageWidth / GRID_CONFIG.cellSize));
-  const cellHeight = imageHeight / Math.min(GRID_CONFIG.maxRows, Math.ceil(imageHeight / GRID_CONFIG.cellSize));
+  const cellWidth =
+    imageWidth / Math.min(GRID_CONFIG.maxColumns, Math.ceil(imageWidth / GRID_CONFIG.cellSize));
+  const cellHeight =
+    imageHeight / Math.min(GRID_CONFIG.maxRows, Math.ceil(imageHeight / GRID_CONFIG.cellSize));
 
   return {
     x: col * cellWidth + cellWidth / 2,
@@ -23,7 +29,11 @@ function gridRefToCenter(gridRef: GridRef, imageWidth: number, imageHeight: numb
   };
 }
 
-export function regionToCenter(region: Region, imageWidth = 1920, imageHeight = 1080): { x: number; y: number } {
+export function regionToCenter(
+  region: Region,
+  imageWidth = 1920,
+  imageHeight = 1080,
+): { x: number; y: number } {
   if (isGridRef(region)) {
     return gridRefToCenter(region, imageWidth, imageHeight);
   }
@@ -46,15 +56,21 @@ function boxArea(box: BoundingBox): number {
  * Find the smallest element containing the given point.
  * Prefers elements with id or class attributes for better selector building.
  */
-export function findElementAtPosition(elements: readonly DOMElement[], x: number, y: number): DOMElement | null {
+export function findElementAtPosition(
+  elements: readonly DOMElement[],
+  x: number,
+  y: number,
+): DOMElement | null {
   let bestMatch: DOMElement | null = null;
   let bestArea = Number.POSITIVE_INFINITY;
 
   for (const el of elements) {
-    if (!pointInBox(x, y, el.boundingBox)) continue;
+    if (!pointInBox(x, y, el.boundingBox)) {
+      continue;
+    }
 
     const area = boxArea(el.boundingBox);
-    const hasIdentifiers = el.id || el.classes.length > 0;
+    const hasIdentifiers = el.id ?? el.classes.length > 0;
 
     if (area < bestArea || (area === bestArea && hasIdentifiers && !bestMatch?.id)) {
       bestMatch = el;
@@ -68,8 +84,12 @@ export function findElementAtPosition(elements: readonly DOMElement[], x: number
 /**
  * Find all elements containing the given point, sorted by area (smallest first).
  */
-export function findAllElementsAtPosition(elements: readonly DOMElement[], x: number, y: number): DOMElement[] {
+export function findAllElementsAtPosition(
+  elements: readonly DOMElement[],
+  x: number,
+  y: number,
+): DOMElement[] {
   return elements
     .filter((el) => pointInBox(x, y, el.boundingBox))
-    .sort((a, b) => boxArea(a.boundingBox) - boxArea(b.boundingBox));
+    .toSorted((a, b) => boxArea(a.boundingBox) - boxArea(b.boundingBox));
 }

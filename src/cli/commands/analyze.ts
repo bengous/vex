@@ -6,14 +6,14 @@
  * Migrated to @effect/cli with Effect Schema validation.
  */
 
-import { mkdir, writeFile } from 'node:fs/promises';
-import { basename, extname, join } from 'node:path';
-import { Args, Command } from '@effect/cli';
-import { Effect, Option } from 'effect';
-import { analyzeWithRetry } from '../../core/analysis.js';
-import { resolveProviderLayer } from '../../providers/shared/registry.js';
-import { VisionProvider } from '../../providers/shared/service.js';
-import { jsonOption, modelOption, outputOption, providerOption } from '../options.js';
+import { Args, Command } from "@effect/cli";
+import { Effect, Option } from "effect";
+import { mkdir, writeFile } from "node:fs/promises";
+import { basename, extname, join } from "node:path";
+import { analyzeWithRetry } from "../../core/analysis.js";
+import { resolveProviderLayer } from "../../providers/shared/registry.js";
+import { VisionProvider } from "../../providers/shared/service.js";
+import { jsonOption, modelOption, outputOption, providerOption } from "../options.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Constants
@@ -47,7 +47,7 @@ Format your response as JSON:
 /**
  * Image path positional argument (required).
  */
-const imageArg = Args.file({ name: 'image', exists: 'yes' });
+const imageArg = Args.file({ name: "image", exists: "yes" });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Analyze Command
@@ -57,7 +57,7 @@ const imageArg = Args.file({ name: 'image', exists: 'yes' });
  * Analyze command implementation.
  */
 export const analyzeCommand = Command.make(
-  'analyze',
+  "analyze",
   {
     image: imageArg,
     provider: providerOption,
@@ -68,14 +68,14 @@ export const analyzeCommand = Command.make(
   (args) =>
     Effect.gen(function* () {
       const imagePath = args.image;
-      const providerName = Option.getOrElse(args.provider, () => 'ollama' as const);
+      const providerName = Option.getOrElse(args.provider, () => "ollama" as const);
       const model = Option.getOrUndefined(args.model);
       const outputDir = Option.getOrUndefined(args.output);
 
       if (!args.json) {
         console.log(`Analyzing ${imagePath}`);
         console.log(`Provider: ${providerName}`);
-        console.log('');
+        console.log("");
       }
 
       const providerLayer = yield* resolveProviderLayer(providerName);
@@ -129,14 +129,17 @@ export const analyzeCommand = Command.make(
       if (issues.length > 0) {
         console.log(`\nIssues found (${issues.length}):`);
         for (const issue of issues) {
-          const regionStr = typeof issue.region === 'string' ? issue.region : `(${issue.region.x},${issue.region.y})`;
+          const regionStr =
+            typeof issue.region === "string"
+              ? issue.region
+              : `(${issue.region.x},${issue.region.y})`;
           console.log(`  [${issue.severity.toUpperCase()}] ${issue.description} @ ${regionStr}`);
           if (issue.suggestedFix) {
             console.log(`           Fix: ${issue.suggestedFix}`);
           }
         }
       } else {
-        console.log('\nNo issues found.');
+        console.log("\nNo issues found.");
       }
     }),
-).pipe(Command.withDescription('Analyze an existing screenshot for visual issues'));
+).pipe(Command.withDescription("Analyze an existing screenshot for visual issues"));

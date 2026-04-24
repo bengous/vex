@@ -9,15 +9,17 @@
 
 // Import each provider module for registration side-effects
 // Order matters: first registered = default provider
-import './ollama/index.js';
-import './claude-cli/index.js';
-import './codex-cli/index.js';
-import './gemini-cli/index.js';
+import "./ollama/index.js";
+import "./claude-cli/index.js";
+import "./codex-cli/index.js";
+import "./gemini-cli/index.js";
 
 let initialized = false;
 
 export function initProviders(): void {
-  if (initialized) return;
+  if (initialized) {
+    return;
+  }
   initialized = true;
 }
 

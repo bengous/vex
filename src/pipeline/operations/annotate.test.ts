@@ -4,33 +4,33 @@
  * Tests annotation tool call generation from analysis results.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdtempSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Exit } from 'effect';
-import type { AnalysisResult, Issue, ToolCall } from '../../core/types.js';
-import { registerProvider, unregisterProvider } from '../../providers/shared/registry.js';
-import { expectOperationFailure, runEffectExit } from '../../testing/effect-helpers.js';
-import { createCapturingLogger, createMockContext } from '../../testing/mocks/pipeline-context.js';
+import type { AnalysisResult, Issue, ToolCall } from "../../core/types.js";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { Exit } from "effect";
+import { mkdtempSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { registerProvider, unregisterProvider } from "../../providers/shared/registry.js";
+import { expectOperationFailure, runEffectExit } from "../../testing/effect-helpers.js";
+import { createCapturingLogger, createMockContext } from "../../testing/mocks/pipeline-context.js";
 import {
   createMockAnalysisError,
   createMockVisionProviderLayer,
   createMockVisionResult,
-} from '../../testing/mocks/vision-provider.js';
-import { annotateOperation } from './annotate.js';
+} from "../../testing/mocks/vision-provider.js";
+import { annotateOperation } from "./annotate.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Setup
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('annotateOperation', () => {
+describe("annotateOperation", () => {
   let testDir: string;
   const registeredProviders: string[] = [];
 
   beforeAll(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'annotate-test-'));
+    testDir = mkdtempSync(join(tmpdir(), "annotate-test-"));
   });
 
   afterAll(async () => {
@@ -46,7 +46,10 @@ describe('annotateOperation', () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** Register a mock provider and track for cleanup */
-  function registerMockProvider(name: string, options: Parameters<typeof createMockVisionProviderLayer>[0]) {
+  function registerMockProvider(
+    name: string,
+    options: Parameters<typeof createMockVisionProviderLayer>[0],
+  ) {
     registerProvider(name, () => createMockVisionProviderLayer(options));
     registeredProviders.push(name);
     return name;
@@ -55,19 +58,19 @@ describe('annotateOperation', () => {
   function createMockIssue(overrides: Partial<Issue> = {}): Issue {
     return {
       id: 1,
-      description: 'Test issue',
-      severity: 'medium',
-      region: 'A1',
-      suggestedFix: 'Fix it',
+      description: "Test issue",
+      severity: "medium",
+      region: "A1",
+      suggestedFix: "Fix it",
       ...overrides,
     };
   }
 
   function createMockAnalysisResult(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
     return {
-      provider: 'test-provider',
-      model: 'test-model',
-      response: '{}',
+      provider: "test-provider",
+      model: "test-model",
+      response: "{}",
       durationMs: 100,
       issues: [],
       ...overrides,
@@ -78,14 +81,20 @@ describe('annotateOperation', () => {
     return JSON.stringify(toolCalls);
   }
 
-  function createValidToolCall(tool: ToolCall['tool'] = 'draw_rectangle'): object {
+  function createValidToolCall(tool: ToolCall["tool"] = "draw_rectangle"): object {
     switch (tool) {
-      case 'draw_rectangle':
-        return { tool: 'draw_rectangle', params: { start: 'A1', end: 'B2', style: 'error', label: 'Issue' } };
-      case 'draw_arrow':
-        return { tool: 'draw_arrow', params: { from: 'A1', to: 'C3', style: 'warning', label: 'Flow' } };
-      case 'add_label':
-        return { tool: 'add_label', params: { cell: 'B2', text: 'Label', style: 'info' } };
+      case "draw_rectangle":
+        return {
+          tool: "draw_rectangle",
+          params: { start: "A1", end: "B2", style: "error", label: "Issue" },
+        };
+      case "draw_arrow":
+        return {
+          tool: "draw_arrow",
+          params: { from: "A1", to: "C3", style: "warning", label: "Flow" },
+        };
+      case "add_label":
+        return { tool: "add_label", params: { cell: "B2", text: "Label", style: "info" } };
     }
   }
 
@@ -93,10 +102,10 @@ describe('annotateOperation', () => {
   // Success Path Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('success paths', () => {
-    test('generates tool calls from issues', async () => {
+  describe("success paths", () => {
+    test("generates tool calls from issues", async () => {
       const providerName = `test-annotate-success-${Date.now()}`;
-      const toolCalls = [createValidToolCall('draw_rectangle'), createValidToolCall('add_label')];
+      const toolCalls = [createValidToolCall("draw_rectangle"), createValidToolCall("add_label")];
       const mockResult = createMockVisionResult({
         provider: providerName,
         response: createToolCallsResponse(toolCalls),
@@ -106,21 +115,23 @@ describe('annotateOperation', () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
         result: createMockAnalysisResult({
-          issues: [createMockIssue({ id: 1 }), createMockIssue({ id: 2, severity: 'high' })],
+          issues: [createMockIssue({ id: 1 }), createMockIssue({ id: 2, severity: "high" })],
         }),
       };
 
-      const exit = await runEffectExit(annotateOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        annotateOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         expect(exit.value.toolCalls.length).toBe(2);
-        expect(exit.value.toolCalls[0]?.tool).toBe('draw_rectangle');
-        expect(exit.value.toolCalls[1]?.tool).toBe('add_label');
+        expect(exit.value.toolCalls[0]?.tool).toBe("draw_rectangle");
+        expect(exit.value.toolCalls[1]?.tool).toBe("add_label");
       }
     });
 
-    test('stores annotations artifact', async () => {
+    test("stores annotations artifact", async () => {
       const providerName = `test-annotate-store-${Date.now()}`;
       const toolCalls = [createValidToolCall()];
       const mockResult = createMockVisionResult({
@@ -134,22 +145,24 @@ describe('annotateOperation', () => {
         result: createMockAnalysisResult({ issues: [createMockIssue()] }),
       };
 
-      const exit = await runEffectExit(annotateOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        annotateOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         const storedArtifact = ctx.getArtifact(exit.value.annotations.id);
         expect(storedArtifact).toBeDefined();
-        expect(exit.value.annotations.type).toBe('annotations');
-        expect(exit.value.annotations.createdBy).toBe('annotate');
+        expect(exit.value.annotations.type).toBe("annotations");
+        expect(exit.value.annotations.createdBy).toBe("annotate");
       }
     });
 
-    test('returns empty toolCalls when no issues', async () => {
+    test("returns empty toolCalls when no issues", async () => {
       const providerName = `test-annotate-empty-${Date.now()}`;
       // Provider should not even be called when issues is empty
       registerMockProvider(providerName, {
-        analyzeResponse: createMockVisionResult({ response: '[]' }),
+        analyzeResponse: createMockVisionResult({ response: "[]" }),
       });
 
       const logger = createCapturingLogger();
@@ -158,7 +171,9 @@ describe('annotateOperation', () => {
         result: createMockAnalysisResult({ issues: [] }),
       };
 
-      const exit = await runEffectExit(annotateOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        annotateOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
@@ -167,11 +182,11 @@ describe('annotateOperation', () => {
       }
 
       // Should log that there are no issues to annotate
-      const infoMessages = logger.messages.filter((m) => m.level === 'info');
-      expect(infoMessages.some((m) => m.message.includes('No issues'))).toBe(true);
+      const infoMessages = logger.messages.filter((m) => m.level === "info");
+      expect(infoMessages.some((m) => m.message.includes("No issues"))).toBe(true);
     });
 
-    test('logs annotation progress', async () => {
+    test("logs annotation progress", async () => {
       const providerName = `test-annotate-log-${Date.now()}`;
       const mockResult = createMockVisionResult({
         provider: providerName,
@@ -187,9 +202,9 @@ describe('annotateOperation', () => {
 
       await runEffectExit(annotateOperation.execute(input, { provider: providerName }, ctx));
 
-      const infoMessages = logger.messages.filter((m) => m.level === 'info');
-      expect(infoMessages.some((m) => m.message.includes('Generating annotations'))).toBe(true);
-      expect(infoMessages.some((m) => m.message.includes('Generated'))).toBe(true);
+      const infoMessages = logger.messages.filter((m) => m.level === "info");
+      expect(infoMessages.some((m) => m.message.includes("Generating annotations"))).toBe(true);
+      expect(infoMessages.some((m) => m.message.includes("Generated"))).toBe(true);
     });
   });
 
@@ -197,12 +212,12 @@ describe('annotateOperation', () => {
   // Graceful Degradation Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('graceful degradation', () => {
-    test('returns empty array for malformed response', async () => {
+  describe("graceful degradation", () => {
+    test("returns empty array for malformed response", async () => {
       const providerName = `test-annotate-malformed-${Date.now()}`;
       const mockResult = createMockVisionResult({
         provider: providerName,
-        response: 'This is not valid JSON at all!!!',
+        response: "This is not valid JSON at all!!!",
       });
       registerMockProvider(providerName, { analyzeResponse: mockResult });
 
@@ -211,7 +226,9 @@ describe('annotateOperation', () => {
         result: createMockAnalysisResult({ issues: [createMockIssue()] }),
       };
 
-      const exit = await runEffectExit(annotateOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        annotateOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       // Should succeed but with empty tool calls (graceful degradation)
       expect(Exit.isSuccess(exit)).toBe(true);
@@ -220,13 +237,13 @@ describe('annotateOperation', () => {
       }
     });
 
-    test('filters invalid tool types', async () => {
+    test("filters invalid tool types", async () => {
       const providerName = `test-annotate-filter-${Date.now()}`;
       const mixedToolCalls = [
-        createValidToolCall('draw_rectangle'),
-        { tool: 'invalid_tool', params: {} },
-        createValidToolCall('add_label'),
-        { tool: 'another_invalid', params: { foo: 'bar' } },
+        createValidToolCall("draw_rectangle"),
+        { tool: "invalid_tool", params: {} },
+        createValidToolCall("add_label"),
+        { tool: "another_invalid", params: { foo: "bar" } },
       ];
       const mockResult = createMockVisionResult({
         provider: providerName,
@@ -239,22 +256,26 @@ describe('annotateOperation', () => {
         result: createMockAnalysisResult({ issues: [createMockIssue()] }),
       };
 
-      const exit = await runEffectExit(annotateOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        annotateOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         // Only valid tool types should remain
         expect(exit.value.toolCalls.length).toBe(2);
         expect(
-          exit.value.toolCalls.every((tc) => ['draw_rectangle', 'draw_arrow', 'add_label'].includes(tc.tool)),
+          exit.value.toolCalls.every((tc) =>
+            ["draw_rectangle", "draw_arrow", "add_label"].includes(tc.tool),
+          ),
         ).toBe(true);
       }
     });
 
-    test('handles JSON array embedded in prose', async () => {
+    test("handles JSON array embedded in prose", async () => {
       const providerName = `test-annotate-embedded-${Date.now()}`;
       const embeddedResponse = `Here are the annotations:
-[${JSON.stringify(createValidToolCall('draw_rectangle'))}, ${JSON.stringify(createValidToolCall('add_label'))}]
+[${JSON.stringify(createValidToolCall("draw_rectangle"))}, ${JSON.stringify(createValidToolCall("add_label"))}]
 Let me know if you need more.`;
       const mockResult = createMockVisionResult({
         provider: providerName,
@@ -267,7 +288,9 @@ Let me know if you need more.`;
         result: createMockAnalysisResult({ issues: [createMockIssue()] }),
       };
 
-      const exit = await runEffectExit(annotateOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        annotateOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
@@ -280,25 +303,27 @@ Let me know if you need more.`;
   // Error Path Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('error paths', () => {
-    test('fails when provider not found', async () => {
+  describe("error paths", () => {
+    test("fails when provider not found", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
         result: createMockAnalysisResult({ issues: [createMockIssue()] }),
       };
 
-      const exit = await runEffectExit(annotateOperation.execute(input, { provider: 'nonexistent-provider-abc' }, ctx));
+      const exit = await runEffectExit(
+        annotateOperation.execute(input, { provider: "nonexistent-provider-abc" }, ctx),
+      );
 
-      const error = expectOperationFailure(exit, 'annotate');
-      expect(error.detail).toContain('Provider error');
+      const error = expectOperationFailure(exit, "annotate");
+      expect(error.detail).toContain("Provider error");
     });
 
-    test('fails when provider fails', async () => {
+    test("fails when provider fails", async () => {
       const providerName = `test-annotate-fail-${Date.now()}`;
       const mockError = createMockAnalysisError({
         provider: providerName,
-        kind: 'timeout',
-        message: 'Request timed out',
+        kind: "timeout",
+        message: "Request timed out",
       });
       registerMockProvider(providerName, { analyzeResponse: mockError });
 
@@ -307,10 +332,12 @@ Let me know if you need more.`;
         result: createMockAnalysisResult({ issues: [createMockIssue()] }),
       };
 
-      const exit = await runEffectExit(annotateOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        annotateOperation.execute(input, { provider: providerName }, ctx),
+      );
 
-      const error = expectOperationFailure(exit, 'annotate');
-      expect(error.detail).toContain('Annotation generation failed');
+      const error = expectOperationFailure(exit, "annotate");
+      expect(error.detail).toContain("Annotation generation failed");
     });
   });
 
@@ -318,10 +345,10 @@ Let me know if you need more.`;
   // Metadata Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('artifact metadata', () => {
-    test('includes correct issue and tool call counts', async () => {
+  describe("artifact metadata", () => {
+    test("includes correct issue and tool call counts", async () => {
       const providerName = `test-annotate-meta-${Date.now()}`;
-      const toolCalls = [createValidToolCall('draw_rectangle'), createValidToolCall('add_label')];
+      const toolCalls = [createValidToolCall("draw_rectangle"), createValidToolCall("add_label")];
       const mockResult = createMockVisionResult({
         provider: providerName,
         response: createToolCallsResponse(toolCalls),
@@ -329,12 +356,18 @@ Let me know if you need more.`;
       registerMockProvider(providerName, { analyzeResponse: mockResult });
 
       const ctx = createMockContext({ sessionDir: testDir });
-      const issues = [createMockIssue({ id: 1 }), createMockIssue({ id: 2 }), createMockIssue({ id: 3 })];
+      const issues = [
+        createMockIssue({ id: 1 }),
+        createMockIssue({ id: 2 }),
+        createMockIssue({ id: 3 }),
+      ];
       const input = {
         result: createMockAnalysisResult({ issues }),
       };
 
-      const exit = await runEffectExit(annotateOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        annotateOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {

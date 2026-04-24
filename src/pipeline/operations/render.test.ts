@@ -4,35 +4,35 @@
  * Tests annotation rendering onto images with various scenarios.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdtempSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Exit } from 'effect';
-import sharp from 'sharp';
-import type { ToolCall } from '../../core/types.js';
-import { expectOperationFailure, runEffectExit } from '../../testing/effect-helpers.js';
+import type { ToolCall } from "../../core/types.js";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { Exit } from "effect";
+import { mkdtempSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import sharp from "sharp";
+import { expectOperationFailure, runEffectExit } from "../../testing/effect-helpers.js";
 import {
   createCapturingLogger,
   createMockContext,
   createMockImageArtifact,
-} from '../../testing/mocks/pipeline-context.js';
-import { renderOperation } from './render.js';
+} from "../../testing/mocks/pipeline-context.js";
+import { renderOperation } from "./render.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Setup
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('renderOperation', () => {
+describe("renderOperation", () => {
   let testDir: string;
   let testImagePath: string;
 
   beforeAll(async () => {
-    testDir = mkdtempSync(join(tmpdir(), 'render-test-'));
+    testDir = mkdtempSync(join(tmpdir(), "render-test-"));
 
     // Create a simple test image (400x400 white square)
-    testImagePath = join(testDir, 'test-input.png');
+    testImagePath = join(testDir, "test-input.png");
     await sharp({
       create: {
         width: 400,
@@ -56,12 +56,12 @@ describe('renderOperation', () => {
   function createTestToolCalls(): ToolCall[] {
     return [
       {
-        tool: 'draw_rectangle',
-        params: { start: 'A1', end: 'B2', style: 'error', label: 'Test issue' },
+        tool: "draw_rectangle",
+        params: { start: "A1", end: "B2", style: "error", label: "Test issue" },
       },
       {
-        tool: 'add_label',
-        params: { cell: 'C3', text: 'Test label', style: 'warning' },
+        tool: "add_label",
+        params: { cell: "C3", text: "Test label", style: "warning" },
       },
     ];
   }
@@ -70,8 +70,8 @@ describe('renderOperation', () => {
   // Success Path Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('success paths', () => {
-    test('renders annotations onto image', async () => {
+  describe("success paths", () => {
+    test("renders annotations onto image", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
         image: createMockImageArtifact({ path: testImagePath }),
@@ -83,7 +83,7 @@ describe('renderOperation', () => {
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         expect(exit.value.image.metadata.hasAnnotations).toBe(true);
-        expect(exit.value.image.createdBy).toBe('render');
+        expect(exit.value.image.createdBy).toBe("render");
 
         // Verify output file exists and is valid
         const outputMeta = await sharp(exit.value.image.path).metadata();
@@ -92,7 +92,7 @@ describe('renderOperation', () => {
       }
     });
 
-    test('returns original image when no toolCalls', async () => {
+    test("returns original image when no toolCalls", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const inputImage = createMockImageArtifact({ path: testImagePath });
       const input = {
@@ -109,7 +109,7 @@ describe('renderOperation', () => {
       }
     });
 
-    test('logs message when no annotations', async () => {
+    test("logs message when no annotations", async () => {
       const logger = createCapturingLogger();
       const ctx = createMockContext({ sessionDir: testDir, logger });
       const input = {
@@ -119,11 +119,11 @@ describe('renderOperation', () => {
 
       await runEffectExit(renderOperation.execute(input, {}, ctx));
 
-      const infoMessages = logger.messages.filter((m) => m.level === 'info');
-      expect(infoMessages.some((m) => m.message.includes('No annotations'))).toBe(true);
+      const infoMessages = logger.messages.filter((m) => m.level === "info");
+      expect(infoMessages.some((m) => m.message.includes("No annotations"))).toBe(true);
     });
 
-    test('stores artifact in context', async () => {
+    test("stores artifact in context", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
         image: createMockImageArtifact({ path: testImagePath }),
@@ -140,7 +140,7 @@ describe('renderOperation', () => {
       }
     });
 
-    test('output type is annotated-image', async () => {
+    test("output type is annotated-image", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
         image: createMockImageArtifact({ path: testImagePath }),
@@ -151,7 +151,7 @@ describe('renderOperation', () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.type).toBe('annotated-image');
+        expect(exit.value.image.type).toBe("annotated-image");
       }
     });
   });
@@ -160,18 +160,18 @@ describe('renderOperation', () => {
   // Error Path Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('error paths', () => {
-    test('fails when input image does not exist', async () => {
+  describe("error paths", () => {
+    test("fails when input image does not exist", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
-        image: createMockImageArtifact({ path: '/nonexistent/image.png' }),
+        image: createMockImageArtifact({ path: "/nonexistent/image.png" }),
         toolCalls: createTestToolCalls(),
       };
 
       const exit = await runEffectExit(renderOperation.execute(input, {}, ctx));
 
-      const error = expectOperationFailure(exit, 'render');
-      expect(error.detail).toContain('Failed to read image');
+      const error = expectOperationFailure(exit, "render");
+      expect(error.detail).toContain("Failed to read image");
     });
   });
 
@@ -179,8 +179,8 @@ describe('renderOperation', () => {
   // Metadata Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('metadata preservation', () => {
-    test('preserves viewport metadata', async () => {
+  describe("metadata preservation", () => {
+    test("preserves viewport metadata", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const viewport = { width: 1920, height: 1080, deviceScaleFactor: 1, isMobile: false };
       const input = {
@@ -201,7 +201,7 @@ describe('renderOperation', () => {
       }
     });
 
-    test('preserves input dimensions in output', async () => {
+    test("preserves input dimensions in output", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = {
         image: createMockImageArtifact({

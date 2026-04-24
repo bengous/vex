@@ -6,16 +6,16 @@
  * Migrated to @effect/cli with Effect Schema validation.
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
-import { Args, Command } from '@effect/cli';
-import { Effect, Option } from 'effect';
-import { loadDOMSnapshot } from '../../core/dom-snapshot-loader.js';
-import type { Issue } from '../../core/types.js';
-import { createResolverWithStrategies } from '../../locator/resolver.js';
-import { domTracerStrategy } from '../../locator/strategies/dom-tracer.js';
-import type { BatchResolutionResult, LocatorContext } from '../../locator/types.js';
-import { jsonOption, patternsOption, projectOption } from '../options.js';
+import type { Issue } from "../../core/types.js";
+import type { BatchResolutionResult, LocatorContext } from "../../locator/types.js";
+import { Args, Command } from "@effect/cli";
+import { Effect, Option } from "effect";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
+import { loadDOMSnapshot } from "../../core/dom-snapshot-loader.js";
+import { createResolverWithStrategies } from "../../locator/resolver.js";
+import { domTracerStrategy } from "../../locator/strategies/dom-tracer.js";
+import { jsonOption, patternsOption, projectOption } from "../options.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Session Directory Argument
@@ -24,7 +24,7 @@ import { jsonOption, patternsOption, projectOption } from '../options.js';
 /**
  * Session directory positional argument.
  */
-const sessionArg = Args.directory({ name: 'session' });
+const sessionArg = Args.directory({ name: "session" });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Helpers
@@ -32,39 +32,45 @@ const sessionArg = Args.directory({ name: 'session' });
 
 type JsonObject = Record<string, unknown>;
 
-interface AnalysisArtifactRef {
+type AnalysisArtifactRef = {
   readonly type?: string;
   readonly path?: string;
-}
+};
 
-export interface LocateSessionContext {
+export type LocateSessionContext = {
   readonly issues: Issue[];
   readonly domSessionDir: string;
-}
+};
 
-export interface LocateTargetContext {
+export type LocateTargetContext = {
   readonly source: string;
   readonly issues: Issue[];
   readonly domSessionDir: string;
-}
+};
 
-export interface LocateTargetSet {
-  readonly kind: 'session' | 'audit';
+export type LocateTargetSet = {
+  readonly kind: "session" | "audit";
   readonly targets: readonly LocateTargetContext[];
-}
+};
 
 function asObject(value: unknown): JsonObject | undefined {
-  return typeof value === 'object' && value !== null ? (value as JsonObject) : undefined;
+  return typeof value === "object" && value !== null ? (value as JsonObject) : undefined;
 }
 
-function loadIssuesFromAnalysisArtifacts(artifacts: Record<string, AnalysisArtifactRef> | undefined): Issue[] {
-  const analysisArtifact = artifacts ? Object.values(artifacts).find((a) => a.type === 'analysis') : undefined;
+function loadIssuesFromAnalysisArtifacts(
+  artifacts: Record<string, AnalysisArtifactRef> | undefined,
+): Issue[] {
+  const analysisArtifact = artifacts
+    ? Object.values(artifacts).find((a) => a.type === "analysis")
+    : undefined;
   if (!analysisArtifact?.path || !existsSync(analysisArtifact.path)) {
     return [];
   }
 
   try {
-    const analysis = JSON.parse(readFileSync(analysisArtifact.path, 'utf-8')) as { issues?: unknown };
+    const analysis = JSON.parse(readFileSync(analysisArtifact.path, "utf-8")) as {
+      issues?: unknown;
+    };
     return Array.isArray(analysis.issues) ? (analysis.issues as Issue[]) : [];
   } catch {
     return [];
@@ -77,13 +83,15 @@ function collectStateFilesRecursive(rootDir: string): string[] {
 
   while (stack.length > 0) {
     const current = stack.pop();
-    if (!current) continue;
+    if (!current) {
+      continue;
+    }
     const entries = readdirSync(current, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
         stack.push(fullPath);
-      } else if (entry.isFile() && entry.name === 'state.json') {
+      } else if (entry.isFile() && entry.name === "state.json") {
         files.push(fullPath);
       }
     }
@@ -94,12 +102,12 @@ function collectStateFilesRecursive(rootDir: string): string[] {
 }
 
 export function loadLocateSessionContext(sessionDir: string): LocateSessionContext {
-  const statePath = join(sessionDir, 'state.json');
+  const statePath = join(sessionDir, "state.json");
   if (!existsSync(statePath)) {
     throw new Error(`Session state not found: ${statePath}`);
   }
 
-  const state = JSON.parse(readFileSync(statePath, 'utf-8')) as unknown;
+  const state = JSON.parse(readFileSync(statePath, "utf-8")) as unknown;
   const stateObj = asObject(state);
   if (!stateObj) {
     return { issues: [], domSessionDir: sessionDir };
@@ -107,12 +115,12 @@ export function loadLocateSessionContext(sessionDir: string): LocateSessionConte
 
   let domSessionDir = sessionDir;
 
-  if (stateObj.type === 'vex-loop') {
+  if (stateObj.type === "vex-loop") {
     const iterations = Array.isArray(stateObj.iterationHistory) ? stateObj.iterationHistory : [];
     const latestIteration = asObject(iterations.at(-1));
     const latestPipelineState = asObject(latestIteration?.pipelineState);
 
-    if (typeof latestPipelineState?.sessionDir === 'string') {
+    if (typeof latestPipelineState?.sessionDir === "string") {
       domSessionDir = latestPipelineState.sessionDir;
     }
 
@@ -126,7 +134,9 @@ export function loadLocateSessionContext(sessionDir: string): LocateSessionConte
       return { issues: pipelineIssues as Issue[], domSessionDir };
     }
 
-    const latestPipelineArtifacts = asObject(latestPipelineState?.artifacts) as Record<string, AnalysisArtifactRef> | undefined;
+    const latestPipelineArtifacts = asObject(latestPipelineState?.artifacts) as
+      | Record<string, AnalysisArtifactRef>
+      | undefined;
     const latestPipelineAnalysisIssues = loadIssuesFromAnalysisArtifacts(latestPipelineArtifacts);
     if (latestPipelineAnalysisIssues.length > 0) {
       return { issues: latestPipelineAnalysisIssues, domSessionDir };
@@ -137,13 +147,15 @@ export function loadLocateSessionContext(sessionDir: string): LocateSessionConte
     return { issues: stateObj.issues as Issue[], domSessionDir };
   }
 
-  const rootArtifacts = asObject(stateObj.artifacts) as Record<string, AnalysisArtifactRef> | undefined;
+  const rootArtifacts = asObject(stateObj.artifacts) as
+    | Record<string, AnalysisArtifactRef>
+    | undefined;
   return { issues: loadIssuesFromAnalysisArtifacts(rootArtifacts), domSessionDir };
 }
 
 export function loadLocateTargetSet(targetDir: string): LocateTargetSet {
-  const auditPath = join(targetDir, 'audit.json');
-  const pagesDir = join(targetDir, 'pages');
+  const auditPath = join(targetDir, "audit.json");
+  const pagesDir = join(targetDir, "pages");
 
   if (existsSync(auditPath) && existsSync(pagesDir)) {
     const statePaths = collectStateFilesRecursive(pagesDir);
@@ -157,13 +169,13 @@ export function loadLocateTargetSet(targetDir: string): LocateTargetSet {
       } satisfies LocateTargetContext;
     });
     return {
-      kind: 'audit',
+      kind: "audit",
       targets,
     };
   }
 
   return {
-    kind: 'session',
+    kind: "session",
     targets: [
       {
         source: targetDir,
@@ -181,7 +193,7 @@ export function loadLocateTargetSet(targetDir: string): LocateTargetSet {
  * Locate command implementation.
  */
 export const locateCommand = Command.make(
-  'locate',
+  "locate",
   {
     session: sessionArg,
     project: projectOption,
@@ -193,7 +205,7 @@ export const locateCommand = Command.make(
       const sessionDir = args.session;
       const projectRoot = args.project;
       const patternsStr = Option.getOrUndefined(args.patterns);
-      const filePatterns = patternsStr ? patternsStr.split(',') : ['*.liquid', '*.css', '*.scss'];
+      const filePatterns = patternsStr ? patternsStr.split(",") : ["*.liquid", "*.css", "*.scss"];
       const jsonOutput = args.json;
 
       console.log(`Loading target from ${sessionDir}`);
@@ -202,20 +214,20 @@ export const locateCommand = Command.make(
       const resolver = createResolverWithStrategies([domTracerStrategy]);
       const targetSet = loadLocateTargetSet(sessionDir);
 
-      if (targetSet.kind === 'session') {
+      if (targetSet.kind === "session") {
         const [target] = targetSet.targets;
         if (!target) {
-          console.log('No issues to locate');
+          console.log("No issues to locate");
           return;
         }
 
         console.log(`Found ${target.issues.length} issues to locate`);
         if (target.issues.length === 0) {
-          console.log('No issues to locate');
+          console.log("No issues to locate");
           return;
         }
 
-        const domResult = yield* Effect.promise(() => loadDOMSnapshot(target.domSessionDir));
+        const domResult = yield* Effect.promise(async () => loadDOMSnapshot(target.domSessionDir));
         if (domResult.error) {
           console.warn(`DOM: ${domResult.error}`);
         }
@@ -231,7 +243,9 @@ export const locateCommand = Command.make(
         if (jsonOutput) {
           console.log(JSON.stringify(result, null, 2));
         } else {
-          console.log(`\nLocated ${result.summary.issuesWithLocations}/${result.summary.issuesProcessed} issues`);
+          console.log(
+            `\nLocated ${result.summary.issuesWithLocations}/${result.summary.issuesProcessed} issues`,
+          );
           console.log(`Total locations: ${result.summary.totalLocations}`);
           console.log(
             `By confidence: high=${result.summary.byConfidence.high}, medium=${result.summary.byConfidence.medium}, low=${result.summary.byConfidence.low}`,
@@ -250,7 +264,11 @@ export const locateCommand = Command.make(
 
       console.log(`Audit mode: found ${targetSet.targets.length} page/viewport session(s)`);
       const targetResults: Array<{ source: string; result: BatchResolutionResult }> = [];
-      const byConfidence: { high: number; medium: number; low: number } = { high: 0, medium: 0, low: 0 };
+      const byConfidence: { high: number; medium: number; low: number } = {
+        high: 0,
+        medium: 0,
+        low: 0,
+      };
       let issuesProcessed = 0;
       let issuesWithLocations = 0;
       let totalLocations = 0;
@@ -260,7 +278,7 @@ export const locateCommand = Command.make(
           continue;
         }
 
-        const domResult = yield* Effect.promise(() => loadDOMSnapshot(target.domSessionDir));
+        const domResult = yield* Effect.promise(async () => loadDOMSnapshot(target.domSessionDir));
         if (domResult.error) {
           console.warn(`DOM (${target.source}): ${domResult.error}`);
         }
@@ -282,7 +300,7 @@ export const locateCommand = Command.make(
       }
 
       const auditResult = {
-        type: 'vex-locate-audit',
+        type: "vex-locate-audit",
         target: sessionDir,
         summary: {
           targetsProcessed: targetSet.targets.length,
@@ -298,7 +316,9 @@ export const locateCommand = Command.make(
       if (jsonOutput) {
         console.log(JSON.stringify(auditResult, null, 2));
       } else {
-        console.log(`\nTargets with issues: ${auditResult.summary.targetsWithIssues}/${auditResult.summary.targetsProcessed}`);
+        console.log(
+          `\nTargets with issues: ${auditResult.summary.targetsWithIssues}/${auditResult.summary.targetsProcessed}`,
+        );
         console.log(`Issues located: ${issuesWithLocations}/${issuesProcessed}`);
         console.log(`Total locations: ${totalLocations}`);
         console.log(
@@ -317,4 +337,4 @@ export const locateCommand = Command.make(
         }
       }
     }),
-).pipe(Command.withDescription('Find code locations for issues in a session or scan audit'));
+).pipe(Command.withDescription("Find code locations for issues in a session or scan audit"));

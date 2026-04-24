@@ -3,24 +3,27 @@
  * Gathers runtime information about registered providers.
  */
 
-import { Effect } from 'effect';
-import { getAllProviderMetadata, type ProviderMetadata, resolveProviderLayer } from './registry.js';
-import { VisionProvider } from './service.js';
+import type { ProviderMetadata } from "./registry.js";
+import { Effect } from "effect";
+import { getAllProviderMetadata, resolveProviderLayer } from "./registry.js";
+import { VisionProvider } from "./service.js";
 
 /** Complete provider info including runtime state */
-export interface ProviderInfo extends ProviderMetadata {
+export type ProviderInfo = {
   readonly available: boolean;
   /** Models from the provider (fetched from server for HTTP providers, or knownModels for CLI) */
   readonly models: readonly string[];
-}
+} & ProviderMetadata;
 
 /**
  * Get detailed info for a single provider.
  * Checks availability and fetches models.
  */
-export function getProviderInfo(name: string): Effect.Effect<ProviderInfo | undefined, never> {
+export function getProviderInfo(name: string): Effect.Effect<ProviderInfo | undefined> {
   const metadata = getAllProviderMetadata().find((m) => m.name === name);
-  if (!metadata) return Effect.succeed(undefined);
+  if (!metadata) {
+    return Effect.succeed(undefined);
+  }
 
   return Effect.gen(function* () {
     const layer = yield* resolveProviderLayer(name).pipe(Effect.orElseSucceed(() => undefined));
@@ -54,11 +57,11 @@ export function getProviderInfo(name: string): Effect.Effect<ProviderInfo | unde
  * Get info for all registered providers.
  * Checks availability in parallel for efficiency.
  */
-export function getAllProviders(): Effect.Effect<ProviderInfo[], never> {
+export function getAllProviders(): Effect.Effect<ProviderInfo[]> {
   const allMetadata = getAllProviderMetadata();
 
   return Effect.forEach(allMetadata, (metadata) => getProviderInfo(metadata.name), {
-    concurrency: 'unbounded',
+    concurrency: "unbounded",
   }).pipe(
     // Filter out undefined (shouldn't happen since we're iterating registered providers,
     // but the type system can't prove this - use type guard instead of non-null assertion)

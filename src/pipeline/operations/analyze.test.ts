@@ -4,42 +4,42 @@
  * Tests VLM-powered image analysis with mock provider.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdtempSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Exit } from 'effect';
-import sharp from 'sharp';
-import { registerProvider, unregisterProvider } from '../../providers/shared/registry.js';
-import { expectOperationFailure, runEffectExit } from '../../testing/effect-helpers.js';
-import { createIssue } from '../../testing/factories.js';
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { Exit } from "effect";
+import { mkdtempSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import sharp from "sharp";
+import { registerProvider, unregisterProvider } from "../../providers/shared/registry.js";
+import { expectOperationFailure, runEffectExit } from "../../testing/effect-helpers.js";
+import { createIssue } from "../../testing/factories.js";
 import {
   createCapturingLogger,
   createMockContext,
   createMockImageArtifact,
-} from '../../testing/mocks/pipeline-context.js';
+} from "../../testing/mocks/pipeline-context.js";
 import {
   createMockAnalysisError,
   createMockVisionProviderLayer,
   createMockVisionResult,
-} from '../../testing/mocks/vision-provider.js';
-import { analyzeOperation } from './analyze.js';
+} from "../../testing/mocks/vision-provider.js";
+import { analyzeOperation } from "./analyze.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Setup
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('analyzeOperation', () => {
+describe("analyzeOperation", () => {
   let testDir: string;
   let testImagePath: string;
   const registeredProviders: string[] = [];
 
   beforeAll(async () => {
-    testDir = mkdtempSync(join(tmpdir(), 'analyze-test-'));
+    testDir = mkdtempSync(join(tmpdir(), "analyze-test-"));
 
     // Create a simple test image (400x400 white square)
-    testImagePath = join(testDir, 'test-input.png');
+    testImagePath = join(testDir, "test-input.png");
     await sharp({
       create: {
         width: 400,
@@ -65,7 +65,10 @@ describe('analyzeOperation', () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** Register a mock provider and track for cleanup */
-  function registerMockProvider(name: string, options: Parameters<typeof createMockVisionProviderLayer>[0]) {
+  function registerMockProvider(
+    name: string,
+    options: Parameters<typeof createMockVisionProviderLayer>[0],
+  ) {
     registerProvider(name, () => createMockVisionProviderLayer(options));
     registeredProviders.push(name);
     return name;
@@ -75,16 +78,16 @@ describe('analyzeOperation', () => {
     return JSON.stringify({ issues });
   }
 
-  function createTestIssue(id: number, severity: 'high' | 'medium' | 'low' = 'medium') {
-    return createIssue({ id, description: `Test issue ${id}`, severity, suggestedFix: 'Fix it' });
+  function createTestIssue(id: number, severity: "high" | "medium" | "low" = "medium") {
+    return createIssue({ id, description: `Test issue ${id}`, severity, suggestedFix: "Fix it" });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Success Path Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('success paths', () => {
-    test('returns analysis artifact on successful response', async () => {
+  describe("success paths", () => {
+    test("returns analysis artifact on successful response", async () => {
       const providerName = `test-analyze-success-${Date.now()}`;
       const mockResult = createMockVisionResult({
         provider: providerName,
@@ -95,18 +98,20 @@ describe('analyzeOperation', () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
-      const exit = await runEffectExit(analyzeOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        analyzeOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.analysis.type).toBe('analysis');
-        expect(exit.value.analysis.createdBy).toBe('analyze');
+        expect(exit.value.analysis.type).toBe("analysis");
+        expect(exit.value.analysis.createdBy).toBe("analyze");
       }
     });
 
-    test('parses issues from VLM JSON response', async () => {
+    test("parses issues from VLM JSON response", async () => {
       const providerName = `test-analyze-parse-${Date.now()}`;
-      const issues = [createTestIssue(1, 'high'), createTestIssue(2, 'medium')];
+      const issues = [createTestIssue(1, "high"), createTestIssue(2, "medium")];
       const mockResult = createMockVisionResult({
         provider: providerName,
         response: createIssuesResponse(issues),
@@ -116,17 +121,19 @@ describe('analyzeOperation', () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
-      const exit = await runEffectExit(analyzeOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        analyzeOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         expect(exit.value.result.issues.length).toBe(2);
-        expect(exit.value.result.issues[0]?.severity).toBe('high');
+        expect(exit.value.result.issues[0]?.severity).toBe("high");
         expect(exit.value.analysis.metadata.issueCount).toBe(2);
       }
     });
 
-    test('stores artifact in context', async () => {
+    test("stores artifact in context", async () => {
       const providerName = `test-analyze-store-${Date.now()}`;
       const mockResult = createMockVisionResult({
         provider: providerName,
@@ -137,7 +144,9 @@ describe('analyzeOperation', () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
-      const exit = await runEffectExit(analyzeOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        analyzeOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
@@ -147,7 +156,7 @@ describe('analyzeOperation', () => {
       }
     });
 
-    test('logs analysis progress', async () => {
+    test("logs analysis progress", async () => {
       const providerName = `test-analyze-log-${Date.now()}`;
       const mockResult = createMockVisionResult({
         provider: providerName,
@@ -161,15 +170,15 @@ describe('analyzeOperation', () => {
 
       await runEffectExit(analyzeOperation.execute(input, { provider: providerName }, ctx));
 
-      const infoMessages = logger.messages.filter((m) => m.level === 'info');
+      const infoMessages = logger.messages.filter((m) => m.level === "info");
       expect(infoMessages.some((m) => m.message.includes(providerName))).toBe(true);
     });
 
-    test('includes provider and model in result metadata', async () => {
+    test("includes provider and model in result metadata", async () => {
       const providerName = `test-analyze-meta-${Date.now()}`;
       const mockResult = createMockVisionResult({
         provider: providerName,
-        model: 'test-model-v1',
+        model: "test-model-v1",
         durationMs: 250,
         response: createIssuesResponse([]),
       });
@@ -178,12 +187,14 @@ describe('analyzeOperation', () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
-      const exit = await runEffectExit(analyzeOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        analyzeOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         expect(exit.value.analysis.metadata.provider).toBe(providerName);
-        expect(exit.value.analysis.metadata.model).toBe('test-model-v1');
+        expect(exit.value.analysis.metadata.model).toBe("test-model-v1");
         expect(exit.value.analysis.metadata.durationMs).toBe(250);
       }
     });
@@ -193,36 +204,40 @@ describe('analyzeOperation', () => {
   // Error Path Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('error paths', () => {
-    test('fails when provider not found', async () => {
+  describe("error paths", () => {
+    test("fails when provider not found", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
-      const exit = await runEffectExit(analyzeOperation.execute(input, { provider: 'nonexistent-provider-xyz' }, ctx));
+      const exit = await runEffectExit(
+        analyzeOperation.execute(input, { provider: "nonexistent-provider-xyz" }, ctx),
+      );
 
-      const error = expectOperationFailure(exit, 'analyze');
-      expect(error.detail).toContain('Provider error');
+      const error = expectOperationFailure(exit, "analyze");
+      expect(error.detail).toContain("Provider error");
     });
 
-    test('fails when analysis fails', async () => {
+    test("fails when analysis fails", async () => {
       const providerName = `test-analyze-fail-${Date.now()}`;
       const mockError = createMockAnalysisError({
         provider: providerName,
-        kind: 'execution',
-        message: 'Model overloaded',
+        kind: "execution",
+        message: "Model overloaded",
       });
       registerMockProvider(providerName, { analyzeResponse: mockError });
 
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
-      const exit = await runEffectExit(analyzeOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        analyzeOperation.execute(input, { provider: providerName }, ctx),
+      );
 
-      const error = expectOperationFailure(exit, 'analyze');
-      expect(error.detail).toContain('Analysis failed');
+      const error = expectOperationFailure(exit, "analyze");
+      expect(error.detail).toContain("Analysis failed");
     });
 
-    test('rejects reasoning on unsupported providers', async () => {
+    test("rejects reasoning on unsupported providers", async () => {
       const providerName = `test-analyze-reasoning-${Date.now()}`;
       const mockResult = createMockVisionResult({
         provider: providerName,
@@ -234,12 +249,12 @@ describe('analyzeOperation', () => {
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
       const exit = await runEffectExit(
-        analyzeOperation.execute(input, { provider: providerName, reasoning: 'medium' }, ctx),
+        analyzeOperation.execute(input, { provider: providerName, reasoning: "medium" }, ctx),
       );
 
-      const error = expectOperationFailure(exit, 'analyze');
-      expect(error.detail).toContain('does not support --reasoning');
-      expect(error.detail).toContain('codex-cli');
+      const error = expectOperationFailure(exit, "analyze");
+      expect(error.detail).toContain("does not support --reasoning");
+      expect(error.detail).toContain("codex-cli");
     });
   });
 
@@ -247,8 +262,8 @@ describe('analyzeOperation', () => {
   // Viewport Context Tests
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('viewport context', () => {
-    test('includes viewport info in prompt when present', async () => {
+  describe("viewport context", () => {
+    test("includes viewport info in prompt when present", async () => {
       const providerName = `test-analyze-viewport-${Date.now()}`;
       const mockResult = createMockVisionResult({
         provider: providerName,
@@ -267,12 +282,14 @@ describe('analyzeOperation', () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath, viewport }) };
 
-      const exit = await runEffectExit(analyzeOperation.execute(input, { provider: providerName }, ctx));
+      const exit = await runEffectExit(
+        analyzeOperation.execute(input, { provider: providerName }, ctx),
+      );
 
       expect(Exit.isSuccess(exit)).toBe(true);
       expect(capturedPrompt).toBeDefined();
-      expect(capturedPrompt).toContain('375×812px');
-      expect(capturedPrompt).toContain('mobile');
+      expect(capturedPrompt).toContain("375×812px");
+      expect(capturedPrompt).toContain("mobile");
     });
   });
 });

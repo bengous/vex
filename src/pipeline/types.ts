@@ -5,8 +5,6 @@
  * for composable visual analysis operations.
  */
 
-import type { PlatformError } from '@effect/platform/Error';
-import { Data, type Effect } from 'effect';
 import type {
   AnalysisResult,
   Artifact,
@@ -15,7 +13,10 @@ import type {
   Issue,
   ToolCall,
   ViewportConfig,
-} from '../core/types.js';
+} from "../core/types.js";
+import type { PlatformError } from "@effect/platform/Error";
+import type { Effect } from "effect";
+import { Data } from "effect";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Data Key Registry (Type-Safe Pipeline Data)
@@ -27,11 +28,11 @@ import type {
  *
  * Keys follow the pattern "operation:field" for node outputs.
  */
-export interface DataKeyRegistry {
-  'analyze:result': AnalysisResult;
-  'annotate:toolCalls': readonly ToolCall[];
-  'diff:pixelDiffPercent': number;
-}
+export type DataKeyRegistry = {
+  "analyze:result": AnalysisResult;
+  "annotate:toolCalls": readonly ToolCall[];
+  "diff:pixelDiffPercent": number;
+};
 
 /**
  * Known data keys with type-safe access.
@@ -54,7 +55,7 @@ export type DataValue<K extends DataKey> = DataKeyRegistry[K];
  * - Is an Error instance with stack trace
  * - Works with Effect.catchTag()
  */
-export class OperationError extends Data.TaggedError('OperationError')<{
+export class OperationError extends Data.TaggedError("OperationError")<{
   readonly operation: string;
   readonly detail: string;
   readonly cause?: unknown;
@@ -71,8 +72,8 @@ export class OperationError extends Data.TaggedError('OperationError')<{
  * - Is an Error instance with stack trace
  * - Works with Effect.catchTag()
  */
-export class PipelineError extends Data.TaggedError('PipelineError')<{
-  readonly phase: 'validation' | 'execution' | 'persistence';
+export class PipelineError extends Data.TaggedError("PipelineError")<{
+  readonly phase: "validation" | "execution" | "persistence";
   readonly detail: string;
   readonly cause?: OperationError;
 }> {
@@ -88,7 +89,7 @@ export class PipelineError extends Data.TaggedError('PipelineError')<{
 /**
  * Pipeline execution context available to all operations.
  */
-export interface PipelineContext {
+export type PipelineContext = {
   readonly sessionDir: string;
   readonly artifacts: Map<string, Artifact>;
   readonly logger: Logger;
@@ -105,7 +106,7 @@ export interface PipelineContext {
    * Get non-artifact data by dynamic key (e.g., "nodeId:field").
    * Use for dynamic edge routing; prefer getData for known keys.
    */
-  readonly getDataRaw: (key: string) => unknown | undefined;
+  readonly getDataRaw: (key: string) => unknown;
 
   /** Current viewport configuration (set by capture operation) */
   readonly viewport?: ViewportConfig;
@@ -123,17 +124,17 @@ export interface PipelineContext {
    * @returns Full path like sessionDir/desktop-1920x1080/01-screenshot.png
    */
   readonly getArtifactPath: (name: ArtifactName) => Effect.Effect<string, PlatformError>;
-}
+};
 
 /**
  * Logger interface for operation output.
  */
-export interface Logger {
+export type Logger = {
   readonly debug: (message: string) => void;
   readonly info: (message: string) => void;
   readonly warn: (message: string) => void;
   readonly error: (message: string) => void;
-}
+};
 
 /**
  * Operation definition - atomic unit of work in a pipeline.
@@ -142,7 +143,7 @@ export interface Logger {
  * @template TOutput - Output artifact type
  * @template TConfig - Operation-specific configuration
  */
-export interface Operation<TInput = unknown, TOutput = unknown, TConfig = Record<string, unknown>> {
+export type Operation<TInput = unknown, TOutput = unknown, TConfig = Record<string, unknown>> = {
   /** Unique operation name */
   readonly name: string;
 
@@ -156,8 +157,12 @@ export interface Operation<TInput = unknown, TOutput = unknown, TConfig = Record
   readonly outputTypes: readonly ArtifactType[];
 
   /** Execute the operation */
-  readonly execute: (input: TInput, config: TConfig, ctx: PipelineContext) => Effect.Effect<TOutput, OperationError>;
-}
+  readonly execute: (
+    input: TInput,
+    config: TConfig,
+    ctx: PipelineContext,
+  ) => Effect.Effect<TOutput, OperationError>;
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Pipeline Definition
@@ -166,13 +171,13 @@ export interface Operation<TInput = unknown, TOutput = unknown, TConfig = Record
 /**
  * Node in a pipeline DAG.
  */
-export interface PipelineNode {
+export type PipelineNode = {
   readonly id: string;
   readonly operation: string;
   readonly config: Record<string, unknown>;
   readonly inputs: readonly string[];
   readonly outputs: readonly string[];
-}
+};
 
 /**
  * Edge connecting pipeline nodes.
@@ -182,24 +187,24 @@ export interface PipelineNode {
  * @property artifact - Output field name from source operation (used for lookup)
  * @property targetField - Input field name for target operation (defaults to artifact)
  */
-export interface PipelineEdge {
+export type PipelineEdge = {
   readonly from: string;
   readonly to: string;
   readonly artifact: string;
   readonly targetField?: string;
-}
+};
 
 /**
  * Complete pipeline definition.
  */
-export interface PipelineDefinition {
+export type PipelineDefinition = {
   readonly name: string;
   readonly description: string;
   readonly nodes: readonly PipelineNode[];
   readonly edges: readonly PipelineEdge[];
   readonly inputs: readonly string[];
   readonly outputs: readonly string[];
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Pipeline State
@@ -208,29 +213,29 @@ export interface PipelineDefinition {
 /**
  * Node execution status.
  */
-export type NodeStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+export type NodeStatus = "pending" | "running" | "completed" | "failed" | "skipped";
 
 /**
  * Per-node execution state.
  */
-export interface NodeState {
+export type NodeState = {
   readonly id: string;
   readonly status: NodeStatus;
   readonly startedAt?: string;
   readonly completedAt?: string;
   readonly outputArtifacts: readonly string[];
   readonly error?: OperationError;
-}
+};
 
 /**
  * Complete pipeline execution state.
  */
-export interface PipelineState {
+export type PipelineState = {
   readonly definition: PipelineDefinition;
   readonly sessionDir: string;
   readonly startedAt: string;
   readonly completedAt?: string;
-  readonly status: 'running' | 'completed' | 'failed' | 'paused';
+  readonly status: "running" | "completed" | "failed" | "paused";
   readonly nodes: Record<string, NodeState>;
   readonly artifacts: Record<string, Artifact>;
   /** Non-artifact data passed between operations (e.g., AnalysisResult, ToolCall[]) */
@@ -238,7 +243,7 @@ export interface PipelineState {
   readonly issues: Issue[];
   /** Map of semantic keys (e.g. nodeId:key) to physical artifact IDs to allow cross-node resolution */
   readonly semanticNames: Record<string, string>;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Pipeline Builder Types
@@ -247,15 +252,19 @@ export interface PipelineState {
 /**
  * Fluent builder for constructing pipelines.
  */
-export interface PipelineBuilder {
+export type PipelineBuilder = {
   readonly name: (name: string) => PipelineBuilder;
   readonly description: (desc: string) => PipelineBuilder;
   readonly input: (name: string, type: ArtifactType) => PipelineBuilder;
-  readonly operation: (id: string, operation: string, config?: Record<string, unknown>) => PipelineBuilder;
+  readonly operation: (
+    id: string,
+    operation: string,
+    config?: Record<string, unknown>,
+  ) => PipelineBuilder;
   readonly connect: (from: string, to: string, artifact?: string) => PipelineBuilder;
   readonly output: (name: string) => PipelineBuilder;
   readonly build: () => PipelineDefinition;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Operation Registry
@@ -264,9 +273,9 @@ export interface PipelineBuilder {
 /**
  * Registry of available operations.
  */
-export interface OperationRegistry {
+export type OperationRegistry = {
   readonly register: <T extends Operation>(operation: T) => void;
   readonly get: (name: string) => Operation | undefined;
   readonly list: () => readonly string[];
   readonly has: (name: string) => boolean;
-}
+};

@@ -19,7 +19,7 @@ import type {
   Issue as IssueSchema,
   Region as RegionSchema,
   Severity as SeveritySchema,
-} from './schema.js';
+} from "./schema.js";
 
 // Re-export with original names
 export type BoundingBox = BoundingBoxSchema;
@@ -38,31 +38,31 @@ export type Severity = SeveritySchema;
 /**
  * Viewport configuration for screenshot capture.
  */
-export interface ViewportConfig {
+export type ViewportConfig = {
   readonly width: number;
   readonly height: number;
   readonly deviceScaleFactor: number;
   readonly isMobile: boolean;
   readonly hasTouch?: boolean;
   readonly userAgent?: string;
-}
+};
 
 /**
  * Named viewport preset for capture operations.
  */
-export interface ViewportPreset {
+export type ViewportPreset = {
   readonly name: string;
   readonly config: ViewportConfig;
-}
+};
 
 /**
  * Fold line configuration for above-the-fold visualization.
  */
-export interface FoldConfig {
+export type FoldConfig = {
   readonly enabled: boolean;
   readonly color: string;
   readonly showLabels: boolean;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Geometry Types (not in schema)
@@ -71,10 +71,10 @@ export interface FoldConfig {
 /**
  * Point in 2D space.
  */
-export interface Point {
+export type Point = {
   readonly x: number;
   readonly y: number;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Artifact System
@@ -84,32 +84,32 @@ export interface Point {
  * Artifact types produced by pipeline operations.
  */
 export type ArtifactType =
-  | 'image'
-  | 'annotated-image'
-  | 'analysis'
-  | 'manifest'
-  | 'dom-snapshot'
-  | 'diff-report'
-  | 'annotations';
+  | "image"
+  | "annotated-image"
+  | "analysis"
+  | "manifest"
+  | "dom-snapshot"
+  | "diff-report"
+  | "annotations";
 
 /**
  * Base artifact - all pipeline outputs inherit from this.
  */
-export interface Artifact {
-  readonly _kind: 'artifact';
+export type Artifact = {
+  readonly _kind: "artifact";
   readonly id: string;
   readonly type: ArtifactType;
   readonly path: string;
   readonly createdAt: string;
   readonly createdBy: string;
   readonly metadata: Record<string, unknown>;
-}
+};
 
 /**
  * Image artifact (screenshot, with or without overlays).
  */
-export interface ImageArtifact extends Artifact {
-  readonly type: 'image' | 'annotated-image';
+export type ImageArtifact = {
+  readonly type: "image" | "annotated-image";
   readonly metadata: {
     readonly width: number;
     readonly height: number;
@@ -119,55 +119,55 @@ export interface ImageArtifact extends Artifact {
     readonly hasFoldLines?: boolean;
     readonly hasAnnotations?: boolean;
   };
-}
+} & Artifact;
 
 /**
  * DOM snapshot artifact for code location resolution.
  */
-export interface DOMSnapshotArtifact extends Artifact {
-  readonly type: 'dom-snapshot';
+export type DOMSnapshotArtifact = {
+  readonly type: "dom-snapshot";
   readonly metadata: {
     readonly url: string;
     readonly elementCount: number;
     readonly viewport: ViewportConfig;
   };
-}
+} & Artifact;
 
 /**
  * Analysis artifact containing VLM results.
  */
-export interface AnalysisArtifact extends Artifact {
-  readonly type: 'analysis';
+export type AnalysisArtifact = {
+  readonly type: "analysis";
   readonly metadata: {
     readonly provider: string;
     readonly model: string;
     readonly durationMs: number;
     readonly issueCount: number;
   };
-}
+} & Artifact;
 
 /**
  * Annotations artifact containing VLM-generated tool calls.
  */
-export interface AnnotationsArtifact extends Artifact {
-  readonly type: 'annotations';
+export type AnnotationsArtifact = {
+  readonly type: "annotations";
   readonly metadata: {
     readonly toolCallCount: number;
     readonly issueCount: number;
   };
-}
+} & Artifact;
 
 /**
  * Diff report comparing two images.
  */
-export interface DiffReportArtifact extends Artifact {
-  readonly type: 'diff-report';
+export type DiffReportArtifact = {
+  readonly type: "diff-report";
   readonly metadata: {
     readonly baseImageId: string;
     readonly compareImageId: string;
     readonly pixelDiffPercent: number;
   };
-}
+} & Artifact;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Analysis Types (not in schema - wrapper types for pipeline)
@@ -176,14 +176,14 @@ export interface DiffReportArtifact extends Artifact {
 /**
  * VLM analysis result.
  */
-export interface AnalysisResult {
+export type AnalysisResult = {
   readonly provider: string;
   readonly model: string;
   readonly response: string;
   readonly durationMs: number;
   readonly issues: readonly Issue[];
   readonly rawJson?: unknown;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Annotation Types (from vision-audit/annotation/types.ts)
@@ -192,52 +192,52 @@ export interface AnalysisResult {
 /**
  * Semantic annotation styles - AI specifies meaning, renderer maps to appearance.
  */
-export type AnnotationStyle = 'error' | 'warning' | 'info' | 'suggestion';
+export type AnnotationStyle = "error" | "warning" | "info" | "suggestion";
 
 /**
  * Label positioning relative to anchor cell.
  */
-export type LabelPosition = 'top' | 'bottom' | 'left' | 'right' | 'auto';
+export type LabelPosition = "top" | "bottom" | "left" | "right" | "auto";
 
 /**
  * Draw rectangle annotation parameters.
  */
-export interface DrawRectangleParams {
+export type DrawRectangleParams = {
   readonly start: GridRef;
   readonly end?: GridRef;
   readonly style: AnnotationStyle;
   readonly label?: string;
-}
+};
 
 /**
  * Draw arrow annotation parameters.
  */
-export interface DrawArrowParams {
+export type DrawArrowParams = {
   readonly from: GridRef;
   readonly to: GridRef;
   readonly style: AnnotationStyle;
   readonly label?: string;
-}
+};
 
 /**
  * Add label annotation parameters.
  */
-export interface AddLabelParams {
+export type AddLabelParams = {
   readonly cell: GridRef;
   readonly text: string;
   readonly style: AnnotationStyle;
   readonly position?: LabelPosition;
-}
+};
 
 /**
  * Tool call discriminated union for annotation operations.
  */
 export type ToolCall =
-  | { readonly tool: 'draw_rectangle'; readonly params: DrawRectangleParams }
-  | { readonly tool: 'draw_arrow'; readonly params: DrawArrowParams }
-  | { readonly tool: 'add_label'; readonly params: AddLabelParams };
+  | { readonly tool: "draw_rectangle"; readonly params: DrawRectangleParams }
+  | { readonly tool: "draw_arrow"; readonly params: DrawArrowParams }
+  | { readonly tool: "add_label"; readonly params: AddLabelParams };
 
-export type ToolName = ToolCall['tool'];
+export type ToolName = ToolCall["tool"];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Grid Configuration
@@ -246,43 +246,43 @@ export type ToolName = ToolCall['tool'];
 /**
  * Grid configuration constants.
  */
-export interface GridConfig {
+export type GridConfig = {
   readonly cellSize: number;
   readonly maxColumns: number;
   readonly maxRows: number;
-}
+};
 
 /**
  * Computed grid metadata for a specific image.
  */
-export interface GridMetadata {
+export type GridMetadata = {
   readonly cellSize: number;
   readonly cols: number;
   readonly rows: number;
   readonly gridWidth: number;
   readonly gridHeight: number;
-}
+};
 
 /**
  * Visual style properties for rendering.
  */
-export interface StyleConfig {
+export type StyleConfig = {
   readonly color: string;
   readonly strokeWidth: number;
   readonly strokeDash: readonly number[] | null;
-}
+};
 
 /**
  * Grid visual style configuration.
  */
-export interface GridStyleConfig {
+export type GridStyleConfig = {
   readonly lineColor: string;
   readonly lineOpacity: number;
   readonly lineWidth: number;
   readonly labelColor: string;
   readonly labelBackground: string;
   readonly labelFontSize: number;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Default Configurations
@@ -298,22 +298,22 @@ export const GRID_CONFIG: GridConfig = {
 /** Semantic style to visual properties mapping */
 export const STYLE_MAP: Record<AnnotationStyle, StyleConfig> = {
   error: {
-    color: '#DC2626',
+    color: "#DC2626",
     strokeWidth: 3,
     strokeDash: null,
   },
   warning: {
-    color: '#F59E0B',
+    color: "#F59E0B",
     strokeWidth: 2,
     strokeDash: null,
   },
   info: {
-    color: '#3B82F6',
+    color: "#3B82F6",
     strokeWidth: 2,
     strokeDash: [8, 4],
   },
   suggestion: {
-    color: '#10B981',
+    color: "#10B981",
     strokeWidth: 2,
     strokeDash: [4, 4],
   },
@@ -321,18 +321,18 @@ export const STYLE_MAP: Record<AnnotationStyle, StyleConfig> = {
 
 /** Default grid visual style */
 export const GRID_STYLE: GridStyleConfig = {
-  lineColor: '#666666',
+  lineColor: "#666666",
   lineOpacity: 0.4,
   lineWidth: 1,
-  labelColor: '#333333',
-  labelBackground: 'rgba(255,255,255,0.7)',
+  labelColor: "#333333",
+  labelBackground: "rgba(255,255,255,0.7)",
   labelFontSize: 11,
 };
 
 /** Default fold line configuration */
 export const DEFAULT_FOLD_CONFIG: FoldConfig = {
   enabled: true,
-  color: '#FF0000',
+  color: "#FF0000",
   showLabels: true,
 };
 
@@ -343,7 +343,7 @@ export const DEFAULT_FOLD_CONFIG: FoldConfig = {
 /**
  * Serialized DOM element with position and style info.
  */
-export interface DOMElement {
+export type DOMElement = {
   readonly tagName: string;
   readonly id?: string;
   readonly classes: readonly string[];
@@ -351,18 +351,18 @@ export interface DOMElement {
   readonly computedStyles: Record<string, string>;
   readonly attributes: Record<string, string>;
   readonly xpath?: string;
-}
+};
 
 /**
  * Complete DOM snapshot for a page.
  */
-export interface DOMSnapshot {
+export type DOMSnapshot = {
   readonly url: string;
   readonly timestamp: string;
   readonly viewport: ViewportConfig;
   readonly html: string;
   readonly elements: readonly DOMElement[];
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Session Types
@@ -371,7 +371,7 @@ export interface DOMSnapshot {
 /**
  * Session state for persistence and resume.
  */
-export interface SessionState {
+export type SessionState = {
   readonly id: string;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -379,15 +379,15 @@ export interface SessionState {
   readonly iteration: number;
   readonly artifacts: Record<string, Artifact>;
   readonly issues: Issue[];
-  readonly status: 'pending' | 'running' | 'paused' | 'completed' | 'failed';
-}
+  readonly status: "pending" | "running" | "paused" | "completed" | "failed";
+};
 
 /**
  * Session directory structure constants.
  * Note: Viewport subdirectories are created by operations, not session init.
  */
 export const SESSION_STRUCTURE = {
-  stateFile: 'state.json',
+  stateFile: "state.json",
 } as const;
 
 /**
@@ -395,14 +395,14 @@ export const SESSION_STRUCTURE = {
  * Numbered prefixes ensure consistent sorting.
  */
 export const ARTIFACT_NAMES = {
-  screenshot: '01-screenshot.png',
-  dom: '02-dom.json',
-  withFolds: '03-with-folds.png',
-  withGrid: '04-with-grid.png',
-  analysis: '05-analysis.json',
-  annotations: '06-annotations.json',
-  annotated: '07-annotated.png',
-  diffReport: '08-diff-report.json',
+  screenshot: "01-screenshot.png",
+  dom: "02-dom.json",
+  withFolds: "03-with-folds.png",
+  withGrid: "04-with-grid.png",
+  analysis: "05-analysis.json",
+  annotations: "06-annotations.json",
+  annotated: "07-annotated.png",
+  diffReport: "08-diff-report.json",
 } as const;
 
 export type ArtifactName = keyof typeof ARTIFACT_NAMES;
@@ -419,7 +419,7 @@ export type ArtifactName = keyof typeof ARTIFACT_NAMES;
  * getViewportDirName({ width: 375, height: 812, isMobile: true, ... }, "iphone-15-pro") // "iphone-15-pro-375x812"
  */
 export function getViewportDirName(viewport: ViewportConfig, deviceId?: string): string {
-  const deviceType = viewport.isMobile ? 'mobile' : 'desktop';
+  const deviceType = viewport.isMobile ? "mobile" : "desktop";
   const baseName = deviceId?.trim() ? deviceId.trim().toLowerCase() : deviceType;
   return `${baseName}-${viewport.width}x${viewport.height}`;
 }

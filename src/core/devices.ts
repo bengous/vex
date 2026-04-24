@@ -17,28 +17,28 @@
  * ```
  */
 
-import { devices } from 'playwright';
-import type { ViewportConfig } from './types.js';
+import type { ViewportConfig } from "./types.js";
+import { devices } from "playwright";
 
 /** Device preset with viewport configuration and metadata */
-export interface DevicePreset {
+export type DevicePreset = {
   readonly viewport: ViewportConfig;
-  readonly category: 'desktop' | 'phone' | 'tablet';
-}
+  readonly category: "desktop" | "phone" | "tablet";
+};
 
 /** Result from lookupDevice with source metadata */
-export interface DeviceLookupResult {
+export type DeviceLookupResult = {
   readonly preset: DevicePreset;
-  readonly source: 'desktop' | 'playwright' | 'custom';
+  readonly source: "desktop" | "playwright" | "custom";
   readonly playwrightName?: string;
-}
+};
 
 /**
  * Custom desktop viewport presets.
  * Playwright only provides a few desktop sizes, so we define common breakpoints.
  */
 export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
-  'desktop-1920': {
+  "desktop-1920": {
     viewport: {
       width: 1920,
       height: 1080,
@@ -46,9 +46,9 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
       isMobile: false,
       hasTouch: false,
     },
-    category: 'desktop',
+    category: "desktop",
   },
-  'desktop-b3ngous-arch': {
+  "desktop-b3ngous-arch": {
     viewport: {
       width: 1440,
       height: 1248,
@@ -56,9 +56,9 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
       isMobile: false,
       hasTouch: false,
     },
-    category: 'desktop',
+    category: "desktop",
   },
-  'desktop-1366': {
+  "desktop-1366": {
     viewport: {
       width: 1366,
       height: 768,
@@ -66,9 +66,9 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
       isMobile: false,
       hasTouch: false,
     },
-    category: 'desktop',
+    category: "desktop",
   },
-  'desktop-hidpi': {
+  "desktop-hidpi": {
     viewport: {
       width: 1280,
       height: 720,
@@ -76,7 +76,7 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
       isMobile: false,
       hasTouch: false,
     },
-    category: 'desktop',
+    category: "desktop",
   },
 };
 
@@ -84,13 +84,16 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
  * Mapping from CLI-friendly kebab-case IDs to Playwright device names.
  * Playwright's `devices` registry is the source of truth for specs.
  */
-export const PLAYWRIGHT_DEVICE_ALIASES: Record<string, { name: string; category: 'phone' | 'tablet' }> = {
-  'iphone-15-pro-max': { name: 'iPhone 15 Pro Max', category: 'phone' },
-  'iphone-15-pro': { name: 'iPhone 15 Pro', category: 'phone' },
-  'iphone-se-2022': { name: 'iPhone SE (3rd gen)', category: 'phone' },
-  'iphone-se-2016': { name: 'iPhone SE', category: 'phone' },
-  'pixel-7': { name: 'Pixel 7', category: 'phone' },
-  'ipad-pro-11': { name: 'iPad Pro 11', category: 'tablet' },
+export const PLAYWRIGHT_DEVICE_ALIASES: Record<
+  string,
+  { name: string; category: "phone" | "tablet" }
+> = {
+  "iphone-15-pro-max": { name: "iPhone 15 Pro Max", category: "phone" },
+  "iphone-15-pro": { name: "iPhone 15 Pro", category: "phone" },
+  "iphone-se-2022": { name: "iPhone SE (3rd gen)", category: "phone" },
+  "iphone-se-2016": { name: "iPhone SE", category: "phone" },
+  "pixel-7": { name: "Pixel 7", category: "phone" },
+  "ipad-pro-11": { name: "iPad Pro 11", category: "tablet" },
 };
 
 /**
@@ -98,7 +101,7 @@ export const PLAYWRIGHT_DEVICE_ALIASES: Record<string, { name: string; category:
  * Only define devices here if they don't exist in Playwright.
  */
 export const CUSTOM_MOBILE_PRESETS: Record<string, DevicePreset> = {
-  'galaxy-s24': {
+  "galaxy-s24": {
     viewport: {
       width: 412,
       height: 915,
@@ -106,9 +109,9 @@ export const CUSTOM_MOBILE_PRESETS: Record<string, DevicePreset> = {
       isMobile: true,
       hasTouch: true,
     },
-    category: 'phone',
+    category: "phone",
   },
-  'galaxy-tab-s9': {
+  "galaxy-tab-s9": {
     viewport: {
       width: 800,
       height: 1280,
@@ -116,7 +119,7 @@ export const CUSTOM_MOBILE_PRESETS: Record<string, DevicePreset> = {
       isMobile: true,
       hasTouch: true,
     },
-    category: 'tablet',
+    category: "tablet",
   },
 };
 
@@ -138,7 +141,7 @@ export type DeviceId = (typeof ALL_DEVICE_IDS)[number];
 export function lookupDevice(id: string): DeviceLookupResult | undefined {
   const desktop = DESKTOP_PRESETS[id];
   if (desktop) {
-    return { preset: desktop, source: 'desktop' };
+    return { preset: desktop, source: "desktop" };
   }
 
   const alias = PLAYWRIGHT_DEVICE_ALIASES[id];
@@ -157,7 +160,7 @@ export function lookupDevice(id: string): DeviceLookupResult | undefined {
           },
           category: alias.category,
         },
-        source: 'playwright',
+        source: "playwright",
         playwrightName: alias.name,
       };
     }
@@ -165,7 +168,7 @@ export function lookupDevice(id: string): DeviceLookupResult | undefined {
 
   const custom = CUSTOM_MOBILE_PRESETS[id];
   if (custom) {
-    return { preset: custom, source: 'custom' };
+    return { preset: custom, source: "custom" };
   }
 
   return undefined;
@@ -185,42 +188,44 @@ export function getAllDeviceIds(): string[] {
 export function listDevices(): void {
   const formatDevice = (id: string): string => {
     const result = lookupDevice(id);
-    if (!result) return `  ${id}: (unknown)`;
+    if (!result) {
+      return `  ${id}: (unknown)`;
+    }
     const { viewport } = result.preset;
-    const touch = viewport.hasTouch ? '✓' : '✗';
-    const scale = viewport.deviceScaleFactor !== 1 ? ` @${viewport.deviceScaleFactor}x` : '';
+    const touch = viewport.hasTouch ? "✓" : "✗";
+    const scale = viewport.deviceScaleFactor !== 1 ? ` @${viewport.deviceScaleFactor}x` : "";
     return `  ${id.padEnd(22)} ${viewport.width}x${viewport.height}${scale.padEnd(5)} touch:${touch}`;
   };
 
-  console.log('\nDesktops:');
+  console.log("\nDesktops:");
   for (const id of Object.keys(DESKTOP_PRESETS)) {
     console.log(formatDevice(id));
   }
 
-  console.log('\nPhones:');
+  console.log("\nPhones:");
   for (const id of Object.keys(PLAYWRIGHT_DEVICE_ALIASES)) {
     const alias = PLAYWRIGHT_DEVICE_ALIASES[id];
-    if (alias?.category === 'phone') {
+    if (alias?.category === "phone") {
       console.log(formatDevice(id));
     }
   }
   for (const id of Object.keys(CUSTOM_MOBILE_PRESETS)) {
     const preset = CUSTOM_MOBILE_PRESETS[id];
-    if (preset?.category === 'phone') {
+    if (preset?.category === "phone") {
       console.log(formatDevice(id));
     }
   }
 
-  console.log('\nTablets:');
+  console.log("\nTablets:");
   for (const id of Object.keys(PLAYWRIGHT_DEVICE_ALIASES)) {
     const alias = PLAYWRIGHT_DEVICE_ALIASES[id];
-    if (alias?.category === 'tablet') {
+    if (alias?.category === "tablet") {
       console.log(formatDevice(id));
     }
   }
   for (const id of Object.keys(CUSTOM_MOBILE_PRESETS)) {
     const preset = CUSTOM_MOBILE_PRESETS[id];
-    if (preset?.category === 'tablet') {
+    if (preset?.category === "tablet") {
       console.log(formatDevice(id));
     }
   }

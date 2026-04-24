@@ -6,27 +6,33 @@
  * Migrated to @effect/cli with Effect Schema validation.
  */
 
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { Args, Command } from '@effect/cli';
-import { Effect } from 'effect';
-import { Url } from '../../config/schema.js';
-import { getAllDeviceIds, listDevices, lookupDevice } from '../../core/devices.js';
-import type { CodeLocation, Issue, ViewportConfig } from '../../core/types.js';
-import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from '../../loop/orchestrator.js';
-import {
-  type AppliedFix,
-  type GateConfig,
-  type GateDecision,
-  type HumanResponse,
-  LoopError,
-  type LoopOptions,
-  type LoopResult,
-} from '../../loop/types.js';
-import { simpleAnalysis } from '../../pipeline/presets.js';
-import { runPipeline } from '../../pipeline/runtime.js';
-import { generateSessionId } from '../../pipeline/state.js';
-import { withProviderExecution } from '../../providers/shared/profile-execution.js';
+import type { CodeLocation, Issue, ViewportConfig } from "../../core/types.js";
+import type { LoopCallbacks, LoopCaptureResult } from "../../loop/orchestrator.js";
+import type {
+  AppliedFix,
+  GateConfig,
+  GateDecision,
+  HumanResponse,
+  LoopOptions,
+  LoopResult,
+} from "../../loop/types.js";
+import type {
+  LoopCliArgs,
+  ResolvedFullPageScrollFix,
+  ResolvedPlaceholderMedia,
+} from "../resolve.js";
+import { Args, Command } from "@effect/cli";
+import { Effect } from "effect";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { Url } from "../../config/schema.js";
+import { getAllDeviceIds, listDevices, lookupDevice } from "../../core/devices.js";
+import { LoopOrchestrator } from "../../loop/orchestrator.js";
+import { LoopError } from "../../loop/types.js";
+import { simpleAnalysis } from "../../pipeline/presets.js";
+import { runPipeline } from "../../pipeline/runtime.js";
+import { generateSessionId } from "../../pipeline/state.js";
+import { withProviderExecution } from "../../providers/shared/profile-execution.js";
 import {
   autoFixOption,
   deviceOption,
@@ -41,21 +47,20 @@ import {
   projectOption,
   providerOption,
   providerProfileOption,
-} from '../options.js';
-import type { LoopCliArgs, ResolvedFullPageScrollFix, ResolvedPlaceholderMedia } from '../resolve.js';
-import { resolveLoopOptions } from '../resolve.js';
+} from "../options.js";
+import { resolveLoopOptions } from "../resolve.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // URL Argument
 // ═══════════════════════════════════════════════════════════════════════════
 
-const urlArg = Args.text({ name: 'url' }).pipe(Args.withSchema(Url), Args.optional);
+const urlArg = Args.text({ name: "url" }).pipe(Args.withSchema(Url), Args.optional);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Loop Helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
-function makeLoopError(phase: LoopError['phase'], detail: string, cause?: unknown): LoopError {
+function makeLoopError(phase: LoopError["phase"], detail: string, cause?: unknown): LoopError {
   return new LoopError({ phase, detail, cause });
 }
 
@@ -65,34 +70,42 @@ function createCaptureCallback(
   model?: string,
   placeholderMedia?: ResolvedPlaceholderMedia,
   fullPageScrollFix?: ResolvedFullPageScrollFix,
-): LoopCallbacks['capture'] {
+): LoopCallbacks["capture"] {
   return (url, viewport) =>
     Effect.gen(function* () {
-      const pipeline = simpleAnalysis(url, viewport, provider, model, undefined, placeholderMedia, fullPageScrollFix);
+      const pipeline = simpleAnalysis(
+        url,
+        viewport,
+        provider,
+        model,
+        undefined,
+        placeholderMedia,
+        fullPageScrollFix,
+      );
       const state = yield* runPipeline(pipeline, loopSessionDir).pipe(
-        Effect.mapError((e) => makeLoopError('capture', e.message, e)),
+        Effect.mapError((e) => makeLoopError("capture", e.message, e)),
       );
       return { state, issues: state.issues } satisfies LoopCaptureResult;
     });
 }
 
-function createDryRunApplyFix(): LoopCallbacks['applyFix'] {
+function createDryRunApplyFix(): LoopCallbacks["applyFix"] {
   return (issue: Issue, location: CodeLocation, _decision: GateDecision) =>
     Effect.succeed({
       issue,
       location,
-      action: 'auto',
+      action: "auto",
       timestamp: new Date().toISOString(),
-      diff: '[Phase 1: dry-run, no changes applied]',
+      diff: "[Phase 1: dry-run, no changes applied]",
     } satisfies AppliedFix);
 }
 
-function createDryRunPromptHuman(): LoopCallbacks['promptHuman'] {
+function createDryRunPromptHuman(): LoopCallbacks["promptHuman"] {
   return (_issue: Issue, _locations: readonly CodeLocation[], _decision: GateDecision) =>
-    Effect.succeed({ action: 'skip' } satisfies HumanResponse);
+    Effect.succeed({ action: "skip" } satisfies HumanResponse);
 }
 
-function createIterationLogger(): LoopCallbacks['onIterationComplete'] {
+function createIterationLogger(): LoopCallbacks["onIterationComplete"] {
   return (state) => {
     console.log(`\n--- Iteration ${state.number} Complete ---`);
     console.log(`Session: ${state.pipelineState.sessionDir}`);
@@ -109,15 +122,21 @@ function createIterationLogger(): LoopCallbacks['onIterationComplete'] {
   };
 }
 
-export function createGateConfigFromLoopOptions(options: LoopOptions): Pick<GateConfig, 'autoFixConfidence'> {
+export function createGateConfigFromLoopOptions(
+  options: LoopOptions,
+): Pick<GateConfig, "autoFixConfidence"> {
   return {
     autoFixConfidence: options.autoFixThreshold,
   };
 }
 
-async function saveIterationHistory(sessionDir: string, result: LoopResult, options: LoopOptions): Promise<void> {
+async function saveIterationHistory(
+  sessionDir: string,
+  result: LoopResult,
+  options: LoopOptions,
+): Promise<void> {
   const historyFile = {
-    sessionId: sessionDir.split('/').pop(),
+    sessionId: sessionDir.split("/").pop(),
     url: options.url,
     startedAt: result.startedAt,
     completedAt: result.completedAt,
@@ -148,12 +167,16 @@ async function saveIterationHistory(sessionDir: string, result: LoopResult, opti
     })),
   };
 
-  await writeFile(join(sessionDir, 'iterations.json'), JSON.stringify(historyFile, null, 2), 'utf-8');
   await writeFile(
-    join(sessionDir, 'state.json'),
+    join(sessionDir, "iterations.json"),
+    JSON.stringify(historyFile, null, 2),
+    "utf-8",
+  );
+  await writeFile(
+    join(sessionDir, "state.json"),
     JSON.stringify(
       {
-        type: 'vex-loop',
+        type: "vex-loop",
         phase: 1,
         url: options.url,
         startedAt: result.startedAt,
@@ -164,12 +187,12 @@ async function saveIterationHistory(sessionDir: string, result: LoopResult, opti
       null,
       2,
     ),
-    'utf-8',
+    "utf-8",
   );
 }
 
 function printLoopSummary(result: LoopResult): void {
-  console.log('\n=== Loop Complete ===');
+  console.log("\n=== Loop Complete ===");
   console.log(`Status: ${result.status}`);
   console.log(`Iterations: ${result.iterations}`);
   console.log(`Issues: ${result.initialIssueCount} → ${result.finalIssueCount} (dry-run)`);
@@ -187,7 +210,7 @@ function printLoopSummary(result: LoopResult): void {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const loopCommand = Command.make(
-  'loop',
+  "loop",
   {
     url: urlArg,
     preset: presetOption,
@@ -228,9 +251,9 @@ export const loopCommand = Command.make(
 
       const resolved = yield* resolveLoopOptions(cliArgs);
 
-      const deviceResult = lookupDevice(resolved.devices[0] as string);
+      const deviceResult = lookupDevice(resolved.devices[0]!);
       if (!deviceResult) {
-        const validDevices = getAllDeviceIds().join(', ');
+        const validDevices = getAllDeviceIds().join(", ");
         return yield* Effect.fail(
           new Error(`Unknown device: ${resolved.devices[0]}.
 Use explicit device IDs (e.g., iphone-se-2016 or iphone-se-2022).
@@ -241,11 +264,11 @@ Valid devices: ${validDevices}`),
 
       const sessionId = `loop-${generateSessionId()}`;
       const sessionDir = join(resolved.outputDir, sessionId);
-      yield* Effect.promise(() => mkdir(sessionDir, { recursive: true }));
+      yield* Effect.promise(async () => mkdir(sessionDir, { recursive: true }));
 
       // Phase 1: Force dry-run and disable interactive mode
       const loopOptions: LoopOptions = {
-        url: resolved.urls[0] as string,
+        url: resolved.urls[0]!,
         maxIterations: resolved.maxIterations,
         interactive: false, // Phase 1: always disabled
         autoFixThreshold: resolved.autoFix,
@@ -261,23 +284,23 @@ Valid devices: ${validDevices}`),
       console.log(`Max iterations: ${loopOptions.maxIterations}`);
       console.log(`Auto-fix threshold: ${loopOptions.autoFixThreshold}`);
       console.log(
-        `Provider: ${loopOptions.provider}${resolved.model ? ` (model: ${resolved.model})` : ''}${resolved.profile !== 'minimal' ? ` (profile: ${resolved.profile})` : ''}`,
+        `Provider: ${loopOptions.provider}${resolved.model ? ` (model: ${resolved.model})` : ""}${resolved.profile !== "minimal" ? ` (profile: ${resolved.profile})` : ""}`,
       );
       console.log(`Viewport: ${viewport.width}x${viewport.height} (${resolved.devices[0]})`);
       if (resolved.placeholderMedia) {
-        console.log('Placeholder media: enabled');
+        console.log("Placeholder media: enabled");
       }
       if (resolved.fullPageScrollFix) {
-        console.log('Full-page scroll fix: enabled');
+        console.log("Full-page scroll fix: enabled");
       }
-      console.log('');
-      console.log('[Phase 1] Dry-run mode: applyFix disabled (no code changes)');
-      console.log('[Phase 1] Interactive mode: disabled (promptHuman returns skip)');
+      console.log("");
+      console.log("[Phase 1] Dry-run mode: applyFix disabled (no code changes)");
+      console.log("[Phase 1] Interactive mode: disabled (promptHuman returns skip)");
       if (args.interactive) {
-        console.log('         (--interactive flag ignored until Phase 2)');
+        console.log("         (--interactive flag ignored until Phase 2)");
       }
       if (!args.dryRun) {
-        console.log('         (--dry-run=false ignored until Phase 3)');
+        console.log("         (--dry-run=false ignored until Phase 3)");
       }
 
       const callbacks: LoopCallbacks = {
@@ -304,7 +327,7 @@ Valid devices: ${validDevices}`),
           if (err instanceof LoopError) {
             console.error(`\nLoop failed at ${err.phase}: ${err.message}`);
           } else {
-            console.error('\nLoop failed:', err);
+            console.error("\nLoop failed:", err);
           }
           return Effect.fail(err);
         }),
@@ -315,7 +338,7 @@ Valid devices: ${validDevices}`),
         runOrchestrator,
       );
 
-      yield* Effect.promise(() => saveIterationHistory(sessionDir, result, loopOptions));
+      yield* Effect.promise(async () => saveIterationHistory(sessionDir, result, loopOptions));
       printLoopSummary(result);
     }),
-).pipe(Command.withDescription('Run iterative improvement loop on a URL'));
+).pipe(Command.withDescription("Run iterative improvement loop on a URL"));

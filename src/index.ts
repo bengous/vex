@@ -33,10 +33,14 @@ export {
   type PlaceholderMediaOptions,
   removeOverlayElements,
   setupNetworkBlocking,
-} from './core/capture.js';
+} from "./core/capture.js";
 
 // DOM Snapshot Loader
-export { type LoadDOMSnapshotResult, loadDOMSnapshot, loadDOMSnapshotFromPath } from './core/dom-snapshot-loader.js';
+export {
+  type LoadDOMSnapshotResult,
+  loadDOMSnapshot,
+  loadDOMSnapshotFromPath,
+} from "./core/dom-snapshot-loader.js";
 
 // Overlays
 export {
@@ -60,7 +64,7 @@ export {
   renderRectangleSvg,
   renderToolCallSvg,
   saveAnnotationSvg,
-} from './core/overlays.js';
+} from "./core/overlays.js";
 
 // Types
 export type {
@@ -96,7 +100,7 @@ export type {
   ToolName,
   ViewportConfig,
   ViewportPreset,
-} from './core/types.js';
+} from "./core/types.js";
 
 export {
   ARTIFACT_NAMES,
@@ -106,7 +110,7 @@ export {
   getViewportDirName,
   SESSION_STRUCTURE,
   STYLE_MAP,
-} from './core/types.js';
+} from "./core/types.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Pipeline runtime (Layer 1)
@@ -118,39 +122,53 @@ export {
   type AnalyzeInput,
   type AnalyzeOutput,
   analyzeOperation,
-} from './pipeline/operations/analyze.js';
+} from "./pipeline/operations/analyze.js";
 export {
   type AnnotateConfig,
   type AnnotateInput,
   type AnnotateOutput,
   annotateOperation,
-} from './pipeline/operations/annotate.js';
-export { type CaptureConfig, type CaptureOutput, captureOperation } from './pipeline/operations/capture.js';
-export { type DiffConfig, type DiffInput, type DiffOutput, diffOperation } from './pipeline/operations/diff.js';
+} from "./pipeline/operations/annotate.js";
+export {
+  type CaptureConfig,
+  type CaptureOutput,
+  captureOperation,
+} from "./pipeline/operations/capture.js";
+export {
+  type DiffConfig,
+  type DiffInput,
+  type DiffOutput,
+  diffOperation,
+} from "./pipeline/operations/diff.js";
 export {
   type OverlayFoldsConfig,
   type OverlayFoldsInput,
   type OverlayFoldsOutput,
   overlayFoldsOperation,
-} from './pipeline/operations/overlay-folds.js';
+} from "./pipeline/operations/overlay-folds.js";
 export {
   type OverlayGridConfig,
   type OverlayGridInput,
   type OverlayGridOutput,
   overlayGridOperation,
-} from './pipeline/operations/overlay-grid.js';
+} from "./pipeline/operations/overlay-grid.js";
 export {
   type RenderConfig,
   type RenderInput,
   type RenderOutput,
   renderOperation,
-} from './pipeline/operations/render.js';
+} from "./pipeline/operations/render.js";
 
 // Presets
-export { captureOnly, fullAnnotation, responsiveComparison, simpleAnalysis } from './pipeline/presets.js';
+export {
+  captureOnly,
+  fullAnnotation,
+  responsiveComparison,
+  simpleAnalysis,
+} from "./pipeline/presets.js";
 
 // Runtime
-export { resumePipeline, runPipeline } from './pipeline/runtime.js';
+export { resumePipeline, runPipeline } from "./pipeline/runtime.js";
 
 // State management
 export {
@@ -164,7 +182,7 @@ export {
   savePipelineState,
   storeArtifact,
   updateNodeState,
-} from './pipeline/state.js';
+} from "./pipeline/state.js";
 export type {
   Logger,
   NodeState,
@@ -177,16 +195,16 @@ export type {
   PipelineEdge,
   PipelineNode,
   PipelineState,
-} from './pipeline/types.js';
+} from "./pipeline/types.js";
 // Types
-export { OperationError, PipelineError } from './pipeline/types.js';
+export { OperationError, PipelineError } from "./pipeline/types.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Code locator (Layer 2)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { createResolverWithStrategies, StrategyResolver } from './locator/resolver.js';
-export { domTracerStrategy, findElementMatch } from './locator/strategies/dom-tracer.js';
+export { createResolverWithStrategies, StrategyResolver } from "./locator/resolver.js";
+export { domTracerStrategy, findElementMatch } from "./locator/strategies/dom-tracer.js";
 export type {
   BatchResolutionResult,
   ElementMatch,
@@ -198,14 +216,14 @@ export type {
   ResolverOptions,
   SourceMapEntry,
   SourceMapIndex,
-} from './locator/types.js';
-export { DEFAULT_RESOLVER_OPTIONS, LocatorError } from './locator/types.js';
+} from "./locator/types.js";
+export { DEFAULT_RESOLVER_OPTIONS, LocatorError } from "./locator/types.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Feedback loop (Layer 3)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { evaluateGate, evaluateGates, filterByAction, summarizeDecisions } from './loop/gates.js';
+export { evaluateGate, evaluateGates, filterByAction, summarizeDecisions } from "./loop/gates.js";
 export {
   calculateLoopMetrics,
   createIterationMetrics,
@@ -213,9 +231,9 @@ export {
   formatResolutionRate,
   metricsFromState,
   summarizeMetrics,
-} from './loop/metrics.js';
-export type { LocateResult, LoopCallbacks, LoopCaptureResult } from './loop/orchestrator.js';
-export { LoopOrchestrator, runLoop } from './loop/orchestrator.js';
+} from "./loop/metrics.js";
+export type { LocateResult, LoopCallbacks, LoopCaptureResult } from "./loop/orchestrator.js";
+export { LoopOrchestrator, runLoop } from "./loop/orchestrator.js";
 export type {
   AppliedFix,
   AutoFixThreshold,
@@ -232,15 +250,19 @@ export type {
   VerificationMetrics,
   VerificationResult,
   VerificationVerdict,
-} from './loop/types.js';
-export { DEFAULT_GATE_CONFIG, DEFAULT_LOOP_OPTIONS, LoopError } from './loop/types.js';
-export { isImproved, isResolved, verifyChanges } from './loop/verify.js';
+} from "./loop/types.js";
+export { DEFAULT_GATE_CONFIG, DEFAULT_LOOP_OPTIONS, LoopError } from "./loop/types.js";
+export { isImproved, isResolved, verifyChanges } from "./loop/verify.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VLM providers
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { getAllProviders, getProviderInfo, type ProviderInfo } from './providers/shared/introspection.js';
+export {
+  getAllProviders,
+  getProviderInfo,
+  type ProviderInfo,
+} from "./providers/shared/introspection.js";
 export {
   getAllProviderMetadata,
   getProviderMetadata,
@@ -249,7 +271,7 @@ export {
   registerProvider,
   resolveProviderLayer,
   unregisterProvider,
-} from './providers/shared/registry.js';
+} from "./providers/shared/registry.js";
 export {
   AnalysisFailed,
   type ProviderError,
@@ -258,5 +280,10 @@ export {
   type VisionProviderService,
   type VisionQueryOptions,
   type VisionResult,
-} from './providers/shared/service.js';
-export { Subprocess, SubprocessError, SubprocessLive, type SubprocessResult } from './providers/shared/subprocess.js';
+} from "./providers/shared/service.js";
+export {
+  Subprocess,
+  SubprocessError,
+  SubprocessLive,
+  type SubprocessResult,
+} from "./providers/shared/subprocess.js";

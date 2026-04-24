@@ -5,10 +5,11 @@
  * and properly type-constrain Effects to BunContext services (type safety).
  */
 
-import { expect } from 'bun:test';
-import { BunContext } from '@effect/platform-bun';
-import { type Effect, Exit, type Layer, ManagedRuntime } from 'effect';
-import type { OperationError } from '../pipeline/types.js';
+import type { OperationError } from "../pipeline/types.js";
+import type { Effect, Layer } from "effect";
+import { BunContext } from "@effect/platform-bun";
+import { expect } from "bun:test";
+import { Exit, ManagedRuntime } from "effect";
 
 /** Services provided by BunContext.layer */
 type BunContextServices = Layer.Layer.Success<typeof BunContext.layer>;
@@ -17,10 +18,11 @@ type BunContextServices = Layer.Layer.Success<typeof BunContext.layer>;
 const TestRuntime = ManagedRuntime.make(BunContext.layer);
 
 /** Run an Effect that requires BunContext services */
-export const runEffect = <A, E>(effect: Effect.Effect<A, E, BunContextServices>) => TestRuntime.runPromise(effect);
+export const runEffect = async <A, E>(effect: Effect.Effect<A, E, BunContextServices>) =>
+  TestRuntime.runPromise(effect);
 
 /** Run an Effect and return Exit (for testing error paths) */
-export const runEffectExit = <A, E>(effect: Effect.Effect<A, E, BunContextServices>) =>
+export const runEffectExit = async <A, E>(effect: Effect.Effect<A, E, BunContextServices>) =>
   TestRuntime.runPromiseExit(effect);
 
 /**
@@ -38,19 +40,22 @@ export const runEffectExit = <A, E>(effect: Effect.Effect<A, E, BunContextServic
  * expect(error.detail).toContain('expected message');
  * ```
  */
-export function expectOperationFailure(exit: Exit.Exit<unknown, unknown>, expectedOperation?: string): OperationError {
+export function expectOperationFailure(
+  exit: Exit.Exit<unknown, unknown>,
+  expectedOperation?: string,
+): OperationError {
   expect(Exit.isFailure(exit)).toBe(true);
   if (!Exit.isFailure(exit)) {
-    throw new Error('Expected failure exit');
+    throw new Error("Expected failure exit");
   }
 
   const cause = exit.cause;
-  if (cause._tag !== 'Fail') {
+  if (cause._tag !== "Fail") {
     throw new Error(`Expected Fail cause, got ${cause._tag}`);
   }
 
   const error = cause.error as OperationError;
-  expect(error._tag).toBe('OperationError');
+  expect(error._tag).toBe("OperationError");
 
   if (expectedOperation) {
     expect(error.operation).toBe(expectedOperation);
