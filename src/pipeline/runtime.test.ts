@@ -207,9 +207,7 @@ describe("parallel node execution", () => {
     if (Exit.isSuccess(exit)) {
       const state = exit.value;
       expect(state.status).toBe("completed");
-      // biome-ignore lint/complexity/useLiteralKeys: node IDs come from the test DAG.
       expect(state.nodes["nodeA"]?.status).toBe("completed");
-      // biome-ignore lint/complexity/useLiteralKeys: node IDs come from the test DAG.
       expect(state.nodes["nodeB"]?.status).toBe("completed");
     }
 

@@ -18,7 +18,7 @@ import { buildReasoning, calculateConfidence, sortByConfidence } from "./dom/sco
 import { batchGrepForSelectors, DEFAULT_FILE_PATTERNS } from "./dom/search.js";
 import { buildSelectors, createElementMatch } from "./dom/selectors.js";
 
-// biome-ignore lint/performance/noBarrelFile: compatibility facade preserves existing dom-tracer imports.
+// Compatibility facade preserves existing dom-tracer imports.
 export { findAllElementsAtPosition, findElementAtPosition, regionToCenter } from "./dom/region.js";
 export {
   batchGrepForSelectors,
