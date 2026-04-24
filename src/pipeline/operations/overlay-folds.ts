@@ -20,7 +20,9 @@ export type OverlayFoldsInput = {
 };
 
 export type OverlayFoldsOutput = {
-  readonly image: ImageArtifact;
+  readonly artifacts: {
+    readonly image: ImageArtifact;
+  };
 };
 
 export const overlayFoldsOperation: Operation<
@@ -30,8 +32,12 @@ export const overlayFoldsOperation: Operation<
 > = {
   name: "overlay-folds",
   description: "Add fold line markers to image",
-  inputTypes: ["image"],
-  outputTypes: ["image"],
+  inputSpecs: {
+    image: { channel: "artifact", type: "image" },
+  },
+  outputSpecs: {
+    image: { channel: "artifact", type: "image" },
+  },
 
   execute: (input, config, ctx) =>
     Effect.gen(function* () {
@@ -106,20 +112,16 @@ export const overlayFoldsOperation: Operation<
           }),
       });
 
-      const artifact: ImageArtifact = {
-        _kind: "artifact",
-        id: crypto.randomUUID(),
+      const artifact = ctx.createArtifact<ImageArtifact>({
         type: "image",
         path: outputPath,
-        createdAt: new Date().toISOString(),
         createdBy: "overlay-folds",
         metadata: {
           ...input.image.metadata,
           hasFoldLines: true,
         },
-      };
+      });
 
-      ctx.storeArtifact(artifact);
-      return { image: artifact };
+      return { artifacts: { image: artifact } };
     }),
 };

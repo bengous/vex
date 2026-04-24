@@ -11,36 +11,41 @@ type CaptureNodeOptions = {
   readonly url: string;
   readonly viewport: ViewportConfig;
   readonly filename: string;
-  readonly outputs: readonly string[];
   readonly withDOM?: true | undefined;
   readonly includeCaptureOptions?: true | undefined;
   readonly placeholderMedia?: PlaceholderMediaOptions | undefined;
   readonly fullPageScrollFix?: FullPageScrollFixOptions | undefined;
 };
 
-function edge(from: string, to: string, artifact: string, targetField?: string): PipelineEdge {
-  return targetField !== undefined && targetField.length > 0
-    ? { from, to, artifact, targetField }
-    : { from, to, artifact };
+type CaptureNodeConfig = Record<string, unknown> & {
+  withDOM?: true;
+  placeholderMedia?: PlaceholderMediaOptions;
+  fullPageScrollFix?: FullPageScrollFixOptions;
+};
+
+function edge(from: string, to: string, output: string, input?: string): PipelineEdge {
+  return input !== undefined && input.length > 0
+    ? { from, to, output, input }
+    : { from, to, output };
 }
 
 function captureNode(options: CaptureNodeOptions): PipelineNode {
-  const config: Record<string, unknown> = {
+  const config: CaptureNodeConfig = {
     url: options.url,
     viewport: options.viewport,
     filename: options.filename,
   };
 
   if (options.withDOM === true) {
-    config["withDOM"] = true;
+    config.withDOM = true;
   }
 
   if (options.includeCaptureOptions === true) {
     if (options.placeholderMedia !== undefined) {
-      config["placeholderMedia"] = options.placeholderMedia;
+      config.placeholderMedia = options.placeholderMedia;
     }
     if (options.fullPageScrollFix !== undefined) {
-      config["fullPageScrollFix"] = options.fullPageScrollFix;
+      config.fullPageScrollFix = options.fullPageScrollFix;
     }
   }
 
@@ -49,7 +54,7 @@ function captureNode(options: CaptureNodeOptions): PipelineNode {
     operation: "capture",
     config,
     inputs: [],
-    outputs: options.outputs,
+    outputs: options.withDOM === true ? ["image", "domSnapshot"] : ["image"],
   };
 }
 
@@ -59,7 +64,7 @@ function foldsNode(viewport: ViewportConfig): PipelineNode {
     operation: "overlay-folds",
     config: { viewportHeight: viewport.height },
     inputs: ["image"],
-    outputs: ["image-with-folds"],
+    outputs: ["image"],
   };
 }
 
@@ -69,7 +74,7 @@ function gridNode(input: string): PipelineNode {
     operation: "overlay-grid",
     config: { showLabels: true },
     inputs: [input],
-    outputs: ["image-with-grid"],
+    outputs: ["image"],
   };
 }
 
@@ -83,7 +88,7 @@ function analyzeNode(provider: string, model?: string, reasoning?: string): Pipe
       ...(reasoning !== undefined ? { reasoning } : {}),
     },
     inputs: ["image-with-grid"],
-    outputs: ["analysis"],
+    outputs: ["analysis", "result"],
   };
 }
 
@@ -93,7 +98,7 @@ function annotateNode(provider: string): PipelineNode {
     operation: "annotate",
     config: { provider },
     inputs: ["analysis"],
-    outputs: ["toolCalls"],
+    outputs: ["annotations", "toolCalls"],
   };
 }
 
@@ -103,7 +108,7 @@ function renderNode(): PipelineNode {
     operation: "render",
     config: {},
     inputs: ["image-with-grid", "toolCalls"],
-    outputs: ["annotated-image"],
+    outputs: ["image"],
   };
 }
 
@@ -118,7 +123,6 @@ function screenshotCaptureNode(
     url,
     viewport,
     filename: "screenshot.png",
-    outputs: ["image"],
     includeCaptureOptions: true,
     placeholderMedia,
     fullPageScrollFix,
@@ -136,7 +140,6 @@ function domScreenshotCaptureNode(
     url,
     viewport,
     filename: "screenshot.png",
-    outputs: ["image"],
     withDOM: true,
     includeCaptureOptions: true,
     placeholderMedia,
@@ -257,21 +260,19 @@ export function responsiveComparison(
         url,
         viewport: desktopViewport,
         filename: "desktop.png",
-        outputs: ["desktop-image"],
       }),
       captureNode({
         id: "capture-mobile",
         url,
         viewport: mobileViewport,
         filename: "mobile.png",
-        outputs: ["mobile-image"],
       }),
       {
         id: "diff",
         operation: "diff",
         config: { threshold: 5 },
         inputs: ["desktop-image", "mobile-image"],
-        outputs: ["diff-report"],
+        outputs: ["report", "pixelDiffPercent"],
       },
     ],
     edges: [

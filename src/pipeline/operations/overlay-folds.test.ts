@@ -61,12 +61,12 @@ describe("overlayFoldsOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.type).toBe("image");
-        expect(exit.value.image.metadata.hasFoldLines).toBe(true);
-        expect(exit.value.image.createdBy).toBe("overlay-folds");
+        expect(exit.value.artifacts.image.type).toBe("image");
+        expect(exit.value.artifacts.image.metadata.hasFoldLines).toBe(true);
+        expect(exit.value.artifacts.image.createdBy).toBe("overlay-folds");
 
         // Verify output file exists and has correct dimensions
-        const outputMeta = await sharp(exit.value.image.path).metadata();
+        const outputMeta = await sharp(exit.value.artifacts.image.path).metadata();
         expect(outputMeta.width).toBe(400);
         expect(outputMeta.height).toBe(1200);
       }
@@ -82,7 +82,7 @@ describe("overlayFoldsOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.metadata.hasFoldLines).toBe(true);
+        expect(exit.value.artifacts.image.metadata.hasFoldLines).toBe(true);
       }
     });
 
@@ -102,7 +102,7 @@ describe("overlayFoldsOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.image.metadata.hasFoldLines).toBe(true);
+        expect(exit.value.artifacts.image.metadata.hasFoldLines).toBe(true);
       }
     });
 
@@ -122,11 +122,11 @@ describe("overlayFoldsOperation", () => {
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         // Fold lines should be at viewport.height (800px) intervals
-        expect(exit.value.image.metadata.hasFoldLines).toBe(true);
+        expect(exit.value.artifacts.image.metadata.hasFoldLines).toBe(true);
       }
     });
 
-    test("stores artifact in context", async () => {
+    test("returns artifact for runtime storage without mutating context", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
 
@@ -134,8 +134,8 @@ describe("overlayFoldsOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        const storedArtifact = ctx.getArtifact(exit.value.image.id);
-        expect(storedArtifact).toBeDefined();
+        expect(exit.value.artifacts.image.id).toBeDefined();
+        expect(ctx.artifacts.size).toBe(0);
       }
     });
 

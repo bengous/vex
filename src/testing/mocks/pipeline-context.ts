@@ -76,15 +76,27 @@ export function createMockContext(options: MockContextOptions): PipelineContext 
     sessionDir,
     artifacts,
     logger,
-    storeArtifact: (artifact) => {
-      artifacts.set(artifact.id, artifact);
-      return artifact.id;
-    },
     getArtifact: (id) => artifacts.get(id),
     getData: <K extends DataKey>(key: K) => data.get(key) as DataValue<K> | undefined,
-    getDataRaw: (key) => data.get(key),
     getViewportDir: () => Effect.succeed(sessionDir),
     getArtifactPath: (name) => Effect.succeed(join(sessionDir, `test-${name}.png`)),
+    createArtifact: <T extends Artifact>(spec: {
+      readonly type: T["type"];
+      readonly path: string;
+      readonly metadata: T["metadata"];
+      readonly createdBy?: string;
+    }): T => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      return {
+        _kind: "artifact",
+        id: crypto.randomUUID(),
+        type: spec.type,
+        path: spec.path,
+        createdAt: new Date().toISOString(),
+        createdBy: spec.createdBy ?? "test",
+        metadata: spec.metadata,
+      } as T;
+    },
   };
 }
 

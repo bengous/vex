@@ -93,7 +93,6 @@ export type PipelineContext = {
   readonly sessionDir: string;
   readonly artifacts: Map<string, Artifact>;
   readonly logger: Logger;
-  readonly storeArtifact: (artifact: Artifact) => string;
   readonly getArtifact: (id: string) => Artifact | undefined;
 
   /**
@@ -103,12 +102,8 @@ export type PipelineContext = {
   readonly getData: <K extends DataKey>(key: K) => DataValue<K> | undefined;
 
   /**
-   * Get non-artifact data by dynamic key (e.g., "nodeId:field").
-   * Use for dynamic edge routing; prefer getData for known keys.
+   * Current viewport configuration (set by capture operation)
    */
-  readonly getDataRaw: (key: string) => unknown;
-
-  /** Current viewport configuration (set by capture operation) */
   readonly viewport?: ViewportConfig;
 
   /**
@@ -124,6 +119,17 @@ export type PipelineContext = {
    * @returns Full path like sessionDir/desktop-1920x1080/01-screenshot.png
    */
   readonly getArtifactPath: (name: ArtifactName) => Effect.Effect<string, PlatformError>;
+
+  /**
+   * Create an artifact with lifecycle fields generated consistently by the pipeline.
+   * The runtime is still responsible for storing returned artifacts.
+   */
+  readonly createArtifact: <T extends Artifact>(spec: {
+    readonly type: T["type"];
+    readonly path: string;
+    readonly metadata: T["metadata"];
+    readonly createdBy?: string;
+  }) => T;
 };
 
 /**
@@ -137,24 +143,61 @@ export type Logger = {
 };
 
 /**
- * Operation definition - atomic unit of work in a pipeline.
- *
- * @template TInput - Input artifact or configuration type
- * @template TOutput - Output artifact type
- * @template TConfig - Operation-specific configuration
+ * Input channel expected by an operation.
  */
-export type Operation<TInput = unknown, TOutput = unknown, TConfig = Record<string, unknown>> = {
+export type OperationInputSpec =
+  | {
+      readonly channel: "artifact";
+      readonly type: ArtifactType;
+      readonly optional?: boolean;
+    }
+  | {
+      readonly channel: "data";
+      readonly optional?: boolean;
+    };
+
+/**
+ * Output channel produced by an operation.
+ */
+export type OperationOutputSpec =
+  | {
+      readonly channel: "artifact";
+      readonly type: ArtifactType;
+      readonly optional?: boolean;
+    }
+  | {
+      readonly channel: "data";
+      readonly optional?: boolean;
+    };
+
+/**
+ * Structured operation result. The runtime validates this against
+ * outputSpecs and persists outputs under "node:key".
+ */
+export type OperationResult = {
+  readonly artifacts?: Record<string, Artifact | undefined>;
+  readonly data?: Record<string, unknown>;
+};
+
+/**
+ * Operation definition - atomic unit of work in a pipeline.
+ */
+export type Operation<
+  TInput = unknown,
+  TOutput extends OperationResult = OperationResult,
+  TConfig = Record<string, unknown>,
+> = {
   /** Unique operation name */
   readonly name: string;
 
   /** Human-readable description */
   readonly description: string;
 
-  /** Artifact types this operation can consume */
-  readonly inputTypes: readonly ArtifactType[];
+  /** Named inputs this operation accepts */
+  readonly inputSpecs: Record<string, OperationInputSpec>;
 
-  /** Artifact types this operation produces */
-  readonly outputTypes: readonly ArtifactType[];
+  /** Named outputs this operation produces */
+  readonly outputSpecs: Record<string, OperationOutputSpec>;
 
   /** Execute the operation */
   readonly execute: (
@@ -184,14 +227,14 @@ export type PipelineNode = {
  *
  * @property from - Source node ID
  * @property to - Target node ID
- * @property artifact - Output field name from source operation (used for lookup)
- * @property targetField - Input field name for target operation (defaults to artifact)
+ * @property output - Output field name from source operation
+ * @property input - Input field name for target operation (defaults to output)
  */
 export type PipelineEdge = {
   readonly from: string;
   readonly to: string;
-  readonly artifact: string;
-  readonly targetField?: string;
+  readonly output: string;
+  readonly input?: string;
 };
 
 /**
@@ -238,12 +281,21 @@ export type PipelineState = {
   readonly status: "running" | "completed" | "failed" | "paused";
   readonly nodes: Record<string, NodeState>;
   readonly artifacts: Record<string, Artifact>;
-  /** Non-artifact data passed between operations (e.g., AnalysisResult, ToolCall[]) */
-  readonly data: Record<string, unknown>;
+  /** Persisted named outputs keyed by "nodeId:outputName". */
+  readonly outputs: Record<string, StoredOutput>;
   readonly issues: Issue[];
-  /** Map of semantic keys (e.g. nodeId:key) to physical artifact IDs to allow cross-node resolution */
-  readonly semanticNames: Record<string, string>;
 };
+
+export type StoredOutput =
+  | {
+      readonly channel: "artifact";
+      readonly artifactId: string;
+      readonly type: ArtifactType;
+    }
+  | {
+      readonly channel: "data";
+      readonly value: unknown;
+    };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Pipeline Builder Types

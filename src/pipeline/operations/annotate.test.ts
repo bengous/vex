@@ -125,13 +125,13 @@ describe("annotateOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.toolCalls.length).toBe(2);
-        expect(exit.value.toolCalls[0]?.tool).toBe("draw_rectangle");
-        expect(exit.value.toolCalls[1]?.tool).toBe("add_label");
+        expect(exit.value.data.toolCalls.length).toBe(2);
+        expect(exit.value.data.toolCalls[0]?.tool).toBe("draw_rectangle");
+        expect(exit.value.data.toolCalls[1]?.tool).toBe("add_label");
       }
     });
 
-    test("stores annotations artifact", async () => {
+    test("returns annotations artifact for runtime storage", async () => {
       const providerName = `test-annotate-store-${Date.now()}`;
       const toolCalls = [createValidToolCall()];
       const mockResult = createMockVisionResult({
@@ -151,10 +151,9 @@ describe("annotateOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        const storedArtifact = ctx.getArtifact(exit.value.annotations.id);
-        expect(storedArtifact).toBeDefined();
-        expect(exit.value.annotations.type).toBe("annotations");
-        expect(exit.value.annotations.createdBy).toBe("annotate");
+        expect(ctx.artifacts.size).toBe(0);
+        expect(exit.value.artifacts.annotations.type).toBe("annotations");
+        expect(exit.value.artifacts.annotations.createdBy).toBe("annotate");
       }
     });
 
@@ -177,8 +176,8 @@ describe("annotateOperation", () => {
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.toolCalls.length).toBe(0);
-        expect(exit.value.annotations.metadata.toolCallCount).toBe(0);
+        expect(exit.value.data.toolCalls.length).toBe(0);
+        expect(exit.value.artifacts.annotations.metadata.toolCallCount).toBe(0);
       }
 
       // Should log that there are no issues to annotate
@@ -233,7 +232,7 @@ describe("annotateOperation", () => {
       // Should succeed but with empty tool calls (graceful degradation)
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.toolCalls.length).toBe(0);
+        expect(exit.value.data.toolCalls.length).toBe(0);
       }
     });
 
@@ -263,9 +262,9 @@ describe("annotateOperation", () => {
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         // Only valid tool types should remain
-        expect(exit.value.toolCalls.length).toBe(2);
+        expect(exit.value.data.toolCalls.length).toBe(2);
         expect(
-          exit.value.toolCalls.every((tc) =>
+          exit.value.data.toolCalls.every((tc) =>
             ["draw_rectangle", "draw_arrow", "add_label"].includes(tc.tool),
           ),
         ).toBe(true);
@@ -294,7 +293,7 @@ Let me know if you need more.`;
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.toolCalls.length).toBe(2);
+        expect(exit.value.data.toolCalls.length).toBe(2);
       }
     });
   });
@@ -371,8 +370,8 @@ Let me know if you need more.`;
 
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
-        expect(exit.value.annotations.metadata.issueCount).toBe(3);
-        expect(exit.value.annotations.metadata.toolCallCount).toBe(2);
+        expect(exit.value.artifacts.annotations.metadata.issueCount).toBe(3);
+        expect(exit.value.artifacts.annotations.metadata.toolCallCount).toBe(2);
       }
     });
   });

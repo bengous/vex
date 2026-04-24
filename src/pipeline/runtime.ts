@@ -9,18 +9,18 @@ import type {
   DataValue,
   Logger,
   Operation,
+  OperationOutputSpec,
+  OperationResult,
   PipelineContext,
   PipelineDefinition,
   PipelineState,
+  StoredOutput,
 } from "./types.js";
 import type { PlatformError } from "@effect/platform/Error";
 import { FileSystem } from "@effect/platform";
 import { Effect, Either, Schema as S } from "effect";
 import { join } from "node:path";
-import {
-  AnalysisResult as AnalysisResultSchema,
-  Artifact as ArtifactSchema,
-} from "../core/schema.js";
+import { AnalysisResult as AnalysisResultSchema } from "../core/schema.js";
 import { ARTIFACT_NAMES, getViewportDirName } from "../core/types.js";
 import { analyzeOperation } from "./operations/analyze.js";
 import { annotateOperation } from "./operations/annotate.js";
@@ -39,8 +39,7 @@ import {
   mergeNodeResults,
   savePipelineState,
   storeArtifact,
-  storeData,
-  storeSemanticName,
+  storeOutput,
   updateNodeState,
 } from "./state.js";
 import { OperationError, PipelineError } from "./types.js";
@@ -50,7 +49,7 @@ import { OperationError, PipelineError } from "./types.js";
  * Used by the runtime to wire operation outputs to edges.
  */
 type InternalPipelineContext = {
-  readonly _semanticNames: Map<string, Artifact>;
+  readonly _outputs: Map<string, StoredOutput>;
   readonly _dataMap: Map<string, unknown>;
 } & PipelineContext;
 
@@ -66,17 +65,17 @@ type RuntimeOperation = Omit<Operation, "execute"> & {
     input: unknown,
     config: Record<string, unknown>,
     ctx: PipelineContext,
-  ) => Effect.Effect<unknown, OperationError>;
+  ) => Effect.Effect<OperationResult, OperationError>;
 };
 
-function toRuntimeOperation<TInput, TOutput, TConfig>(
+function toRuntimeOperation<TInput, TOutput extends OperationResult, TConfig>(
   operation: Operation<TInput, TOutput, TConfig>,
 ): RuntimeOperation {
   return {
     name: operation.name,
     description: operation.description,
-    inputTypes: operation.inputTypes,
-    outputTypes: operation.outputTypes,
+    inputSpecs: operation.inputSpecs,
+    outputSpecs: operation.outputSpecs,
     // Dynamic DAG edges are validated at runtime by operation implementations.
     // This is the single dispatch boundary between persisted graph data and typed operations.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -95,7 +94,7 @@ const OPERATIONS: Record<string, RuntimeOperation> = {
 };
 
 /** @internal Test-only: register a mock operation for unit tests. */
-export function registerTestOperation<TInput, TOutput, TConfig>(
+export function registerTestOperation<TInput, TOutput extends OperationResult, TConfig>(
   name: string,
   operation: Operation<TInput, TOutput, TConfig>,
 ): void {
@@ -148,11 +147,6 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return S.is(UnknownRecord)(value) ? value : undefined;
 }
 
-function decodeArtifact(value: unknown): Artifact | undefined {
-  const result = S.decodeUnknownEither(ArtifactSchema)(value);
-  return Either.isRight(result) ? { ...result.right, _kind: "artifact" } : undefined;
-}
-
 function decodeAnalysisIssues(
   value: unknown,
 ): (typeof AnalysisResultSchema.Type)["issues"] | undefined {
@@ -167,20 +161,17 @@ function decodeAnalysisIssues(
 function populateContextMaps(
   state: PipelineState,
   artifacts: Map<string, Artifact>,
-  semanticNames: Map<string, Artifact>,
+  outputs: Map<string, StoredOutput>,
   dataMap: Map<string, unknown>,
 ): void {
   for (const [id, artifact] of Object.entries(state.artifacts)) {
     artifacts.set(id, artifact);
   }
-  for (const [key, artifactId] of Object.entries(state.semanticNames)) {
-    const artifact = state.artifacts[artifactId];
-    if (artifact !== undefined) {
-      semanticNames.set(key, artifact);
+  for (const [key, output] of Object.entries(state.outputs)) {
+    outputs.set(key, output);
+    if (output.channel === "data") {
+      dataMap.set(key, output.value);
     }
-  }
-  for (const [key, value] of Object.entries(state.data)) {
-    dataMap.set(key, value);
   }
 }
 
@@ -194,9 +185,9 @@ function createContext(
   artifactLayout: ArtifactLayout = "viewport-subdir",
 ): InternalPipelineContext {
   const artifacts = new Map<string, Artifact>();
-  const semanticNames = new Map<string, Artifact>();
+  const outputs = new Map<string, StoredOutput>();
   const dataMap = new Map<string, unknown>();
-  populateContextMaps(state, artifacts, semanticNames, dataMap);
+  populateContextMaps(state, artifacts, outputs, dataMap);
 
   const createdDirs = new Set<string>();
 
@@ -233,21 +224,139 @@ function createContext(
     artifacts,
     logger: createLogger(),
     ...(viewport !== undefined ? { viewport } : {}),
-    storeArtifact: (artifact) => {
-      artifacts.set(artifact.id, artifact);
-      return artifact.id;
-    },
-    getArtifact: (id) => artifacts.get(id) ?? semanticNames.get(id),
+    getArtifact: (id) => artifacts.get(id),
     // Typed getData for known keys (implementation uses Map<string, unknown>).
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     getData: <K extends DataKey>(key: K) => dataMap.get(key) as DataValue<K> | undefined,
-    // Raw getData for dynamic node:field keys used in edge routing
-    getDataRaw: (key) => dataMap.get(key),
     getViewportDir,
     getArtifactPath,
-    _semanticNames: semanticNames,
+    createArtifact: <T extends Artifact>(spec: {
+      readonly type: T["type"];
+      readonly path: string;
+      readonly metadata: T["metadata"];
+      readonly createdBy?: string;
+    }): T =>
+      ({
+        _kind: "artifact",
+        id: crypto.randomUUID(),
+        type: spec.type,
+        path: spec.path,
+        createdAt: new Date().toISOString(),
+        createdBy: spec.createdBy ?? "pipeline",
+        metadata: spec.metadata,
+      }) as T,
+    _outputs: outputs,
     _dataMap: dataMap,
   };
+}
+
+function validateInput(
+  operation: RuntimeOperation,
+  inputName: string,
+  output: StoredOutput,
+  artifacts: Map<string, Artifact>,
+):
+  | { readonly ok: true; readonly value: unknown }
+  | { readonly ok: false; readonly detail: string } {
+  const spec = operation.inputSpecs[inputName];
+  if (spec === undefined) {
+    return {
+      ok: false,
+      detail: `Operation ${operation.name} has no input spec for '${inputName}'`,
+    };
+  }
+
+  if (spec.channel !== output.channel) {
+    return {
+      ok: false,
+      detail: `Input '${inputName}' expected ${spec.channel} but received ${output.channel}`,
+    };
+  }
+
+  if (spec.channel === "data") {
+    return output.channel === "data"
+      ? { ok: true, value: output.value }
+      : {
+          ok: false,
+          detail: `Input '${inputName}' expected data but received artifact`,
+        };
+  }
+
+  if (output.channel !== "artifact") {
+    return {
+      ok: false,
+      detail: `Input '${inputName}' expected artifact but received data`,
+    };
+  }
+
+  const artifact = artifacts.get(output.artifactId);
+  if (artifact === undefined) {
+    return {
+      ok: false,
+      detail: `Artifact output '${inputName}' points to missing artifact ${output.artifactId}`,
+    };
+  }
+
+  if (artifact.type !== spec.type) {
+    return {
+      ok: false,
+      detail: `Input '${inputName}' expected artifact type ${spec.type} but received ${artifact.type}`,
+    };
+  }
+
+  return { ok: true, value: artifact };
+}
+
+function validateArtifactOutput(
+  operation: RuntimeOperation,
+  key: string,
+  spec: Extract<OperationOutputSpec, { readonly channel: "artifact" }>,
+  artifact: Artifact | undefined,
+): Artifact | undefined | OperationError {
+  if (artifact === undefined) {
+    return spec.optional === true
+      ? undefined
+      : new OperationError({
+          operation: operation.name,
+          detail: `Required artifact output '${key}' was not returned`,
+        });
+  }
+
+  if (artifact._kind !== "artifact" || artifact.type !== spec.type) {
+    return new OperationError({
+      operation: operation.name,
+      detail: `Artifact output '${key}' expected type ${spec.type} but received ${artifact.type}`,
+    });
+  }
+
+  return artifact;
+}
+
+function validateNoUndeclaredOutputs(
+  operation: RuntimeOperation,
+  result: OperationResult,
+): OperationError | undefined {
+  for (const key of Object.keys(result.artifacts ?? {})) {
+    const spec = operation.outputSpecs[key];
+    if (spec === undefined || spec.channel !== "artifact") {
+      return new OperationError({
+        operation: operation.name,
+        detail: `Undeclared artifact output '${key}'`,
+      });
+    }
+  }
+
+  for (const key of Object.keys(result.data ?? {})) {
+    const spec = operation.outputSpecs[key];
+    if (spec === undefined || spec.channel !== "data") {
+      return new OperationError({
+        operation: operation.name,
+        detail: `Undeclared data output '${key}'`,
+      });
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -282,58 +391,95 @@ function executeNode(
 
     ctx.logger.info(`Executing ${node.operation} (${nodeId})`);
 
-    // Gather inputs from edges (check artifacts first, then data channel)
+    // Gather inputs from declared routed outputs.
     const inputEdges = state.definition.edges.filter((e) => e.to === nodeId);
     const inputs: Record<string, unknown> = {};
     for (const edge of inputEdges) {
-      const sourceKey = `${edge.from}:${edge.artifact}`;
-      const targetKey = edge.targetField ?? edge.artifact;
-      const artifact = ctx.getArtifact(sourceKey);
-      if (artifact !== undefined) {
-        inputs[targetKey] = artifact;
-      } else {
-        // Use getDataRaw for dynamic edge routing keys
-        const data = ctx.getDataRaw(sourceKey);
-        if (data !== undefined) {
-          inputs[targetKey] = data;
-        }
+      const sourceKey = `${edge.from}:${edge.output}`;
+      const targetKey = edge.input ?? edge.output;
+      const output = ctx._outputs.get(sourceKey);
+      if (output === undefined) {
+        return yield* new OperationError({
+          operation: node.operation,
+          detail: `Edge ${edge.from}.${edge.output} -> ${nodeId}.${targetKey} references a missing output`,
+        });
       }
+
+      const validation = validateInput(operation, targetKey, output, ctx.artifacts);
+      if (!validation.ok) {
+        return yield* new OperationError({
+          operation: node.operation,
+          detail: validation.detail,
+        });
+      }
+      inputs[targetKey] = validation.value;
     }
 
     const result = yield* operation.execute(inputs, node.config, ctx);
 
-    // Parallel-safe: keys are "${nodeId}:${key}" — no two concurrent nodes share a
-    // prefix, so sibling writes are disjoint. Inputs are gathered from frozen baseState
-    // edges above (lines 218-233) before any writes. syncContextFromState reconciles
-    // all Maps after the full parallel wave completes.
+    // Parallel-safe: output keys are "${nodeId}:${key}", so sibling writes are disjoint.
     const outputArtifacts: string[] = [];
-    const resultObj = asRecord(result);
-    if (resultObj === undefined) {
+    if (asRecord(result) === undefined) {
       return yield* new OperationError({
         operation: node.operation,
         detail: "Operation returned a non-object result",
       });
     }
-    for (const [key, value] of Object.entries(resultObj)) {
-      const artifact = decodeArtifact(value);
-      if (artifact !== undefined) {
-        // This is an artifact - store in artifacts channel
-        currentState = storeArtifact(currentState, artifact);
-        currentState = storeSemanticName(currentState, `${nodeId}:${key}`, artifact.id);
-        outputArtifacts.push(artifact.id);
-        ctx._semanticNames.set(`${nodeId}:${key}`, artifact);
-      } else if (value !== undefined) {
-        // Non-artifact data - store in data channel
-        const dataKey = `${nodeId}:${key}`;
-        currentState = storeData(currentState, dataKey, value);
-        ctx._dataMap.set(dataKey, value);
+
+    const undeclaredOutputError = validateNoUndeclaredOutputs(operation, result);
+    if (undeclaredOutputError !== undefined) {
+      return yield* undeclaredOutputError;
+    }
+
+    for (const [key, spec] of Object.entries(operation.outputSpecs)) {
+      const outputKey = `${nodeId}:${key}`;
+      if (spec.channel === "artifact") {
+        const validation = validateArtifactOutput(operation, key, spec, result.artifacts?.[key]);
+        if (validation instanceof OperationError) {
+          return yield* validation;
+        }
+        if (validation !== undefined) {
+          currentState = storeArtifact(currentState, validation);
+          currentState = storeOutput(currentState, outputKey, {
+            channel: "artifact",
+            artifactId: validation.id,
+            type: validation.type,
+          });
+          outputArtifacts.push(validation.id);
+          ctx.artifacts.set(validation.id, validation);
+          ctx._outputs.set(outputKey, {
+            channel: "artifact",
+            artifactId: validation.id,
+            type: validation.type,
+          });
+        }
+      } else if (Object.hasOwn(result.data ?? {}, key)) {
+        const data = result.data?.[key];
+        if (data === undefined && spec.optional !== true) {
+          return yield* new OperationError({
+            operation: node.operation,
+            detail: `Required data output '${key}' was not returned`,
+          });
+        }
+        if (data !== undefined) {
+          const storedOutput = { channel: "data" as const, value: data };
+          currentState = storeOutput(currentState, outputKey, storedOutput);
+          ctx._outputs.set(outputKey, storedOutput);
+          ctx._dataMap.set(outputKey, data);
+        }
+      } else if (spec.optional !== true) {
+        return yield* new OperationError({
+          operation: node.operation,
+          detail: `Required data output '${key}' was not returned`,
+        });
       }
     }
 
     // Populate state.issues from analysis result for external consumers
     if (node.operation === "analyze") {
       const dataKey = `${nodeId}:result`;
-      const issues = decodeAnalysisIssues(currentState.data[dataKey]);
+      const output = currentState.outputs[dataKey];
+      const issues = output?.channel === "data" ? decodeAnalysisIssues(output.value) : undefined;
       if (issues !== undefined) {
         currentState = {
           ...currentState,
@@ -363,11 +509,11 @@ export function syncContextFromState(
   state: PipelineState,
   ctx: {
     artifacts: Map<string, Artifact>;
-    _semanticNames: Map<string, Artifact>;
+    _outputs: Map<string, StoredOutput>;
     _dataMap: Map<string, unknown>;
   },
 ): void {
-  populateContextMaps(state, ctx.artifacts, ctx._semanticNames, ctx._dataMap);
+  populateContextMaps(state, ctx.artifacts, ctx._outputs, ctx._dataMap);
 }
 
 /**
