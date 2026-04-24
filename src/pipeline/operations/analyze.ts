@@ -97,14 +97,17 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
       const providerLayer = yield* resolveProviderForOperation(provider, "analyze");
 
       // Create analyze callback pre-composed with provider layer
-      const analyze = (analysisPrompt: string) =>
-        Effect.gen(function* () {
+      const analyze = (analysisPrompt: string) => {
+        const providerEffect = Effect.gen(function* () {
           const visionProvider = yield* VisionProvider;
           return yield* visionProvider.analyze([input.image.path], analysisPrompt, {
             model,
             reasoning,
           });
-        }).pipe(Effect.provide(providerLayer));
+        });
+        // @effect-diagnostics-next-line strictEffectProvide:off
+        return providerEffect.pipe(Effect.provide(providerLayer));
+      };
 
       // Use shared retry logic from core/analysis.ts
       const visionResult = yield* analyzeWithRetry({
