@@ -32,11 +32,11 @@ export async function loadDOMSnapshot(
 
   let viewportDir: string;
 
-  if (viewport) {
+  if (viewport !== undefined) {
     viewportDir = join(sessionDir, getViewportDirName(viewport));
   } else {
     const found = await findFirstViewportDir(sessionDir);
-    if (!found) {
+    if (found === null || found.length === 0) {
       return {
         snapshot: null,
         path: null,

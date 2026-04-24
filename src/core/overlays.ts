@@ -108,7 +108,7 @@ export function cellRangeToPixels(
   config: GridConfig = GRID_CONFIG,
 ): BoundingBox {
   const startBox = cellToPixels(start, config);
-  if (!end) {
+  if (end === undefined) {
     return startBox;
   }
 
@@ -331,7 +331,7 @@ export async function addFoldOverlay(
 // ═══════════════════════════════════════════════════════════════════════════
 
 function dashArrayAttr(style: StyleConfig): string {
-  if (!style.strokeDash) {
+  if (style.strokeDash === null) {
     return "";
   }
   return ` stroke-dasharray="${style.strokeDash.join(",")}"`;
@@ -399,7 +399,7 @@ export function renderRectangleSvg(
       `fill="none" stroke="${style.color}" stroke-width="${style.strokeWidth}"${dashArrayAttr(style)}/>`,
   );
 
-  if (params.label) {
+  if (params.label !== undefined && params.label.length > 0) {
     const labelX = box.x + box.width / 2;
     const labelY = box.y - 8;
     elements.push(renderLabelText(labelX, labelY, params.label, style, "middle"));
@@ -433,7 +433,7 @@ export function renderArrowSvg(params: DrawArrowParams, config: GridConfig = GRI
       `marker-end="url(#${markerId})"/>`,
   );
 
-  if (params.label) {
+  if (params.label !== undefined && params.label.length > 0) {
     const midX = (from.x + to.x) / 2;
     const midY = (from.y + to.y) / 2 - 12;
     elements.push(renderLabelText(midX, midY, params.label, style, "middle"));

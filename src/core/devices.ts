@@ -140,14 +140,14 @@ export type DeviceId = (typeof ALL_DEVICE_IDS)[number];
  */
 export function lookupDevice(id: string): DeviceLookupResult | undefined {
   const desktop = DESKTOP_PRESETS[id];
-  if (desktop) {
+  if (desktop !== undefined) {
     return { preset: desktop, source: "desktop" };
   }
 
   const alias = PLAYWRIGHT_DEVICE_ALIASES[id];
-  if (alias) {
+  if (alias !== undefined) {
     const playwrightDevice = devices[alias.name];
-    if (playwrightDevice) {
+    if (playwrightDevice !== undefined) {
       return {
         preset: {
           viewport: {
@@ -167,7 +167,7 @@ export function lookupDevice(id: string): DeviceLookupResult | undefined {
   }
 
   const custom = CUSTOM_MOBILE_PRESETS[id];
-  if (custom) {
+  if (custom !== undefined) {
     return { preset: custom, source: "custom" };
   }
 
@@ -188,12 +188,15 @@ export function getAllDeviceIds(): string[] {
 export function listDevices(): void {
   const formatDevice = (id: string): string => {
     const result = lookupDevice(id);
-    if (!result) {
+    if (result === undefined) {
       return `  ${id}: (unknown)`;
     }
     const { viewport } = result.preset;
-    const touch = viewport.hasTouch ? "✓" : "✗";
-    const scale = viewport.deviceScaleFactor !== 1 ? ` @${viewport.deviceScaleFactor}x` : "";
+    const touch = viewport.hasTouch === true ? "✓" : "✗";
+    const scale =
+      viewport.deviceScaleFactor !== undefined && viewport.deviceScaleFactor !== 1
+        ? ` @${viewport.deviceScaleFactor}x`
+        : "";
     return `  ${id.padEnd(22)} ${viewport.width}x${viewport.height}${scale.padEnd(5)} touch:${touch}`;
   };
 
