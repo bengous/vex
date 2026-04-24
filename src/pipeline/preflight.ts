@@ -16,7 +16,7 @@ export function checkProviderInstalled(
 ): Effect.Effect<void, ProviderNotInstalled, Subprocess> {
   return Effect.gen(function* () {
     const metadata = getProviderMetadata(providerName);
-    if (!metadata?.command) {
+    if (metadata?.command === undefined || metadata.command.length === 0) {
       return;
     } // HTTP providers don't need CLI check
 

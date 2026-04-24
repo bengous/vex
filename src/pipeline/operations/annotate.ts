@@ -57,7 +57,7 @@ function formatIssuesForPrompt(issues: readonly Issue[]): string {
 function parseToolCalls(response: string): ToolCall[] {
   try {
     const jsonMatch = response.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
+    if (jsonMatch === null) {
       return [];
     }
 

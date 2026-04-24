@@ -163,7 +163,7 @@ export function updateNodeState(
   update: Partial<PipelineState["nodes"][string]>,
 ): PipelineState {
   const currentNode = state.nodes[nodeId];
-  if (!currentNode) {
+  if (currentNode === undefined) {
     return state;
   }
 
@@ -244,7 +244,7 @@ export function mergeNodeResults(
   results: ReadonlyArray<NodeResult>,
 ): PipelineState {
   const [only] = results;
-  if (only && results.length === 1) {
+  if (only !== undefined && results.length === 1) {
     return only.state;
   }
 
@@ -254,7 +254,10 @@ export function mergeNodeResults(
 
     merged = {
       ...merged,
-      nodes: { ...merged.nodes, ...(changedNode ? { [result.nodeId]: changedNode } : {}) },
+      nodes: {
+        ...merged.nodes,
+        ...(changedNode !== undefined ? { [result.nodeId]: changedNode } : {}),
+      },
       artifacts: { ...merged.artifacts, ...result.state.artifacts },
       semanticNames: { ...merged.semanticNames, ...result.state.semanticNames },
       data: { ...merged.data, ...result.state.data },
