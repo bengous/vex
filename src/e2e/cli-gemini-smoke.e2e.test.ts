@@ -27,13 +27,14 @@ const VIEWPORT: ViewportConfig = {
   deviceScaleFactor: 1,
   isMobile: false,
 };
+const RUN_E2E = process.env.RUN_E2E !== undefined && process.env.RUN_E2E.length > 0;
 
 describe("CLI E2E - Gemini preset smoke", () => {
   let tempDir: string;
   let outputDir: string;
 
   beforeAll(async () => {
-    if (!process.env.RUN_E2E) {
+    if (!RUN_E2E) {
       return;
     }
     tempDir = mkdtempSync(join(tmpdir(), "vex-cli-e2e-"));
@@ -59,19 +60,19 @@ export default defineConfig({
   });
 
   afterAll(async () => {
-    if (!process.env.RUN_E2E) {
+    if (!RUN_E2E) {
       return;
     }
-    if (tempDir) {
+    if (tempDir.length > 0) {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
 
-  test.skipIf(!process.env.RUN_E2E)(
+  test.skipIf(!RUN_E2E)(
     "runs scan preset with gemini-cli and writes analysis artifact",
     async () => {
       const gemini = await Effect.runPromise(getProviderInfo("gemini-cli"));
-      if (!gemini?.available) {
+      if (gemini === undefined || !gemini.available) {
         console.log("SKIP: gemini-cli not available");
         return;
       }
