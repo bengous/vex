@@ -91,7 +91,7 @@ function makeError(
  */
 function extractViewport(definition: PipelineDefinition): ViewportConfig | undefined {
   const captureNode = definition.nodes.find((n) => n.operation === "capture");
-  if (!captureNode) {
+  if (captureNode === undefined) {
     return undefined;
   }
 
@@ -123,7 +123,7 @@ function populateContextMaps(
   }
   for (const [key, artifactId] of Object.entries(state.semanticNames)) {
     const artifact = state.artifacts[artifactId];
-    if (artifact) {
+    if (artifact !== undefined) {
       semanticNames.set(key, artifact);
     }
   }
@@ -153,7 +153,7 @@ function createContext(
       return Effect.succeed(state.sessionDir);
     }
 
-    if (!viewport) {
+    if (viewport === undefined) {
       return Effect.succeed(state.sessionDir);
     }
     const viewportDir = join(state.sessionDir, getViewportDirName(viewport));
@@ -207,7 +207,7 @@ function executeNode(
 ): Effect.Effect<NodeResult, OperationError> {
   return Effect.gen(function* () {
     const node = state.definition.nodes.find((n) => n.id === nodeId);
-    if (!node) {
+    if (node === undefined) {
       return yield* new OperationError({
         operation: nodeId,
         detail: `Node not found: ${nodeId}`,
@@ -215,7 +215,7 @@ function executeNode(
     }
 
     const operation = OPERATIONS[node.operation];
-    if (!operation) {
+    if (operation === undefined) {
       return yield* new OperationError({
         operation: node.operation,
         detail: `Unknown operation: ${node.operation}`,
@@ -236,7 +236,7 @@ function executeNode(
       const sourceKey = `${edge.from}:${edge.artifact}`;
       const targetKey = edge.targetField ?? edge.artifact;
       const artifact = ctx.getArtifact(sourceKey);
-      if (artifact) {
+      if (artifact !== undefined) {
         inputs[targetKey] = artifact;
       } else {
         // Use getDataRaw for dynamic edge routing keys
@@ -256,7 +256,13 @@ function executeNode(
     const outputArtifacts: string[] = [];
     const resultObj = result as Record<string, unknown>;
     for (const [key, value] of Object.entries(resultObj)) {
-      if (value && typeof value === "object" && "_kind" in value && value._kind === "artifact") {
+      if (
+        value !== undefined &&
+        value !== null &&
+        typeof value === "object" &&
+        "_kind" in value &&
+        value._kind === "artifact"
+      ) {
         // This is an artifact - store in artifacts channel
         const artifact = value as Artifact;
         currentState = storeArtifact(currentState, artifact);
@@ -275,7 +281,7 @@ function executeNode(
     if (node.operation === "analyze") {
       const dataKey = `${nodeId}:result`;
       const analysisResult = currentState.data[dataKey] as { issues?: unknown[] } | undefined;
-      if (analysisResult && Array.isArray(analysisResult.issues)) {
+      if (analysisResult !== undefined && Array.isArray(analysisResult.issues)) {
         currentState = {
           ...currentState,
           issues: analysisResult.issues as typeof currentState.issues,
