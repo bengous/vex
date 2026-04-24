@@ -59,4 +59,5 @@ const cli = Command.run(vexCommand, {
   version: VERSION,
 });
 
+// @effect-diagnostics-next-line strictEffectProvide:off
 Effect.suspend(() => cli(process.argv)).pipe(Effect.provide(BunContext.layer), BunRuntime.runMain);

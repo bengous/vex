@@ -57,7 +57,7 @@ export function expectOperationFailure(
   const error = cause.error as OperationError;
   expect(error._tag).toBe("OperationError");
 
-  if (expectedOperation) {
+  if (expectedOperation !== undefined) {
     expect(error.operation).toBe(expectedOperation);
   }
 
