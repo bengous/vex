@@ -75,8 +75,8 @@ function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError>
         }),
     });
 
-    const raw = module.default;
-    if (!raw) {
+    const raw = (module as { readonly default?: unknown }).default;
+    if (raw === undefined) {
       return yield* new ConfigError({
         kind: "invalid_schema",
         message: `${configPath} must have a default export`,
@@ -202,7 +202,7 @@ export function loadConfigOptional(
 ): Effect.Effect<VexConfig | undefined, ConfigError, FileSystem.FileSystem> {
   return loadConfig(projectRoot).pipe(
     Effect.catchTag("ConfigError", (error) =>
-      error.kind === "not_found" ? Effect.succeed(undefined) : Effect.fail(error),
+      error.kind === "not_found" ? Effect.void.pipe(Effect.as(undefined)) : Effect.fail(error),
     ),
   );
 }
@@ -218,7 +218,7 @@ export function getScanPreset(
     const presets = config.scanPresets ?? {};
     const preset = presets[presetName];
 
-    if (!preset) {
+    if (preset === undefined) {
       const available = Object.keys(presets);
       return yield* new ConfigError({
         kind: "preset_not_found",
@@ -245,7 +245,7 @@ export function getLoopPreset(
     const presets = config.loopPresets ?? {};
     const preset = presets[presetName];
 
-    if (!preset) {
+    if (preset === undefined) {
       const available = Object.keys(presets);
       return yield* new ConfigError({
         kind: "preset_not_found",
@@ -288,7 +288,7 @@ export function loadCodexProfile(
     // Check user-defined profiles
     const userProfiles = config?.providers?.codex ?? {};
     const userProfile = userProfiles[name];
-    if (userProfile) {
+    if (userProfile !== undefined) {
       return userProfile;
     }
 
