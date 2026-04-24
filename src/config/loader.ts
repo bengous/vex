@@ -66,7 +66,7 @@ export function findProjectRoot(
 function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError> {
   return Effect.gen(function* () {
     const module = yield* Effect.tryPromise({
-      try: async () => import(configPath),
+      try: async (): Promise<unknown> => import(configPath),
       catch: (error) =>
         new ConfigError({
           kind: "invalid_schema",
@@ -75,7 +75,7 @@ function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError>
         }),
     });
 
-    const raw = (module as { readonly default?: unknown }).default;
+    const raw = getDefaultExport(module);
     if (raw === undefined) {
       return yield* new ConfigError({
         kind: "invalid_schema",
@@ -97,6 +97,13 @@ function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError>
 
     return decoded;
   });
+}
+
+function getDefaultExport(module: unknown): unknown {
+  if (typeof module !== "object" || module === null) {
+    return undefined;
+  }
+  return Object.getOwnPropertyDescriptor(module, "default")?.value;
 }
 
 /**
@@ -281,8 +288,8 @@ export function loadCodexProfile(
 ): Effect.Effect<CodexProfile, ConfigError> {
   return Effect.gen(function* () {
     // Check built-in profiles first
-    if (name in BUILTIN_PROFILES) {
-      return BUILTIN_PROFILES[name as keyof typeof BUILTIN_PROFILES];
+    if (isBuiltinProfileName(name)) {
+      return BUILTIN_PROFILES[name];
     }
 
     // Check user-defined profiles
@@ -306,4 +313,8 @@ export function loadCodexProfile(
       availablePresets: allAvailable,
     });
   });
+}
+
+function isBuiltinProfileName(name: string): name is keyof typeof BUILTIN_PROFILES {
+  return Object.hasOwn(BUILTIN_PROFILES, name);
 }

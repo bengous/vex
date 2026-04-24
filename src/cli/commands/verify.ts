@@ -8,11 +8,12 @@
 
 import type { PipelineState } from "../../pipeline/types.js";
 import { Args, Command } from "@effect/cli";
-import { Effect, Option } from "effect";
+import { Effect, Option, Schema as S } from "effect";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { decodeJson, encodeJson } from "../../core/json.js";
 import { verifyChanges } from "../../loop/verify.js";
+import { decodePipelineState } from "../../pipeline/schema.js";
 import { baselineOption, currentOption, jsonOption } from "../options.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -35,23 +36,26 @@ function loadIterationState(sessionDir: string, iteration: number | "latest"): P
   }
 
   const state = decodeJson(readFileSync(statePath, "utf-8"));
-  const stateObject =
-    typeof state === "object" && state !== null ? (state as Record<string, unknown>) : {};
+  const stateObject = asRecord(state);
 
   if (Array.isArray(stateObject["iterationHistory"])) {
     const iterationHistory = stateObject["iterationHistory"];
     const idx = iteration === "latest" ? iterationHistory.length - 1 : iteration;
-    const iterState = iterationHistory[idx] as
-      | { readonly pipelineState?: PipelineState }
-      | undefined;
-    if (iterState?.pipelineState === undefined) {
+    const iterState = asRecord(iterationHistory[idx]);
+    const pipelineState = iterState["pipelineState"];
+    if (pipelineState === undefined) {
       throw new Error(`Iteration ${iteration} not found`);
     }
-    return iterState.pipelineState;
+    return decodePipelineState(pipelineState);
   }
 
   // Otherwise use the main state
-  return state as PipelineState;
+  return decodePipelineState(state);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  const schema = S.Record({ key: S.String, value: S.Unknown });
+  return S.is(schema)(value) ? value : {};
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

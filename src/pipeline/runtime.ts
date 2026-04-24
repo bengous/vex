@@ -15,8 +15,12 @@ import type {
 } from "./types.js";
 import type { PlatformError } from "@effect/platform/Error";
 import { FileSystem } from "@effect/platform";
-import { Effect } from "effect";
+import { Effect, Either, Schema as S } from "effect";
 import { join } from "node:path";
+import {
+  AnalysisResult as AnalysisResultSchema,
+  Artifact as ArtifactSchema,
+} from "../core/schema.js";
 import { ARTIFACT_NAMES, getViewportDirName } from "../core/types.js";
 import { analyzeOperation } from "./operations/analyze.js";
 import { annotateOperation } from "./operations/annotate.js";
@@ -57,19 +61,45 @@ export type RunPipelineOptions = {
   readonly artifactLayout?: ArtifactLayout;
 };
 
-const OPERATIONS: Record<string, Operation<any, any, any>> = {
-  capture: captureOperation,
-  "overlay-grid": overlayGridOperation,
-  "overlay-folds": overlayFoldsOperation,
-  analyze: analyzeOperation,
-  annotate: annotateOperation,
-  render: renderOperation,
-  diff: diffOperation,
+type RuntimeOperation = Omit<Operation, "execute"> & {
+  readonly execute: (
+    input: unknown,
+    config: Record<string, unknown>,
+    ctx: PipelineContext,
+  ) => Effect.Effect<unknown, OperationError>;
+};
+
+function toRuntimeOperation<TInput, TOutput, TConfig>(
+  operation: Operation<TInput, TOutput, TConfig>,
+): RuntimeOperation {
+  return {
+    name: operation.name,
+    description: operation.description,
+    inputTypes: operation.inputTypes,
+    outputTypes: operation.outputTypes,
+    // Dynamic DAG edges are validated at runtime by operation implementations.
+    // This is the single dispatch boundary between persisted graph data and typed operations.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    execute: (input, config, ctx) => operation.execute(input as TInput, config as TConfig, ctx),
+  };
+}
+
+const OPERATIONS: Record<string, RuntimeOperation> = {
+  capture: toRuntimeOperation(captureOperation),
+  "overlay-grid": toRuntimeOperation(overlayGridOperation),
+  "overlay-folds": toRuntimeOperation(overlayFoldsOperation),
+  analyze: toRuntimeOperation(analyzeOperation),
+  annotate: toRuntimeOperation(annotateOperation),
+  render: toRuntimeOperation(renderOperation),
+  diff: toRuntimeOperation(diffOperation),
 };
 
 /** @internal Test-only: register a mock operation for unit tests. */
-export function registerTestOperation(name: string, operation: Operation<any, any, any>): void {
-  OPERATIONS[name] = operation;
+export function registerTestOperation<TInput, TOutput, TConfig>(
+  name: string,
+  operation: Operation<TInput, TOutput, TConfig>,
+): void {
+  OPERATIONS[name] = toRuntimeOperation(operation);
 }
 
 /** @internal Test-only: remove a mock operation registered by registerTestOperation. */
@@ -110,6 +140,24 @@ function createLogger(): Logger {
     warn: (msg) => console.warn(`[WARN] ${msg}`),
     error: (msg) => console.error(`[ERROR] ${msg}`),
   };
+}
+
+const UnknownRecord = S.Record({ key: S.String, value: S.Unknown });
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return S.is(UnknownRecord)(value) ? value : undefined;
+}
+
+function decodeArtifact(value: unknown): Artifact | undefined {
+  const result = S.decodeUnknownEither(ArtifactSchema)(value);
+  return Either.isRight(result) ? { ...result.right, _kind: "artifact" } : undefined;
+}
+
+function decodeAnalysisIssues(
+  value: unknown,
+): (typeof AnalysisResultSchema.Type)["issues"] | undefined {
+  const result = S.decodeUnknownEither(AnalysisResultSchema)(value);
+  return Either.isRight(result) ? result.right.issues : undefined;
 }
 
 /**
@@ -190,7 +238,8 @@ function createContext(
       return artifact.id;
     },
     getArtifact: (id) => artifacts.get(id) ?? semanticNames.get(id),
-    // Typed getData for known keys (implementation uses Map<string, unknown>)
+    // Typed getData for known keys (implementation uses Map<string, unknown>).
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     getData: <K extends DataKey>(key: K) => dataMap.get(key) as DataValue<K> | undefined,
     // Raw getData for dynamic node:field keys used in edge routing
     getDataRaw: (key) => dataMap.get(key),
@@ -258,17 +307,17 @@ function executeNode(
     // edges above (lines 218-233) before any writes. syncContextFromState reconciles
     // all Maps after the full parallel wave completes.
     const outputArtifacts: string[] = [];
-    const resultObj = result as Record<string, unknown>;
+    const resultObj = asRecord(result);
+    if (resultObj === undefined) {
+      return yield* new OperationError({
+        operation: node.operation,
+        detail: "Operation returned a non-object result",
+      });
+    }
     for (const [key, value] of Object.entries(resultObj)) {
-      if (
-        value !== undefined &&
-        value !== null &&
-        typeof value === "object" &&
-        "_kind" in value &&
-        value._kind === "artifact"
-      ) {
+      const artifact = decodeArtifact(value);
+      if (artifact !== undefined) {
         // This is an artifact - store in artifacts channel
-        const artifact = value as Artifact;
         currentState = storeArtifact(currentState, artifact);
         currentState = storeSemanticName(currentState, `${nodeId}:${key}`, artifact.id);
         outputArtifacts.push(artifact.id);
@@ -284,11 +333,11 @@ function executeNode(
     // Populate state.issues from analysis result for external consumers
     if (node.operation === "analyze") {
       const dataKey = `${nodeId}:result`;
-      const analysisResult = currentState.data[dataKey] as { issues?: unknown[] } | undefined;
-      if (analysisResult !== undefined && Array.isArray(analysisResult.issues)) {
+      const issues = decodeAnalysisIssues(currentState.data[dataKey]);
+      if (issues !== undefined) {
         currentState = {
           ...currentState,
-          issues: analysisResult.issues as typeof currentState.issues,
+          issues,
         };
       }
     }

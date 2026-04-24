@@ -9,11 +9,12 @@
 import type { Issue } from "../../core/types.js";
 import type { BatchResolutionResult, LocatorContext } from "../../locator/types.js";
 import { Args, Command } from "@effect/cli";
-import { Effect, Option } from "effect";
+import { Effect, Either, Option, Schema as S } from "effect";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { loadDOMSnapshot } from "../../core/dom-snapshot-loader.js";
 import { decodeJson, encodeJson } from "../../core/json.js";
+import { Issue as IssueSchema, IssueArray } from "../../core/schema.js";
 import { createResolverWithStrategies } from "../../locator/resolver.js";
 import { domTracerStrategy } from "../../locator/strategies/dom-tracer.js";
 import { jsonOption, patternsOption, projectOption } from "../options.js";
@@ -32,6 +33,7 @@ const sessionArg = Args.directory({ name: "session" });
 // ═══════════════════════════════════════════════════════════════════════════
 
 type JsonObject = Record<string, unknown>;
+const JsonObjectSchema = S.Record({ key: S.String, value: S.Unknown });
 
 type AnalysisArtifactRef = {
   readonly type?: string;
@@ -55,7 +57,56 @@ export type LocateTargetSet = {
 };
 
 function asObject(value: unknown): JsonObject | undefined {
-  return typeof value === "object" && value !== null ? (value as JsonObject) : undefined;
+  return S.is(JsonObjectSchema)(value) ? value : undefined;
+}
+
+function isAnalysisArtifactRef(value: unknown): value is AnalysisArtifactRef {
+  const obj = asObject(value);
+  return (
+    obj !== undefined &&
+    (obj["type"] === undefined || typeof obj["type"] === "string") &&
+    (obj["path"] === undefined || typeof obj["path"] === "string")
+  );
+}
+
+function decodeIssuesStrict(raw: unknown): Issue[] {
+  const result = S.decodeUnknownEither(IssueArray)(raw);
+  return Either.isRight(result) ? result.right : [];
+}
+
+function decodeIssuesWithPartialRecovery(raw: unknown): Issue[] {
+  const fullResult = S.decodeUnknownEither(IssueArray)(raw);
+  if (Either.isRight(fullResult)) {
+    return fullResult.right;
+  }
+
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const issues: Issue[] = [];
+  for (const item of raw) {
+    const itemResult = S.decodeUnknownEither(IssueSchema)(item);
+    if (Either.isRight(itemResult)) {
+      issues.push(itemResult.right);
+    }
+  }
+  return issues;
+}
+
+function getAnalysisArtifacts(raw: unknown): Record<string, AnalysisArtifactRef> | undefined {
+  const obj = asObject(raw);
+  if (obj === undefined) {
+    return undefined;
+  }
+
+  const artifacts: Record<string, AnalysisArtifactRef> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (isAnalysisArtifactRef(value)) {
+      artifacts[key] = value;
+    }
+  }
+  return artifacts;
 }
 
 function loadIssuesFromAnalysisArtifacts(
@@ -71,10 +122,8 @@ function loadIssuesFromAnalysisArtifacts(
   }
 
   try {
-    const analysis = decodeJson(readFileSync(analysisPath, "utf-8")) as {
-      issues?: unknown;
-    };
-    return Array.isArray(analysis.issues) ? (analysis.issues as Issue[]) : [];
+    const analysis = asObject(decodeJson(readFileSync(analysisPath, "utf-8")));
+    return analysis !== undefined ? decodeIssuesWithPartialRecovery(analysis["issues"]) : [];
   } catch {
     return [];
   }
@@ -131,17 +180,15 @@ export function loadLocateSessionContext(sessionDir: string): LocateSessionConte
 
     const loopIssues = latestIteration?.["issuesFound"];
     if (Array.isArray(loopIssues) && loopIssues.length > 0) {
-      return { issues: loopIssues as Issue[], domSessionDir };
+      return { issues: decodeIssuesStrict(loopIssues), domSessionDir };
     }
 
     const pipelineIssues = latestPipelineState?.["issues"];
     if (Array.isArray(pipelineIssues) && pipelineIssues.length > 0) {
-      return { issues: pipelineIssues as Issue[], domSessionDir };
+      return { issues: decodeIssuesStrict(pipelineIssues), domSessionDir };
     }
 
-    const latestPipelineArtifacts = asObject(latestPipelineState?.["artifacts"]) as
-      | Record<string, AnalysisArtifactRef>
-      | undefined;
+    const latestPipelineArtifacts = getAnalysisArtifacts(latestPipelineState?.["artifacts"]);
     const latestPipelineAnalysisIssues = loadIssuesFromAnalysisArtifacts(latestPipelineArtifacts);
     if (latestPipelineAnalysisIssues.length > 0) {
       return { issues: latestPipelineAnalysisIssues, domSessionDir };
@@ -149,12 +196,10 @@ export function loadLocateSessionContext(sessionDir: string): LocateSessionConte
   }
 
   if (Array.isArray(stateObj["issues"]) && stateObj["issues"].length > 0) {
-    return { issues: stateObj["issues"] as Issue[], domSessionDir };
+    return { issues: decodeIssuesStrict(stateObj["issues"]), domSessionDir };
   }
 
-  const rootArtifacts = asObject(stateObj["artifacts"]) as
-    | Record<string, AnalysisArtifactRef>
-    | undefined;
+  const rootArtifacts = getAnalysisArtifacts(stateObj["artifacts"]);
   return { issues: loadIssuesFromAnalysisArtifacts(rootArtifacts), domSessionDir };
 }
 
@@ -243,9 +288,7 @@ export const locateCommand = Command.make(
         const ctx: LocatorContext = {
           projectRoot,
           filePatterns,
-          ...(domResult.snapshot !== undefined && domResult.snapshot !== null
-            ? { domSnapshot: domResult.snapshot }
-            : {}),
+          ...(domResult.snapshot !== null ? { domSnapshot: domResult.snapshot } : {}),
         };
 
         const result = yield* resolver.locateAll(target.issues, ctx);
@@ -296,9 +339,7 @@ export const locateCommand = Command.make(
         const ctx: LocatorContext = {
           projectRoot,
           filePatterns,
-          ...(domResult.snapshot !== undefined && domResult.snapshot !== null
-            ? { domSnapshot: domResult.snapshot }
-            : {}),
+          ...(domResult.snapshot !== null ? { domSnapshot: domResult.snapshot } : {}),
         };
 
         const result = yield* resolver.locateAll(target.issues, ctx);
