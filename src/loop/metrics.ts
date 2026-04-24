@@ -49,7 +49,10 @@ export function createIterationMetrics(
  */
 export function metricsFromState(state: IterationState): IterationMetrics {
   const startTime = new Date(state.startedAt).getTime();
-  const endTime = state.completedAt ? new Date(state.completedAt).getTime() : Date.now();
+  const endTime =
+    state.completedAt !== undefined && state.completedAt.length > 0
+      ? new Date(state.completedAt).getTime()
+      : Date.now();
 
   return {
     iteration: state.number,

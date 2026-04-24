@@ -120,7 +120,7 @@ export class LoopOrchestrator {
 
         // 1. CAPTURE & ANALYZE
         const viewport = this.options.viewports[0];
-        if (!viewport) {
+        if (viewport === undefined) {
           return yield* makeError("capture", "No viewport configured");
         }
 
@@ -163,9 +163,9 @@ export class LoopOrchestrator {
                 `Failed to load DOM snapshot: ${e instanceof Error ? e.message : String(e)}`,
               ),
           });
-          if (domResult.snapshot) {
+          if (domResult.snapshot !== undefined && domResult.snapshot !== null) {
             domSnapshot = domResult.snapshot;
-          } else if (domResult.error) {
+          } else if (domResult.error !== undefined && domResult.error.length > 0) {
             console.warn(`DOM snapshot: ${domResult.error}`);
           }
         }
@@ -194,7 +194,7 @@ export class LoopOrchestrator {
         const fixesApplied: AppliedFix[] = [];
 
         for (const decision of autoFixes) {
-          if (decision.location) {
+          if (decision.location !== undefined) {
             const fix = yield* this.callbacks.applyFix(decision.issue, decision.location, decision);
             fixesApplied.push(fix);
           }
@@ -212,7 +212,7 @@ export class LoopOrchestrator {
               break;
             }
 
-            if (response.action === "apply" && response.location) {
+            if (response.action === "apply" && response.location !== undefined) {
               const fix = yield* this.callbacks.applyFix(
                 decision.issue,
                 response.location,
@@ -237,7 +237,7 @@ export class LoopOrchestrator {
 
         // 5. VERIFY
         let verification: VerificationResult | undefined;
-        if (baseline) {
+        if (baseline !== null) {
           verification = yield* verifyChanges(baseline, currentState).pipe(
             Effect.mapError((e) => makeError("verify", e.message, e)),
           );
