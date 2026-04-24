@@ -29,7 +29,9 @@ function formatProvider(info: ProviderInfo): string {
 
   lines.push(`${info.displayName} [${info.name}]`);
   lines.push(`  Status: ${status}`);
-  lines.push(`  Type: ${info.type.toUpperCase()}${info.command ? ` (${info.command})` : ""}`);
+  lines.push(
+    `  Type: ${info.type.toUpperCase()}${info.command !== undefined && info.command.length > 0 ? ` (${info.command})` : ""}`,
+  );
 
   if (info.models.length > 0) {
     lines.push("  Models:");
@@ -38,7 +40,7 @@ function formatProvider(info: ProviderInfo): string {
     }
   }
 
-  if (info.modelAliases && Object.keys(info.modelAliases).length > 0) {
+  if (info.modelAliases !== undefined && Object.keys(info.modelAliases).length > 0) {
     lines.push("  Aliases:");
     for (const [alias, target] of Object.entries(info.modelAliases)) {
       lines.push(`    ${alias} → ${target}`);
@@ -77,7 +79,7 @@ function formatProviderWithProfiles(
 ): string {
   let output = formatProvider(info);
 
-  if (profiles) {
+  if (profiles !== undefined) {
     output += "\n  Profiles:";
     if (profiles.builtin.length > 0) {
       output += `\n    Built-in: ${profiles.builtin.join(", ")}`;
@@ -107,10 +109,11 @@ export const providersCommand = Command.make(
       if (args.json) {
         const output = providers.map((p) => ({
           ...p,
-          ...(args.showProfiles &&
-            p.name === "codex-cli" && {
-              profiles: getProfileInfo(p.name, args.showProfiles, config),
-            }),
+          ...(args.showProfiles && p.name === "codex-cli"
+            ? {
+                profiles: getProfileInfo(p.name, args.showProfiles, config),
+              }
+            : {}),
         }));
         console.log(JSON.stringify(output, null, 2));
         return;
