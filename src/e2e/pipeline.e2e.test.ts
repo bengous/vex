@@ -56,6 +56,7 @@ const PROVIDER_CHAIN: readonly ProviderConfig[] = [
   { name: "codex-cli", model: "gpt-5.4", reasoning: "low" },
   { name: "ollama", model: "qwen3-vl:8b" },
 ];
+const RUN_E2E = process.env.RUN_E2E !== undefined && process.env.RUN_E2E.length > 0;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Provider Discovery
@@ -64,7 +65,7 @@ const PROVIDER_CHAIN: readonly ProviderConfig[] = [
 async function findAvailableProvider(): Promise<ProviderConfig | null> {
   for (const provider of PROVIDER_CHAIN) {
     const info = await Effect.runPromise(getProviderInfo(provider.name));
-    if (info?.available) {
+    if (info !== undefined && info.available) {
       return provider;
     }
   }
@@ -141,7 +142,7 @@ describe("VEX Pipeline E2E", () => {
   const testUrl = `file://${resolve(import.meta.dir, "fixtures/test-page.html")}`;
 
   beforeAll(async () => {
-    if (!process.env.RUN_E2E) {
+    if (!RUN_E2E) {
       return;
     }
     outputDir = mkdtempSync(join(tmpdir(), "vex-e2e-"));
@@ -149,18 +150,18 @@ describe("VEX Pipeline E2E", () => {
   });
 
   afterAll(async () => {
-    if (!process.env.RUN_E2E) {
+    if (!RUN_E2E) {
       return;
     }
-    if (outputDir) {
+    if (outputDir.length > 0) {
       await rm(outputDir, { recursive: true, force: true });
     }
   });
 
-  test.skipIf(!process.env.RUN_E2E)(
+  test.skipIf(!RUN_E2E)(
     "full pipeline: capture -> folds -> grid -> analyze",
     async () => {
-      if (!provider) {
+      if (provider === null) {
         console.log("SKIP: No VLM provider available");
         return;
       }
