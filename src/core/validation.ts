@@ -9,6 +9,12 @@
 import { Data, Effect, Either, ParseResult, Schema } from "effect";
 import * as S from "./schema.js";
 
+const JsonObject = Schema.Record({ key: Schema.String, value: Schema.Unknown });
+
+function asJsonObject(value: unknown): Record<string, unknown> | undefined {
+  return Schema.is(JsonObject)(value) ? value : undefined;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Error Types
 // ═══════════════════════════════════════════════════════════════════════════
@@ -82,8 +88,8 @@ export function validateIssuesWithPartialRecovery(
   logger?.warn("Full issue array validation failed, attempting partial recovery");
 
   const validIssues: S.Issue[] = [];
-  for (let i = 0; i < raw.length; i++) {
-    const item = raw[i];
+  const items: readonly unknown[] = raw;
+  for (const [i, item] of items.entries()) {
     const itemResult = Schema.decodeUnknownEither(S.Issue)(item);
 
     if (Either.isRight(itemResult)) {
@@ -136,7 +142,8 @@ export function parseIssuesStrict(
   }
 
   // Extract issues array from parsed object
-  if (typeof parsed !== "object" || parsed === null) {
+  const parsedObject = asJsonObject(parsed);
+  if (parsedObject === undefined) {
     return Effect.fail(
       new ValidationRetryNeeded({
         reason: "json_parse_error",
@@ -146,7 +153,7 @@ export function parseIssuesStrict(
     );
   }
 
-  const issues = (parsed as Record<string, unknown>)["issues"];
+  const issues = parsedObject["issues"];
   if (issues === undefined) {
     return Effect.fail(
       new ValidationRetryNeeded({
@@ -220,12 +227,13 @@ export function parseIssuesFromResponse(
   }
 
   // Extract issues array from parsed object
-  if (typeof parsed !== "object" || parsed === null) {
+  const parsedObject = asJsonObject(parsed);
+  if (parsedObject === undefined) {
     logger?.warn("Parsed JSON is not an object");
     return Effect.succeed([]);
   }
 
-  const issues = (parsed as Record<string, unknown>)["issues"];
+  const issues = parsedObject["issues"];
   if (issues === undefined) {
     logger?.warn('No "issues" field in parsed JSON');
     return Effect.succeed([]);

@@ -292,10 +292,18 @@ function normalizeDevices(spec: DeviceSpec | undefined): readonly string[] | und
   if (spec === undefined) {
     return undefined;
   }
-  if (Array.isArray(spec)) {
-    return spec as readonly string[];
+  if (typeof spec === "string") {
+    return [spec];
   }
-  return [spec as string];
+  return spec;
+}
+
+function hasReasoning(args: CommonCliArgs): args is ScanCliArgs {
+  return "reasoning" in args;
+}
+
+function isAutoFixThreshold(value: string): value is ResolvedLoopOptions["autoFix"] {
+  return value === "high" || value === "medium" || value === "none";
 }
 
 /**
@@ -420,8 +428,7 @@ Either provide a URL argument or add 'urls' field to the preset.`,
     const model = Option.isSome(cliArgs.model) ? cliArgs.model.value : presetProviderInfo.model;
 
     // Resolve reasoning: CLI > preset > undefined (scan-only, absent for loop)
-    const cliReasoning =
-      "reasoning" in cliArgs ? (cliArgs.reasoning as Option.Option<string>) : undefined;
+    const cliReasoning = hasReasoning(cliArgs) ? cliArgs.reasoning : undefined;
     const reasoning =
       cliReasoning !== undefined && Option.isSome(cliReasoning)
         ? cliReasoning.value
@@ -586,9 +593,16 @@ Create a config file or remove the --preset flag.`,
       ? cliArgs.maxIterations.value
       : (preset?.maxIterations ?? DEFAULTS.maxIterations);
 
-    const autoFix = (
-      Option.isSome(cliArgs.autoFix) ? cliArgs.autoFix.value : (preset?.autoFix ?? DEFAULTS.autoFix)
-    ) as "high" | "medium" | "none";
+    const autoFixCandidate = Option.isSome(cliArgs.autoFix)
+      ? cliArgs.autoFix.value
+      : (preset?.autoFix ?? DEFAULTS.autoFix);
+    if (!isAutoFixThreshold(autoFixCandidate)) {
+      return yield* new ConfigError({
+        kind: "invalid_schema",
+        message: `Invalid auto-fix threshold '${autoFixCandidate}'. Expected high, medium, or none.`,
+      });
+    }
+    const autoFix = autoFixCandidate;
 
     const dryRun = cliArgs.dryRun || (preset?.dryRun ?? DEFAULTS.dryRun);
 

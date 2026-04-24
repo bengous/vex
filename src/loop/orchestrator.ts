@@ -59,6 +59,12 @@ export type LocateResult = {
   issuesWithLocations: Array<{ issue: Issue; locations: readonly CodeLocation[] }>;
 };
 
+type ResolvedLoopOptions = Omit<
+  LoopOptions,
+  "maxIterations" | "interactive" | "autoFixThreshold" | "dryRun"
+> &
+  Required<Pick<LoopOptions, "maxIterations" | "interactive" | "autoFixThreshold" | "dryRun">>;
+
 /**
  * Callbacks for pipeline operations.
  * These abstract the actual capture/analyze/fix implementations.
@@ -93,7 +99,7 @@ export type LoopCallbacks = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class LoopOrchestrator {
-  private readonly options: Required<LoopOptions>;
+  private readonly options: ResolvedLoopOptions;
   private readonly gateConfig: GateConfig;
   private readonly callbacks: LoopCallbacks;
   private readonly resolver = createResolverWithStrategies([domTracerStrategy]);
@@ -103,7 +109,15 @@ export class LoopOrchestrator {
     callbacks: LoopCallbacks,
     gateConfig: Partial<GateConfig> = {},
   ) {
-    this.options = { ...DEFAULT_LOOP_OPTIONS, ...options } as Required<LoopOptions>;
+    this.options = {
+      ...options,
+      maxIterations: options.maxIterations,
+      interactive: options.interactive,
+      autoFixThreshold: options.autoFixThreshold,
+      ...(options.model !== undefined ? { model: options.model } : {}),
+      ...(options.sessionDir !== undefined ? { sessionDir: options.sessionDir } : {}),
+      dryRun: options.dryRun ?? DEFAULT_LOOP_OPTIONS.dryRun ?? false,
+    };
     this.gateConfig = { ...DEFAULT_GATE_CONFIG, ...gateConfig };
     this.callbacks = callbacks;
   }
@@ -167,7 +181,7 @@ export class LoopOrchestrator {
                 `Failed to load DOM snapshot: ${e instanceof Error ? e.message : String(e)}`,
               ),
           });
-          if (domResult.snapshot !== undefined && domResult.snapshot !== null) {
+          if (domResult.snapshot !== null) {
             domSnapshot = domResult.snapshot;
           } else if (domResult.error !== undefined && domResult.error.length > 0) {
             console.warn(`DOM snapshot: ${domResult.error}`);
