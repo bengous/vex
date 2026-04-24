@@ -39,13 +39,11 @@ function readImageBase64(path: string): Effect.Effect<string, AnalysisFailed> {
     const file = Bun.file(path);
     const exists = yield* Effect.promise(async () => file.exists());
     if (!exists) {
-      return yield* Effect.fail(
-        new AnalysisFailed({
-          provider: "ollama",
-          kind: "image_read",
-          message: `Image not found: ${path}`,
-        }),
-      );
+      return yield* new AnalysisFailed({
+        provider: "ollama",
+        kind: "image_read",
+        message: `Image not found: ${path}`,
+      });
     }
     const bytes = yield* Effect.promise(async () => file.bytes());
     return Buffer.from(bytes).toString("base64");

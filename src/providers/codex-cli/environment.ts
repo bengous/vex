@@ -47,7 +47,10 @@ export type CodexEnvService = {
 /**
  * Effect service tag for Codex environment.
  */
-export class CodexEnv extends Context.Tag("CodexEnv")<CodexEnv, CodexEnvService>() {}
+export class CodexEnv extends Context.Tag("vex/providers/codex-cli/environment/CodexEnv")<
+  CodexEnv,
+  CodexEnvService
+>() {}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Resource Implementation

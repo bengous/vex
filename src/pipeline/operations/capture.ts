@@ -112,12 +112,10 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
             );
 
             if (!hasDOMSnapshot(result)) {
-              return yield* Effect.fail(
-                new OperationError({
-                  operation: "capture",
-                  detail: "Capture completed without DOM snapshot",
-                }),
-              );
+              return yield* new OperationError({
+                operation: "capture",
+                detail: "Capture completed without DOM snapshot",
+              });
             }
 
             yield* Effect.tryPromise({

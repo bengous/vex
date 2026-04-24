@@ -393,13 +393,11 @@ export function resolveCommonOptions(
       urls = preset.urls;
     } else {
       const presetInfo = presetName ? ` Preset '${presetName}' has no 'urls' field.` : "";
-      return yield* Effect.fail(
-        new ConfigError({
-          kind: "missing_required",
-          message: `URL required.${presetInfo}
+      return yield* new ConfigError({
+        kind: "missing_required",
+        message: `URL required.${presetInfo}
 Either provide a URL argument or add 'urls' field to the preset.`,
-        }),
-      );
+      });
     }
 
     // Resolve devices: CLI > preset > default
@@ -440,13 +438,11 @@ Either provide a URL argument or add 'urls' field to the preset.`,
       const expectedPrefix = PROVIDER_TO_PROFILE_PREFIX[provider];
 
       if (!expectedPrefix || profileProvider !== expectedPrefix) {
-        return yield* Effect.fail(
-          new ConfigError({
-            kind: "invalid_schema",
-            message: `Profile '${profileProvider}:${profileName}' doesn't match provider '${provider}'.
+        return yield* new ConfigError({
+          kind: "invalid_schema",
+          message: `Profile '${profileProvider}:${profileName}' doesn't match provider '${provider}'.
 Expected: ${expectedPrefix ?? "unknown"}:${profileName}`,
-          }),
-        );
+        });
       }
       profile = profileName;
 
@@ -469,13 +465,11 @@ Expected: ${expectedPrefix ?? "unknown"}:${profileName}`,
     if (model) {
       const providerMeta = getProviderMetadata(provider);
       if (providerMeta?.knownModels && !providerMeta.knownModels.includes(model)) {
-        return yield* Effect.fail(
-          new ConfigError({
-            kind: "invalid_schema",
-            message: `Model '${model}' not in known models for '${provider}'.
+        return yield* new ConfigError({
+          kind: "invalid_schema",
+          message: `Model '${model}' not in known models for '${provider}'.
 Known: ${providerMeta.knownModels.join(", ")}`,
-          }),
-        );
+        });
       }
     }
 
@@ -517,13 +511,11 @@ export function resolveScanOptions(
     let preset: ScanPreset | undefined;
     if (Option.isSome(cliArgs.preset)) {
       if (!config) {
-        return yield* Effect.fail(
-          new ConfigError({
-            kind: "not_found",
-            message: `Cannot use --preset: no vex.config.ts found.
+        return yield* new ConfigError({
+          kind: "not_found",
+          message: `Cannot use --preset: no vex.config.ts found.
 Create a config file or remove the --preset flag.`,
-          }),
-        );
+        });
       }
       preset = yield* getScanPreset(config, cliArgs.preset.value);
     }
@@ -563,13 +555,11 @@ export function resolveLoopOptions(
     let preset: LoopPreset | undefined;
     if (Option.isSome(cliArgs.preset)) {
       if (!config) {
-        return yield* Effect.fail(
-          new ConfigError({
-            kind: "not_found",
-            message: `Cannot use --preset: no vex.config.ts found.
+        return yield* new ConfigError({
+          kind: "not_found",
+          message: `Cannot use --preset: no vex.config.ts found.
 Create a config file or remove the --preset flag.`,
-          }),
-        );
+        });
       }
       preset = yield* getLoopPreset(config, cliArgs.preset.value);
     }

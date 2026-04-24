@@ -77,13 +77,11 @@ function loadTsConfig(configPath: string): Effect.Effect<VexConfig, ConfigError>
 
     const raw = module.default;
     if (!raw) {
-      return yield* Effect.fail(
-        new ConfigError({
-          kind: "invalid_schema",
-          message: `${configPath} must have a default export`,
-          path: configPath,
-        }),
-      );
+      return yield* new ConfigError({
+        kind: "invalid_schema",
+        message: `${configPath} must have a default export`,
+        path: configPath,
+      });
     }
 
     const decoded = yield* S.decodeUnknown(VexConfig)(raw).pipe(
@@ -188,12 +186,10 @@ export function loadConfig(
 
     // No config found - this is OK, will use CLI args + env vars
     // Return a minimal config that can be merged with CLI options
-    return yield* Effect.fail(
-      new ConfigError({
-        kind: "not_found",
-        message: "No configuration file found (vex.config.ts or .vexrc.json)",
-      }),
-    );
+    return yield* new ConfigError({
+      kind: "not_found",
+      message: "No configuration file found (vex.config.ts or .vexrc.json)",
+    });
   });
 }
 
@@ -224,16 +220,14 @@ export function getScanPreset(
 
     if (!preset) {
       const available = Object.keys(presets);
-      return yield* Effect.fail(
-        new ConfigError({
-          kind: "preset_not_found",
-          message:
-            available.length > 0
-              ? `Unknown scan preset '${presetName}'. Available: ${available.join(", ")}`
-              : `Unknown scan preset '${presetName}'. No scan presets defined in config.`,
-          availablePresets: available,
-        }),
-      );
+      return yield* new ConfigError({
+        kind: "preset_not_found",
+        message:
+          available.length > 0
+            ? `Unknown scan preset '${presetName}'. Available: ${available.join(", ")}`
+            : `Unknown scan preset '${presetName}'. No scan presets defined in config.`,
+        availablePresets: available,
+      });
     }
 
     return preset;
@@ -253,16 +247,14 @@ export function getLoopPreset(
 
     if (!preset) {
       const available = Object.keys(presets);
-      return yield* Effect.fail(
-        new ConfigError({
-          kind: "preset_not_found",
-          message:
-            available.length > 0
-              ? `Unknown loop preset '${presetName}'. Available: ${available.join(", ")}`
-              : `Unknown loop preset '${presetName}'. No loop presets defined in config.`,
-          availablePresets: available,
-        }),
-      );
+      return yield* new ConfigError({
+        kind: "preset_not_found",
+        message:
+          available.length > 0
+            ? `Unknown loop preset '${presetName}'. Available: ${available.join(", ")}`
+            : `Unknown loop preset '${presetName}'. No loop presets defined in config.`,
+        availablePresets: available,
+      });
     }
 
     return preset;
@@ -305,15 +297,13 @@ export function loadCodexProfile(
     const userNames = Object.keys(userProfiles);
     const allAvailable = [...builtinNames, ...userNames];
 
-    return yield* Effect.fail(
-      new ConfigError({
-        kind: "preset_not_found",
-        message:
-          allAvailable.length > 0
-            ? `Unknown codex profile '${name}'. Available: ${allAvailable.join(", ")}`
-            : `Unknown codex profile '${name}'. No profiles available.`,
-        availablePresets: allAvailable,
-      }),
-    );
+    return yield* new ConfigError({
+      kind: "preset_not_found",
+      message:
+        allAvailable.length > 0
+          ? `Unknown codex profile '${name}'. Available: ${allAvailable.join(", ")}`
+          : `Unknown codex profile '${name}'. No profiles available.`,
+      availablePresets: allAvailable,
+    });
   });
 }
