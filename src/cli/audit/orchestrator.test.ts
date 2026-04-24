@@ -1,4 +1,4 @@
-import type { RunScanAuditOptions } from "../audit-runner.js";
+import type { RunScanAuditOptions } from "./types.js";
 import { describe, expect, test } from "bun:test";
 import { Exit } from "effect";
 import { runEffectExit } from "../../testing/effect-helpers.js";
