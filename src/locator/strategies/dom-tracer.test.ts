@@ -518,7 +518,7 @@ describe("domTracerStrategy", () => {
       for (let i = 1; i < result.length; i++) {
         const prev = result[i - 1];
         const curr = result[i];
-        if (prev && curr) {
+        if (prev !== undefined && curr !== undefined) {
           const prevOrder = confidenceOrder[prev.confidence] ?? 2;
           const currOrder = confidenceOrder[curr.confidence] ?? 2;
           expect(prevOrder).toBeLessThanOrEqual(currOrder);

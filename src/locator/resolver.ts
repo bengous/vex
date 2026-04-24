@@ -68,7 +68,7 @@ export function dedupeLocations(locations: CodeLocation[]): CodeLocation[] {
     const key = toFileLineKey(loc);
     const existing = seen.get(key);
 
-    if (!existing || compareConfidence(loc.confidence, existing.confidence) < 0) {
+    if (existing === undefined || compareConfidence(loc.confidence, existing.confidence) < 0) {
       seen.set(key, loc);
     }
   }

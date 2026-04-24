@@ -8,7 +8,7 @@ import type { ElementMatch } from "../../types.js";
 export function buildSelectors(element: DOMElement): string[] {
   const selectors: string[] = [];
 
-  if (element.id) {
+  if (element.id !== undefined && element.id.length > 0) {
     selectors.push(`#${element.id}`);
     selectors.push(`id="${element.id}"`);
   }
@@ -25,13 +25,13 @@ export function buildSelectors(element: DOMElement): string[] {
 
   if (element.classes.length > 0) {
     const mainClass = element.classes.find((c) => c.length > 3 && !c.startsWith("js-"));
-    if (mainClass) {
+    if (mainClass !== undefined && mainClass.length > 0) {
       selectors.push(`${element.tagName}.${mainClass}`);
     }
   }
 
   for (const [attr, value] of Object.entries(element.attributes)) {
-    if (attr.startsWith("data-") && value && value.length < 50) {
+    if (attr.startsWith("data-") && value.length > 0 && value.length < 50) {
       selectors.push(`${attr}="${value}"`);
       selectors.push(`[${attr}="${value}"]`);
     }
@@ -59,7 +59,7 @@ export function createElementMatch(
   element: DOMElement,
   selectors: readonly string[],
 ): ElementMatch {
-  const hasId = !!element.id;
+  const hasId = element.id !== undefined && element.id.length > 0;
   const hasUniqueClass = element.classes.some((c) => c.length > 5);
 
   return {

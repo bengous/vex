@@ -22,7 +22,7 @@ export function calculateConfidence(
     return "low";
   }
 
-  if (selector.includes(".") && element.tagName) {
+  if (selector.includes(".") && element.tagName.length > 0) {
     return "medium";
   }
 
@@ -43,7 +43,7 @@ export function buildReasoning(selector: string, _match: GrepMatch, element: DOM
   }
 
   parts.push(`in ${element.tagName} element`);
-  if (element.id) {
+  if (element.id !== undefined && element.id.length > 0) {
     parts.push(`with id="${element.id}"`);
   }
 
