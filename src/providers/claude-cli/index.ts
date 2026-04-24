@@ -26,7 +26,7 @@ const config: CliProviderConfig = {
     const imageList = imagePaths.map((p) => `- ${p}`).join("\n");
     const fullPrompt = `Read and analyze these image files:\n${imageList}\n\n${prompt}`;
     const args: string[] = ["-p", fullPrompt, "--tools", "Read", "--system-prompt", SYSTEM_PROMPT];
-    if (model) {
+    if (model.length > 0) {
       args.push("--model", model);
     }
     return args;

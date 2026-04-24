@@ -29,7 +29,7 @@ const config: CliProviderConfig = {
   buildArgs: (model, prompt, imagePaths, _options) => {
     const fileRefs = imagePaths.map((p) => `@${p}`).join(" ");
     const args = ["--yolo"];
-    if (model) {
+    if (model.length > 0) {
       args.push("-m", model);
     }
     args.push("-p", `${prompt} ${fileRefs}`);
