@@ -420,6 +420,10 @@ export type ArtifactName = keyof typeof ARTIFACT_NAMES;
  */
 export function getViewportDirName(viewport: ViewportConfig, deviceId?: string): string {
   const deviceType = viewport.isMobile ? "mobile" : "desktop";
-  const baseName = deviceId?.trim() ? deviceId.trim().toLowerCase() : deviceType;
+  const trimmedDeviceId = deviceId?.trim();
+  const baseName =
+    trimmedDeviceId !== undefined && trimmedDeviceId.length > 0
+      ? trimmedDeviceId.toLowerCase()
+      : deviceType;
   return `${baseName}-${viewport.width}x${viewport.height}`;
 }
