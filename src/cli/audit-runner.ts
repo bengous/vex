@@ -1,5 +1,5 @@
 import type { AuditPorts } from "./audit/ports.js";
-import type { ResolvedScanOptions } from "./resolve.js";
+import type { RunScanAuditOptions, ScanAuditCliMetadata } from "./audit/types.js";
 import type { FileSystem } from "@effect/platform";
 import type { Effect } from "effect";
 import { ConsoleReporter } from "./audit/adapters/console-reporter.js";
@@ -11,24 +11,7 @@ import { getAuditFinalStatus, toErrorMessage } from "./audit/manifest.js";
 import { AuditRunError, runScanAuditWithPorts } from "./audit/orchestrator.js";
 
 export { AuditRunError, getAuditFinalStatus, toErrorMessage };
-
-export type ScanAuditCliMetadata = {
-  readonly url: string | undefined;
-  readonly device: string | undefined;
-  readonly provider: string | undefined;
-  readonly model: string | undefined;
-  readonly reasoning: string | undefined;
-  readonly providerProfile: string | undefined;
-  readonly full: boolean;
-  readonly placeholderMedia: boolean;
-  readonly output: string | undefined;
-};
-
-export type RunScanAuditOptions = {
-  readonly resolved: ResolvedScanOptions;
-  readonly preset: string | undefined;
-  readonly cli: ScanAuditCliMetadata;
-};
+export type { RunScanAuditOptions, ScanAuditCliMetadata };
 
 export function createDefaultAuditPorts(): AuditPorts {
   return {

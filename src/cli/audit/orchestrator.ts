@@ -1,5 +1,5 @@
-import type { RunScanAuditOptions } from "../audit-runner.js";
 import type { AuditPorts } from "./ports.js";
+import type { RunScanAuditOptions } from "./types.js";
 import type { FileSystem } from "@effect/platform";
 import { Data, Effect } from "effect";
 import { buildAuditId } from "../scan-layout.js";
