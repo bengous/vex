@@ -15,7 +15,7 @@ function nodeOutputs(pipeline: PipelineDefinition): string[][] {
 
 function edgeRefs(pipeline: PipelineDefinition): string[] {
   return pipeline.edges.map((edge) =>
-    edge.targetField
+    edge.targetField !== undefined && edge.targetField.length > 0
       ? `${edge.from}->${edge.to}:${edge.artifact}:${edge.targetField}`
       : `${edge.from}->${edge.to}:${edge.artifact}`,
   );
