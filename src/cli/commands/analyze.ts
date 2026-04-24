@@ -81,11 +81,14 @@ export const analyzeCommand = Command.make(
       const providerLayer = yield* resolveProviderLayer(providerName);
 
       // Create analyze callback pre-composed with provider layer
-      const analyze = (prompt: string) =>
-        Effect.gen(function* () {
+      const analyze = (prompt: string) => {
+        const providerEffect = Effect.gen(function* () {
           const provider = yield* VisionProvider;
           return yield* provider.analyze([imagePath], prompt, { model });
-        }).pipe(Effect.provide(providerLayer));
+        });
+        // @effect-diagnostics-next-line strictEffectProvide:off
+        return providerEffect.pipe(Effect.provide(providerLayer));
+      };
 
       // Optional logger for retry messages (suppress in JSON mode)
       const logger = args.json ? undefined : { warn: (msg: string) => console.log(msg) };
