@@ -111,7 +111,7 @@ export function parseIssuesStrict(
 ): Effect.Effect<S.Issue[], ValidationRetryNeeded> {
   // Extract JSON from response
   const jsonMatch = response.match(/\{[\s\S]*"issues"[\s\S]*\}/);
-  if (!jsonMatch) {
+  if (jsonMatch === null) {
     return Effect.fail(
       new ValidationRetryNeeded({
         reason: "no_json",
@@ -205,7 +205,7 @@ export function parseIssuesFromResponse(
 ): Effect.Effect<S.Issue[]> {
   // Extract JSON from response
   const jsonMatch = response.match(/\{[\s\S]*"issues"[\s\S]*\}/);
-  if (!jsonMatch) {
+  if (jsonMatch === null) {
     logger?.warn('No JSON with "issues" found in response');
     return Effect.succeed([]);
   }
@@ -263,7 +263,7 @@ const ISSUE_SCHEMA_EXAMPLE = `{
  */
 export function buildRetryPrompt(originalPrompt: string, error: ValidationRetryNeeded): string {
   const errorMessage = ERROR_MESSAGES[error.reason];
-  const detailLine = error.details ? `\nDetails: ${error.details}` : "";
+  const detailLine = error.details.length > 0 ? `\nDetails: ${error.details}` : "";
 
   return `${originalPrompt}
 
