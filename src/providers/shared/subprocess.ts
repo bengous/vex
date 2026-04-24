@@ -47,7 +47,10 @@ export type SubprocessService = {
   readonly commandExists: (command: string) => Effect.Effect<boolean>;
 };
 
-export class Subprocess extends Context.Tag("Subprocess")<Subprocess, SubprocessService>() {}
+export class Subprocess extends Context.Tag("vex/providers/shared/subprocess")<
+  Subprocess,
+  SubprocessService
+>() {}
 
 const collectStreamAsUtf8 = <E, R>(stream: Stream.Stream<Uint8Array, E, R>) =>
   stream.pipe(

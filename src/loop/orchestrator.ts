@@ -121,7 +121,7 @@ export class LoopOrchestrator {
         // 1. CAPTURE & ANALYZE
         const viewport = this.options.viewports[0];
         if (!viewport) {
-          return yield* Effect.fail(makeError("capture", "No viewport configured"));
+          return yield* makeError("capture", "No viewport configured");
         }
 
         const captureResult = yield* this.callbacks.capture(this.options.url, viewport);

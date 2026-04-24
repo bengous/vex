@@ -24,13 +24,11 @@ export function checkProviderInstalled(
     const exists = yield* subprocess.commandExists(metadata.command);
 
     if (!exists) {
-      return yield* Effect.fail(
-        new ProviderNotInstalled({
-          provider: providerName,
-          command: metadata.command,
-          installHint: metadata.installHint,
-        }),
-      );
+      return yield* new ProviderNotInstalled({
+        provider: providerName,
+        command: metadata.command,
+        installHint: metadata.installHint,
+      });
     }
   });
 }

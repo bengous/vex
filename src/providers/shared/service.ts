@@ -83,7 +83,7 @@ export type VisionProviderService = {
 };
 
 /** Effect Service Tag - dependency injection point */
-export class VisionProvider extends Context.Tag("VisionProvider")<
+export class VisionProvider extends Context.Tag("vex/providers/shared/service/VisionProvider")<
   VisionProvider,
   VisionProviderService
 >() {}

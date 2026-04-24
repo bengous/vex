@@ -58,7 +58,7 @@ export function createDomTracerStrategy(options: DomTracerStrategyOptions = {}):
         const { domSnapshot, projectRoot, filePatterns } = ctx;
 
         if (!domSnapshot) {
-          return yield* Effect.fail(makeError("No DOM snapshot available"));
+          return yield* makeError("No DOM snapshot available");
         }
 
         const viewport = domSnapshot.viewport;
