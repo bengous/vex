@@ -41,10 +41,10 @@ const config: CliProviderConfig = {
 
   buildArgs: (model, prompt, imagePaths, options) => {
     const args: string[] = ["exec", prompt, ...imagePaths.flatMap((img) => ["--image", img])];
-    if (model) {
+    if (model.length > 0) {
       args.push("--model", model);
     }
-    if (options?.reasoning) {
+    if (options?.reasoning !== undefined && options.reasoning.length > 0) {
       args.push("-c", `model_reasoning_effort=${options.reasoning}`);
     }
     // MCP disabling is now handled by config.toml via CODEX_HOME

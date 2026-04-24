@@ -21,13 +21,13 @@ export type ProviderInfo = {
  */
 export function getProviderInfo(name: string): Effect.Effect<ProviderInfo | undefined> {
   const metadata = getAllProviderMetadata().find((m) => m.name === name);
-  if (!metadata) {
-    return Effect.succeed(undefined);
+  if (metadata === undefined) {
+    return Effect.void.pipe(Effect.as(undefined));
   }
 
   return Effect.gen(function* () {
     const layer = yield* resolveProviderLayer(name).pipe(Effect.orElseSucceed(() => undefined));
-    if (!layer) {
+    if (layer === undefined) {
       return {
         ...metadata,
         available: false,
@@ -35,11 +35,13 @@ export function getProviderInfo(name: string): Effect.Effect<ProviderInfo | unde
       };
     }
 
+    // @effect-diagnostics-next-line strictEffectProvide:off
     const available = yield* Effect.provide(
       Effect.flatMap(VisionProvider, (p) => p.isAvailable()),
       layer,
     ).pipe(Effect.orElseSucceed(() => false));
 
+    // @effect-diagnostics-next-line strictEffectProvide:off
     const models = yield* Effect.provide(
       Effect.flatMap(VisionProvider, (p) => p.listModels()),
       layer,

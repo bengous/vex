@@ -69,7 +69,7 @@ export function resolveProviderLayer<TConfig = unknown>(
   config?: TConfig,
 ): Effect.Effect<Layer.Layer<VisionProvider>, ProviderUnavailable> {
   const entry = PROVIDER_ENTRIES.get(name);
-  if (!entry) {
+  if (entry === undefined) {
     return Effect.fail(
       new ProviderUnavailable({
         provider: name,
