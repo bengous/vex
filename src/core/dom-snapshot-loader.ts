@@ -4,23 +4,26 @@
  * Loads DOM snapshots from session directories for use by locator strategies.
  */
 
-import { existsSync } from 'node:fs';
-import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import type { DOMSnapshot, ViewportConfig } from './types.js';
-import { ARTIFACT_NAMES, getViewportDirName } from './types.js';
+import type { DOMSnapshot, ViewportConfig } from "./types.js";
+import { existsSync } from "node:fs";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { ARTIFACT_NAMES, getViewportDirName } from "./types.js";
 
-export interface LoadDOMSnapshotResult {
+export type LoadDOMSnapshotResult = {
   snapshot: DOMSnapshot | null;
   path: string | null;
   error?: string;
-}
+};
 
 /**
  * Load DOM snapshot from session directory.
  * Auto-detects viewport directory if not specified.
  */
-export async function loadDOMSnapshot(sessionDir: string, viewport?: ViewportConfig): Promise<LoadDOMSnapshotResult> {
+export async function loadDOMSnapshot(
+  sessionDir: string,
+  viewport?: ViewportConfig,
+): Promise<LoadDOMSnapshotResult> {
   const directDomPath = join(sessionDir, ARTIFACT_NAMES.dom);
 
   if (existsSync(directDomPath)) {
@@ -37,7 +40,7 @@ export async function loadDOMSnapshot(sessionDir: string, viewport?: ViewportCon
       return {
         snapshot: null,
         path: null,
-        error: 'No viewport directory found in session',
+        error: "No viewport directory found in session",
       };
     }
     viewportDir = found;
@@ -60,14 +63,15 @@ export async function loadDOMSnapshotFromPath(domPath: string): Promise<LoadDOMS
   }
 
   try {
-    const content = await readFile(domPath, 'utf-8');
+    const content = await readFile(domPath, "utf-8");
     const snapshot = JSON.parse(content) as DOMSnapshot;
     return { snapshot, path: domPath };
-  } catch (e) {
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
     return {
       snapshot: null,
       path: domPath,
-      error: `Failed to parse DOM snapshot: ${e}`,
+      error: `Failed to parse DOM snapshot: ${message}`,
     };
   }
 }
@@ -76,7 +80,10 @@ async function findFirstViewportDir(sessionDir: string): Promise<string | null> 
   try {
     const entries = await readdir(sessionDir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.isDirectory() && (entry.name.startsWith('desktop-') || entry.name.startsWith('mobile-'))) {
+      if (
+        entry.isDirectory() &&
+        (entry.name.startsWith("desktop-") || entry.name.startsWith("mobile-"))
+      ) {
         return join(sessionDir, entry.name);
       }
     }

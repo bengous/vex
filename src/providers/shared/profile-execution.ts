@@ -1,15 +1,16 @@
-import type { FileSystem } from '@effect/platform';
-import { Effect } from 'effect';
-import { type ConfigError, loadCodexProfile, loadConfigOptional } from '../../config/loader.js';
-import { CodexEnv, makeCodexEnvResource } from '../codex-cli/environment.js';
+import type { ConfigError } from "../../config/loader.js";
+import type { FileSystem } from "@effect/platform";
+import { Effect } from "effect";
+import { loadCodexProfile, loadConfigOptional } from "../../config/loader.js";
+import { CodexEnv, makeCodexEnvResource } from "../codex-cli/environment.js";
 
-export interface ProviderExecutionSpec {
+export type ProviderExecutionSpec = {
   readonly provider: string;
   readonly profile: string;
-}
+};
 
 export function needsProviderExecution(spec: ProviderExecutionSpec): boolean {
-  return spec.provider === 'codex-cli' && spec.profile !== 'minimal';
+  return spec.provider === "codex-cli" && spec.profile !== "minimal";
 }
 
 export function withProviderExecution<A, E, R>(

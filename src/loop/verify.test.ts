@@ -5,20 +5,20 @@
  * regressed, or had no effect on detected issues.
  */
 
-import { describe, expect, test } from 'bun:test';
-import { Effect } from 'effect';
-import type { Issue } from '../core/types.js';
-import { createIssue, createPipelineState } from '../testing/factories.js';
-import type { VerificationVerdict } from './types.js';
-import { isImproved, isResolved, verifyChanges } from './verify.js';
+import type { Issue } from "../core/types.js";
+import type { VerificationVerdict } from "./types.js";
+import { describe, expect, test } from "bun:test";
+import { Effect } from "effect";
+import { createIssue, createPipelineState } from "../testing/factories.js";
+import { isImproved, isResolved, verifyChanges } from "./verify.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Fingerprinting Tests (via verifyChanges)
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('issueFingerprint (via verifyChanges)', () => {
-  test('same issue matches itself', async () => {
-    const issue = createIssue({ description: 'Button too small' });
+describe("issueFingerprint (via verifyChanges)", () => {
+  test("same issue matches itself", async () => {
+    const issue = createIssue({ description: "Button too small" });
     const baseline = createPipelineState({ issues: [issue] });
     const current = createPipelineState({ issues: [issue] });
 
@@ -29,9 +29,9 @@ describe('issueFingerprint (via verifyChanges)', () => {
     expect(result.introduced.length).toBe(0);
   });
 
-  test('different severity → different fingerprint → not matched', async () => {
-    const baseIssue = createIssue({ id: 1, severity: 'high', description: 'Test issue' });
-    const currIssue = createIssue({ id: 2, severity: 'low', description: 'Test issue' });
+  test("different severity → different fingerprint → not matched", async () => {
+    const baseIssue = createIssue({ id: 1, severity: "high", description: "Test issue" });
+    const currIssue = createIssue({ id: 2, severity: "low", description: "Test issue" });
     const baseline = createPipelineState({ issues: [baseIssue] });
     const current = createPipelineState({ issues: [currIssue] });
 
@@ -43,8 +43,8 @@ describe('issueFingerprint (via verifyChanges)', () => {
     expect(result.unchanged.length).toBe(0);
   });
 
-  test('region as string vs object handles both', async () => {
-    const issueWithString = createIssue({ region: 'A1' });
+  test("region as string vs object handles both", async () => {
+    const issueWithString = createIssue({ region: "A1" });
     const issueWithBox = createIssue({ region: { x: 0, y: 0, width: 200, height: 200 } });
 
     // String region should match itself
@@ -60,10 +60,10 @@ describe('issueFingerprint (via verifyChanges)', () => {
     expect(result2.unchanged.length).toBe(1);
   });
 
-  test('description word order does not matter (words are sorted)', async () => {
+  test("description word order does not matter (words are sorted)", async () => {
     // Fingerprint uses first 5 words, sorted
-    const issue1 = createIssue({ description: 'alpha beta gamma delta epsilon' });
-    const issue2 = createIssue({ description: 'epsilon delta gamma beta alpha' });
+    const issue1 = createIssue({ description: "alpha beta gamma delta epsilon" });
+    const issue2 = createIssue({ description: "epsilon delta gamma beta alpha" });
     const baseline = createPipelineState({ issues: [issue1] });
     const current = createPipelineState({ issues: [issue2] });
 
@@ -74,9 +74,9 @@ describe('issueFingerprint (via verifyChanges)', () => {
     expect(result.introduced.length).toBe(0);
   });
 
-  test('fingerprint uses only first 5 words', async () => {
-    const issue1 = createIssue({ description: 'one two three four five extra words here' });
-    const issue2 = createIssue({ description: 'one two three four five totally different' });
+  test("fingerprint uses only first 5 words", async () => {
+    const issue1 = createIssue({ description: "one two three four five extra words here" });
+    const issue2 = createIssue({ description: "one two three four five totally different" });
     const baseline = createPipelineState({ issues: [issue1] });
     const current = createPipelineState({ issues: [issue2] });
 
@@ -86,9 +86,9 @@ describe('issueFingerprint (via verifyChanges)', () => {
     expect(result.unchanged.length).toBe(1);
   });
 
-  test('fingerprint is case-insensitive', async () => {
-    const issue1 = createIssue({ description: 'Button Too Small' });
-    const issue2 = createIssue({ description: 'button too small' });
+  test("fingerprint is case-insensitive", async () => {
+    const issue1 = createIssue({ description: "Button Too Small" });
+    const issue2 = createIssue({ description: "button too small" });
     const baseline = createPipelineState({ issues: [issue1] });
     const current = createPipelineState({ issues: [issue2] });
 
@@ -97,7 +97,7 @@ describe('issueFingerprint (via verifyChanges)', () => {
     expect(result.unchanged.length).toBe(1);
   });
 
-  test('fingerprint collision: different issues with same fingerprint are matched (known limitation)', async () => {
+  test("fingerprint collision: different issues with same fingerprint are matched (known limitation)", async () => {
     // Two semantically different issues can collide if they share:
     // - Same severity
     // - Same first 5 words (when sorted alphabetically)
@@ -106,15 +106,15 @@ describe('issueFingerprint (via verifyChanges)', () => {
     // This is a known limitation of fuzzy matching. The test documents the behavior.
     const issueA = createIssue({
       id: 1,
-      description: 'Button text is too small',
-      severity: 'medium',
+      description: "Button text is too small",
+      severity: "medium",
       region: { x: 150, y: 250, width: 50, height: 50 }, // rounds to 2,3
     });
 
     const issueB = createIssue({
       id: 2,
-      description: 'Text button is too small for mobile', // same first 5 words when sorted
-      severity: 'medium',
+      description: "Text button is too small for mobile", // same first 5 words when sorted
+      severity: "medium",
       region: { x: 180, y: 280, width: 50, height: 50 }, // also rounds to 2,3
     });
 
@@ -128,7 +128,7 @@ describe('issueFingerprint (via verifyChanges)', () => {
     expect(result.unchanged).toHaveLength(1);
     expect(result.resolved).toHaveLength(0);
     expect(result.introduced).toHaveLength(0);
-    expect(result.verdict).toBe('unchanged');
+    expect(result.verdict).toBe("unchanged");
   });
 });
 
@@ -136,39 +136,45 @@ describe('issueFingerprint (via verifyChanges)', () => {
 // determineVerdict Tests (via verifyChanges)
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('determineVerdict (via verifyChanges)', () => {
+describe("determineVerdict (via verifyChanges)", () => {
   const verdictCases: [string, Issue[], Issue[], VerificationVerdict][] = [
     // [description, baseline, current, expected verdict]
-    ['only resolved → improved', [createIssue({ id: 1 })], [], 'improved'],
-    ['only introduced → regressed', [], [createIssue({ id: 1 })], 'regressed'],
+    ["only resolved → improved", [createIssue({ id: 1 })], [], "improved"],
+    ["only introduced → regressed", [], [createIssue({ id: 1 })], "regressed"],
     [
-      'both resolved > introduced → mixed',
-      [createIssue({ id: 1, description: 'issue one' }), createIssue({ id: 2, description: 'issue two' })],
-      [createIssue({ id: 3, description: 'new issue three' })],
-      'mixed',
+      "both resolved > introduced → mixed",
+      [
+        createIssue({ id: 1, description: "issue one" }),
+        createIssue({ id: 2, description: "issue two" }),
+      ],
+      [createIssue({ id: 3, description: "new issue three" })],
+      "mixed",
     ],
     [
-      'both introduced > resolved → regressed',
-      [createIssue({ id: 1, description: 'old issue' })],
-      [createIssue({ id: 2, description: 'new issue two' }), createIssue({ id: 3, description: 'new issue three' })],
-      'regressed',
+      "both introduced > resolved → regressed",
+      [createIssue({ id: 1, description: "old issue" })],
+      [
+        createIssue({ id: 2, description: "new issue two" }),
+        createIssue({ id: 3, description: "new issue three" }),
+      ],
+      "regressed",
     ],
     [
-      'neither resolved nor introduced (same issues) → unchanged',
-      [createIssue({ id: 1, description: 'same issue' })],
-      [createIssue({ id: 1, description: 'same issue' })],
-      'unchanged',
+      "neither resolved nor introduced (same issues) → unchanged",
+      [createIssue({ id: 1, description: "same issue" })],
+      [createIssue({ id: 1, description: "same issue" })],
+      "unchanged",
     ],
-    ['zero baseline + zero current → improved (clean state)', [], [], 'improved'],
+    ["zero baseline + zero current → improved (clean state)", [], [], "improved"],
     [
-      'equal resolved and introduced → mixed (resolved > introduced is false)',
-      [createIssue({ id: 1, description: 'will be resolved' })],
-      [createIssue({ id: 2, description: 'newly introduced' })],
-      'regressed', // When equal, resolvedCount > introducedCount is false, so regressed
+      "equal resolved and introduced → mixed (resolved > introduced is false)",
+      [createIssue({ id: 1, description: "will be resolved" })],
+      [createIssue({ id: 2, description: "newly introduced" })],
+      "regressed", // When equal, resolvedCount > introducedCount is false, so regressed
     ],
   ];
 
-  test.each(verdictCases)('%s', async (_desc, baselineIssues, currentIssues, expectedVerdict) => {
+  test.each(verdictCases)("%s", async (_desc, baselineIssues, currentIssues, expectedVerdict) => {
     const baseline = createPipelineState({ issues: baselineIssues });
     const current = createPipelineState({ issues: currentIssues });
 
@@ -182,9 +188,9 @@ describe('determineVerdict (via verifyChanges)', () => {
 // verifyChanges Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('verifyChanges', () => {
-  test('matching issues go to unchanged', async () => {
-    const issue = createIssue({ description: 'persistent issue' });
+describe("verifyChanges", () => {
+  test("matching issues go to unchanged", async () => {
+    const issue = createIssue({ description: "persistent issue" });
     const baseline = createPipelineState({ issues: [issue] });
     const current = createPipelineState({ issues: [issue] });
 
@@ -195,8 +201,8 @@ describe('verifyChanges', () => {
     expect(result.introduced).toEqual([]);
   });
 
-  test('missing baseline issues go to resolved', async () => {
-    const issue = createIssue({ description: 'was fixed' });
+  test("missing baseline issues go to resolved", async () => {
+    const issue = createIssue({ description: "was fixed" });
     const baseline = createPipelineState({ issues: [issue] });
     const current = createPipelineState({ issues: [] });
 
@@ -207,8 +213,8 @@ describe('verifyChanges', () => {
     expect(result.introduced).toEqual([]);
   });
 
-  test('new current issues go to introduced', async () => {
-    const issue = createIssue({ description: 'new bug appeared' });
+  test("new current issues go to introduced", async () => {
+    const issue = createIssue({ description: "new bug appeared" });
     const baseline = createPipelineState({ issues: [] });
     const current = createPipelineState({ issues: [issue] });
 
@@ -219,10 +225,10 @@ describe('verifyChanges', () => {
     expect(result.resolved).toEqual([]);
   });
 
-  test('returns correct metrics', async () => {
-    const issue1 = createIssue({ id: 1, description: 'unchanged issue' });
-    const issue2 = createIssue({ id: 2, description: 'resolved issue' });
-    const issue3 = createIssue({ id: 3, description: 'new introduced issue' });
+  test("returns correct metrics", async () => {
+    const issue1 = createIssue({ id: 1, description: "unchanged issue" });
+    const issue2 = createIssue({ id: 2, description: "resolved issue" });
+    const issue3 = createIssue({ id: 3, description: "new introduced issue" });
 
     const baseline = createPipelineState({ issues: [issue1, issue2] });
     const current = createPipelineState({ issues: [issue1, issue3] });
@@ -236,7 +242,7 @@ describe('verifyChanges', () => {
     expect(result.metrics.unchangedCount).toBe(1);
   });
 
-  test('empty before and after → all arrays empty with improved verdict', async () => {
+  test("empty before and after → all arrays empty with improved verdict", async () => {
     const baseline = createPipelineState({ issues: [] });
     const current = createPipelineState({ issues: [] });
 
@@ -245,17 +251,17 @@ describe('verifyChanges', () => {
     expect(result.resolved).toEqual([]);
     expect(result.introduced).toEqual([]);
     expect(result.unchanged).toEqual([]);
-    expect(result.verdict).toBe('improved');
+    expect(result.verdict).toBe("improved");
     expect(result.metrics.baselineIssueCount).toBe(0);
     expect(result.metrics.currentIssueCount).toBe(0);
     expect(result.metrics.improvementPercent).toBe(100);
   });
 
-  test('all issues resolved (perfect improvement)', async () => {
+  test("all issues resolved (perfect improvement)", async () => {
     const issues = [
-      createIssue({ id: 1, description: 'layout overlap detected', severity: 'high' }),
-      createIssue({ id: 2, description: 'contrast ratio too low', severity: 'medium' }),
-      createIssue({ id: 3, description: 'missing alt text', severity: 'low' }),
+      createIssue({ id: 1, description: "layout overlap detected", severity: "high" }),
+      createIssue({ id: 2, description: "contrast ratio too low", severity: "medium" }),
+      createIssue({ id: 3, description: "missing alt text", severity: "low" }),
     ];
     const baseline = createPipelineState({ issues });
     const current = createPipelineState({ issues: [] });
@@ -265,20 +271,20 @@ describe('verifyChanges', () => {
     expect(result.resolved).toHaveLength(3);
     expect(result.introduced).toEqual([]);
     expect(result.unchanged).toEqual([]);
-    expect(result.verdict).toBe('improved');
+    expect(result.verdict).toBe("improved");
     expect(result.metrics.resolvedCount).toBe(3);
     expect(result.metrics.improvementPercent).toBe(100);
   });
 
-  test('similar but not identical descriptions → fingerprint near-miss', async () => {
+  test("similar but not identical descriptions → fingerprint near-miss", async () => {
     // These share some words but differ in their first-5-word sorted set
     const baseIssue = createIssue({
       id: 1,
-      description: 'header font size inconsistent across breakpoints',
+      description: "header font size inconsistent across breakpoints",
     });
     const currIssue = createIssue({
       id: 2,
-      description: 'navigation menu alignment broken on mobile',
+      description: "navigation menu alignment broken on mobile",
     });
     const baseline = createPipelineState({ issues: [baseIssue] });
     const current = createPipelineState({ issues: [currIssue] });
@@ -298,32 +304,38 @@ describe('verifyChanges', () => {
 // isImproved Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('isImproved', () => {
-  test('resolved > introduced → true', () => {
-    const baseline = createPipelineState({ issues: [
-      createIssue({ id: 1, description: 'first issue' }),
-      createIssue({ id: 2, description: 'second issue' }),
-    ] });
-    const current = createPipelineState({ issues: [createIssue({ id: 1, description: 'first issue' })] });
+describe("isImproved", () => {
+  test("resolved > introduced → true", () => {
+    const baseline = createPipelineState({
+      issues: [
+        createIssue({ id: 1, description: "first issue" }),
+        createIssue({ id: 2, description: "second issue" }),
+      ],
+    });
+    const current = createPipelineState({
+      issues: [createIssue({ id: 1, description: "first issue" })],
+    });
 
     expect(isImproved(baseline, current)).toBe(true);
   });
 
-  test('same issues → false', () => {
+  test("same issues → false", () => {
     const baseline = createPipelineState({ issues: [createIssue({ id: 1 })] });
     const current = createPipelineState({ issues: [createIssue({ id: 1 })] });
 
     expect(isImproved(baseline, current)).toBe(false);
   });
 
-  test('more issues → false', () => {
+  test("more issues → false", () => {
     const baseline = createPipelineState({ issues: [createIssue({ id: 1 })] });
-    const current = createPipelineState({ issues: [createIssue({ id: 1 }), createIssue({ id: 2 })] });
+    const current = createPipelineState({
+      issues: [createIssue({ id: 1 }), createIssue({ id: 2 })],
+    });
 
     expect(isImproved(baseline, current)).toBe(false);
   });
 
-  test('zero to zero → false (not less)', () => {
+  test("zero to zero → false (not less)", () => {
     const baseline = createPipelineState({ issues: [] });
     const current = createPipelineState({ issues: [] });
 
@@ -335,18 +347,18 @@ describe('isImproved', () => {
 // isResolved Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('isResolved', () => {
-  test('zero issues → true', () => {
+describe("isResolved", () => {
+  test("zero issues → true", () => {
     const state = createPipelineState({ issues: [] });
     expect(isResolved(state)).toBe(true);
   });
 
-  test('any issues → false', () => {
+  test("any issues → false", () => {
     const state = createPipelineState({ issues: [createIssue()] });
     expect(isResolved(state)).toBe(false);
   });
 
-  test('multiple issues → false', () => {
+  test("multiple issues → false", () => {
     const state = createPipelineState({ issues: [createIssue({ id: 1 }), createIssue({ id: 2 })] });
     expect(isResolved(state)).toBe(false);
   });

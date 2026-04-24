@@ -5,28 +5,30 @@
  * This enables runtime configuration (e.g., profiles).
  */
 
-import { Effect, type Layer } from 'effect';
-import { ProviderUnavailable, type VisionProvider } from './service.js';
+import type { VisionProvider } from "./service.js";
+import type { Layer } from "effect";
+import { Effect } from "effect";
+import { ProviderUnavailable } from "./service.js";
 
 /** Metadata about a registered provider */
-export interface ProviderMetadata {
+export type ProviderMetadata = {
   readonly name: string;
   readonly displayName: string;
-  readonly type: 'http' | 'cli';
+  readonly type: "http" | "cli";
   readonly command?: string;
   /** Human-readable install instructions for CLI providers */
   readonly installHint?: string;
   readonly knownModels?: readonly string[];
   readonly modelAliases?: Record<string, string>;
-}
+};
 
 /** Factory function that creates a provider layer, optionally with configuration */
 export type ProviderFactory<TConfig = unknown> = (config?: TConfig) => Layer.Layer<VisionProvider>;
 
-interface ProviderEntry {
+type ProviderEntry = {
   readonly factory: ProviderFactory;
   readonly metadata: ProviderMetadata;
-}
+};
 
 const PROVIDER_ENTRIES = new Map<string, ProviderEntry>();
 
@@ -40,14 +42,14 @@ const PROVIDER_ENTRIES = new Map<string, ProviderEntry>();
 export function registerProvider(
   name: string,
   factory: ProviderFactory,
-  metadata?: Omit<ProviderMetadata, 'name'>,
+  metadata?: Omit<ProviderMetadata, "name">,
 ): void {
   PROVIDER_ENTRIES.set(name, {
     factory,
     metadata: {
       name,
       displayName: metadata?.displayName ?? name,
-      type: metadata?.type ?? 'http',
+      type: metadata?.type ?? "http",
       command: metadata?.command,
       installHint: metadata?.installHint,
       knownModels: metadata?.knownModels,
@@ -72,7 +74,7 @@ export function resolveProviderLayer<TConfig = unknown>(
       new ProviderUnavailable({
         provider: name,
         reason: `Unknown provider: ${name}`,
-        suggestion: `Available: ${[...PROVIDER_ENTRIES.keys()].join(', ')}`,
+        suggestion: `Available: ${[...PROVIDER_ENTRIES.keys()].join(", ")}`,
       }),
     );
   }

@@ -1,23 +1,24 @@
-import { afterEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdtempSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import sharp from 'sharp';
+import type { FullPageScrollFixOptions, PlaceholderMediaOptions } from "./capture.js";
+import type { ViewportConfig } from "./types.js";
+import { afterEach, describe, expect, test } from "bun:test";
+import { existsSync, mkdtempSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import sharp from "sharp";
 import {
   captureScreenshot,
   captureWithDOM,
   cropScreenshotToViewportWidth,
-  type FullPageScrollFixOptions,
   getImageDimensionsFromBuffer,
-  type PlaceholderMediaOptions,
-} from './capture.js';
-import type { ViewportConfig } from './types.js';
+} from "./capture.js";
 
 const tempDirs: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+  await Promise.all(
+    tempDirs.splice(0).map(async (dir) => rm(dir, { recursive: true, force: true })),
+  );
 });
 
 const viewport: ViewportConfig = {
@@ -31,18 +32,18 @@ const viewport: ViewportConfig = {
 const placeholderMedia: PlaceholderMediaOptions = {
   enabled: true,
   svgMinSize: 64,
-  preserve: ['.preserve-me'],
+  preserve: [".preserve-me"],
 };
 
 const fullPageScrollFix: FullPageScrollFixOptions = {
   enabled: true,
-  selectors: ['main'],
+  selectors: ["main"],
   settleMs: 50,
   preserveHorizontalOverflow: false,
 };
 
 function createTempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'capture-test-'));
+  const dir = mkdtempSync(join(tmpdir(), "capture-test-"));
   tempDirs.push(dir);
   return dir;
 }
@@ -53,7 +54,7 @@ async function createScreenshotBuffer(width = 658, height = 1200): Promise<Buffe
       width,
       height,
       channels: 3,
-      background: '#ffffff',
+      background: "#ffffff",
     },
   })
     .png()
@@ -70,7 +71,7 @@ class FakeResponse {
   }
 
   statusText(): string {
-    return 'OK';
+    return "OK";
   }
 }
 
@@ -83,59 +84,59 @@ class FakePage {
     return new FakeResponse();
   }
 
-  waitForLoadState(): Promise<void> {
-    return Promise.resolve();
+  async waitForLoadState(): Promise<void> {
+    return;
   }
 
   async waitForTimeout(): Promise<void> {}
 
   async addStyleTag({ content }: { content: string }): Promise<void> {
-    if (content.includes('.placeholder-media-box')) {
-      this.steps.push('placeholder-css');
+    if (content.includes(".placeholder-media-box")) {
+      this.steps.push("placeholder-css");
       return;
     }
-    if (content.includes('flex: none')) {
-      this.steps.push('full-page-scroll-fix');
+    if (content.includes("flex: none")) {
+      this.steps.push("full-page-scroll-fix");
       return;
     }
-    if (content.includes('overflow-x: hidden')) {
-      this.steps.push('overflow-clamp');
+    if (content.includes("overflow-x: hidden")) {
+      this.steps.push("overflow-clamp");
       return;
     }
-    this.steps.push('cleanup-css');
+    this.steps.push("cleanup-css");
   }
 
   async evaluate(_fn: unknown, arg: unknown): Promise<unknown> {
     if (Array.isArray(arg)) {
-      if (arg.includes('display')) {
-        this.steps.push('dom-snapshot');
+      if (arg.includes("display")) {
+        this.steps.push("dom-snapshot");
         return [
           {
-            tagName: 'main',
-            id: 'content',
-            classes: ['page'],
+            tagName: "main",
+            id: "content",
+            classes: ["page"],
             boundingBox: { x: 0, y: 0, width: 320, height: 568 },
-            computedStyles: { display: 'block' },
-            attributes: { id: 'content', class: 'page' },
+            computedStyles: { display: "block" },
+            attributes: { id: "content", class: "page" },
           },
         ];
       }
 
-      this.steps.push('cleanup-overlays');
+      this.steps.push("cleanup-overlays");
       return undefined;
     }
 
-    this.steps.push('placeholder-media');
+    this.steps.push("placeholder-media");
     return undefined;
   }
 
   async content(): Promise<string> {
-    this.steps.push('dom-html');
+    this.steps.push("dom-html");
     return '<html><body><main id="content" class="page"></main></body></html>';
   }
 
   async screenshot(): Promise<Buffer> {
-    this.steps.push('screenshot');
+    this.steps.push("screenshot");
     return this.screenshotBuffer;
   }
 }
@@ -150,7 +151,7 @@ class FakeContext {
   }
 
   async close(): Promise<void> {
-    this.page.steps.push('context-close');
+    this.page.steps.push("context-close");
   }
 }
 
@@ -166,14 +167,14 @@ class FakeBrowser {
   }
 }
 
-describe('getImageDimensionsFromBuffer', () => {
-  test('uses actual image dimensions from screenshot buffer', async () => {
+describe("getImageDimensionsFromBuffer", () => {
+  test("uses actual image dimensions from screenshot buffer", async () => {
     const buffer = await sharp({
       create: {
         width: 768,
         height: 6706,
         channels: 3,
-        background: '#ffffff',
+        background: "#ffffff",
       },
     })
       .png()
@@ -183,83 +184,92 @@ describe('getImageDimensionsFromBuffer', () => {
     expect(dimensions).toEqual({ width: 768, height: 6706 });
   });
 
-  test('crops screenshot width to the emulated viewport when needed', async () => {
+  test("crops screenshot width to the emulated viewport when needed", async () => {
     const buffer = await sharp({
       create: {
         width: 658,
         height: 1200,
         channels: 3,
-        background: '#ffffff',
+        background: "#ffffff",
       },
     })
       .png()
       .toBuffer();
 
-    const cropped = await cropScreenshotToViewportWidth(buffer, { width: 320, deviceScaleFactor: 2 });
+    const cropped = await cropScreenshotToViewportWidth(buffer, {
+      width: 320,
+      deviceScaleFactor: 2,
+    });
     const dimensions = await getImageDimensionsFromBuffer(cropped, { width: 320, height: 568 });
     expect(dimensions).toEqual({ width: 640, height: 1200 });
   });
 });
 
-describe('capture wrappers', () => {
-  test('captureWithDOM preserves mutation sequence before screenshot', async () => {
+describe("capture wrappers", () => {
+  test("captureWithDOM preserves mutation sequence before screenshot", async () => {
     const outputDir = createTempDir();
     const page = new FakePage(await createScreenshotBuffer());
     const browser = new FakeBrowser(page);
 
-    const result = await captureWithDOM(browser as unknown as Parameters<typeof captureWithDOM>[0], {
-      url: 'https://example.test/',
-      viewport,
-      outputDir,
-      filename: 'capture.png',
-      placeholderMedia,
-      fullPageScrollFix,
-    });
+    const result = await captureWithDOM(
+      browser as unknown as Parameters<typeof captureWithDOM>[0],
+      {
+        url: "https://example.test/",
+        viewport,
+        outputDir,
+        filename: "capture.png",
+        placeholderMedia,
+        fullPageScrollFix,
+      },
+    );
 
     expect(page.steps).toEqual([
-      'cleanup-css',
-      'cleanup-overlays',
-      'full-page-scroll-fix',
-      'dom-snapshot',
-      'dom-html',
-      'placeholder-css',
-      'placeholder-media',
-      'overflow-clamp',
-      'screenshot',
-      'context-close',
+      "cleanup-css",
+      "cleanup-overlays",
+      "full-page-scroll-fix",
+      "dom-snapshot",
+      "dom-html",
+      "placeholder-css",
+      "placeholder-media",
+      "overflow-clamp",
+      "screenshot",
+      "context-close",
     ]);
-    expect(result.artifact.createdBy).toBe('capture-with-dom');
+    expect(result.artifact.createdBy).toBe("capture-with-dom");
     expect(result.artifact.metadata.width).toBe(640);
     expect(result.domSnapshot.elements).toHaveLength(1);
-    expect(existsSync(join(outputDir, 'capture.png'))).toBe(true);
+    expect(existsSync(join(outputDir, "capture.png"))).toBe(true);
   });
 
-  test('captureScreenshot uses the same screenshot path without DOM capture', async () => {
+  test("captureScreenshot uses the same screenshot path without DOM capture", async () => {
     const outputDir = createTempDir();
     const page = new FakePage(await createScreenshotBuffer(640, 900));
     const browser = new FakeBrowser(page);
 
-    const result = await captureScreenshot(browser as unknown as Parameters<typeof captureScreenshot>[0], {
-      url: 'https://example.test/',
-      viewport,
-      outputDir,
-      filename: 'capture.png',
-      placeholderMedia,
-      fullPageScrollFix,
-    });
+    const result = await captureScreenshot(
+      browser as unknown as Parameters<typeof captureScreenshot>[0],
+      {
+        url: "https://example.test/",
+        viewport,
+        outputDir,
+        filename: "capture.png",
+        placeholderMedia,
+        fullPageScrollFix,
+      },
+    );
 
     expect(page.steps).toEqual([
-      'cleanup-css',
-      'cleanup-overlays',
-      'full-page-scroll-fix',
-      'placeholder-css',
-      'placeholder-media',
-      'overflow-clamp',
-      'screenshot',
-      'context-close',
+      "cleanup-css",
+      "cleanup-overlays",
+      "full-page-scroll-fix",
+      "placeholder-css",
+      "placeholder-media",
+      "overflow-clamp",
+      "screenshot",
+      "context-close",
     ]);
-    expect(result.artifact.createdBy).toBe('capture');
+    expect(result.artifact.createdBy).toBe("capture");
     expect(result.artifact.metadata.width).toBe(640);
-    expect(existsSync(join(outputDir, 'capture.png'))).toBe(true);
+    expect(existsSync(join(outputDir, "capture.png"))).toBe(true);
   });
 });

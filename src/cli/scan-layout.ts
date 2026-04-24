@@ -2,15 +2,15 @@
  * Helpers for organizing scan output into audit/page/viewport directories.
  */
 
-import { createHash } from 'node:crypto';
-import { join } from 'node:path';
-import type { ViewportConfig } from '../core/types.js';
-import { getViewportDirName } from '../core/types.js';
+import type { ViewportConfig } from "../core/types.js";
+import { createHash } from "node:crypto";
+import { join } from "node:path";
+import { getViewportDirName } from "../core/types.js";
 
-export type AuditStatus = 'running' | 'completed' | 'failed' | 'interrupted';
-export type AuditRunStatus = 'running' | 'completed' | 'failed';
+export type AuditStatus = "running" | "completed" | "failed" | "interrupted";
+export type AuditRunStatus = "running" | "completed" | "failed";
 
-export interface AuditRunRecord {
+export type AuditRunRecord = {
   url: string;
   deviceId: string;
   viewport?: ViewportConfig;
@@ -21,10 +21,10 @@ export interface AuditRunRecord {
   status: AuditRunStatus;
   issueCount?: number;
   error?: string;
-}
+};
 
-export interface AuditManifest {
-  type: 'vex-audit';
+export type AuditManifest = {
+  type: "vex-audit";
   auditId: string;
   status: AuditStatus;
   startedAt: string;
@@ -36,7 +36,7 @@ export interface AuditManifest {
   preset?: string;
   urls: readonly string[];
   devices: readonly string[];
-  mode?: 'analyze' | 'capture-only';
+  mode?: "analyze" | "capture-only";
   full: boolean;
   placeholderMedia: boolean;
   fullPageScrollFix: boolean;
@@ -44,25 +44,26 @@ export interface AuditManifest {
   completedRuns: number;
   failedRuns: number;
   runs: AuditRunRecord[];
-}
+};
 
 function sanitizePathSegment(segment: string): string {
   const reservedNormalized = segment
     .trim()
-    .replace(/%2f/gi, '_')
-    .replace(/[<>:"/\\|?*]/g, '_');
+    .replaceAll(/%2f/gi, "_")
+    .replaceAll(/[<>:"/\\|?*]/g, "_");
 
-  const normalized = Array.from(reservedNormalized, (char) => (char.charCodeAt(0) < 32 ? '_' : char)).join('');
+  const normalized = Array.from(reservedNormalized, (char) =>
+    char.charCodeAt(0) < 32 ? "_" : char,
+  ).join("");
 
-  return normalized.length > 0 ? normalized : '_';
+  return normalized.length > 0 ? normalized : "_";
 }
 
 function buildVariantSuffix(url: URL): string | undefined {
-  if (!url.search && !url.hash) return undefined;
-  const hash = createHash('sha1')
-    .update(`${url.search}${url.hash}`)
-    .digest('hex')
-    .slice(0, 8);
+  if (!url.search && !url.hash) {
+    return undefined;
+  }
+  const hash = createHash("sha1").update(`${url.search}${url.hash}`).digest("hex").slice(0, 8);
   return `variant-${hash}`;
 }
 
@@ -71,8 +72,8 @@ function buildVariantSuffix(url: URL): string | undefined {
  */
 export function buildAuditId(date: Date = new Date()): string {
   const iso = date.toISOString();
-  const datePart = iso.slice(0, 10).replaceAll('-', '');
-  const timePart = iso.slice(11, 16).replace(':', '');
+  const datePart = iso.slice(0, 10).replaceAll("-", "");
+  const timePart = iso.slice(11, 16).replace(":", "");
   return `audit-${datePart}-${timePart}`;
 }
 
@@ -86,12 +87,12 @@ export function urlToPagePathSegments(rawUrl: string): readonly string[] {
   const url = new URL(rawUrl);
   const host = sanitizePathSegment(url.hostname.toLowerCase());
   const pathSegments = url.pathname
-    .split('/')
+    .split("/")
     .filter((segment) => segment.length > 0)
     .map(sanitizePathSegment);
 
   const variant = buildVariantSuffix(url);
-  const leaf = variant ? `_index__${variant}` : '_index';
+  const leaf = variant ? `_index__${variant}` : "_index";
   return [host, ...pathSegments, leaf];
 }
 
@@ -99,7 +100,7 @@ export function urlToPagePathSegments(rawUrl: string): readonly string[] {
  * Absolute page directory path for a URL under an audit directory.
  */
 export function getAuditPageDir(auditDir: string, rawUrl: string): string {
-  return join(auditDir, 'pages', ...urlToPagePathSegments(rawUrl));
+  return join(auditDir, "pages", ...urlToPagePathSegments(rawUrl));
 }
 
 /**

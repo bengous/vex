@@ -4,8 +4,9 @@
  * Maps visual issues to code locations using multiple strategies.
  */
 
-import { Data, type Effect } from 'effect';
-import type { BoundingBox, CodeLocation, DOMSnapshot, Issue } from '../core/types.js';
+import type { BoundingBox, CodeLocation, DOMSnapshot, Issue } from "../core/types.js";
+import type { Effect } from "effect";
+import { Data } from "effect";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Error Types
@@ -18,7 +19,7 @@ import type { BoundingBox, CodeLocation, DOMSnapshot, Issue } from '../core/type
  * - Is an Error instance with stack trace
  * - Works with Effect.catchTag()
  */
-export class LocatorError extends Data.TaggedError('LocatorError')<{
+export class LocatorError extends Data.TaggedError("LocatorError")<{
   readonly strategy: string;
   readonly detail: string;
   readonly cause?: unknown;
@@ -35,45 +36,45 @@ export class LocatorError extends Data.TaggedError('LocatorError')<{
 /**
  * Source map entry for CSS/JS resolution.
  */
-export interface SourceMapEntry {
+export type SourceMapEntry = {
   readonly generatedFile: string;
   readonly generatedLine: number;
   readonly generatedColumn: number;
   readonly sourceFile: string;
   readonly sourceLine: number;
   readonly sourceColumn: number;
-}
+};
 
 /**
  * Source map index for a project.
  */
-export interface SourceMapIndex {
+export type SourceMapIndex = {
   readonly entries: readonly SourceMapEntry[];
   readonly resolve: (file: string, line: number, col: number) => SourceMapEntry | undefined;
-}
+};
 
 /**
  * Manual hint configuration from .vexrc.
  */
-export interface HintConfig {
+export type HintConfig = {
   /** Selector to file mappings */
   readonly selectorHints: Record<string, string>;
   /** Region to file mappings */
   readonly regionHints: Record<string, string>;
   /** Component name to file mappings */
   readonly componentHints: Record<string, string>;
-}
+};
 
 /**
  * Context available to locator strategies.
  */
-export interface LocatorContext {
+export type LocatorContext = {
   readonly projectRoot: string;
   readonly domSnapshot?: DOMSnapshot;
   readonly sourceMaps?: SourceMapIndex;
   readonly manualHints?: HintConfig;
   readonly filePatterns: readonly string[];
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Locator Strategy Interface
@@ -82,7 +83,7 @@ export interface LocatorContext {
 /**
  * Strategy for locating code related to visual issues.
  */
-export interface LocatorStrategy {
+export type LocatorStrategy = {
   /** Strategy name */
   readonly name: string;
 
@@ -96,8 +97,11 @@ export interface LocatorStrategy {
   readonly canHandle: (issue: Issue, ctx: LocatorContext) => boolean;
 
   /** Locate code for an issue */
-  readonly locate: (issue: Issue, ctx: LocatorContext) => Effect.Effect<readonly CodeLocation[], LocatorError>;
-}
+  readonly locate: (
+    issue: Issue,
+    ctx: LocatorContext,
+  ) => Effect.Effect<readonly CodeLocation[], LocatorError>;
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DOM Tracer Types
@@ -106,7 +110,7 @@ export interface LocatorStrategy {
 /**
  * Element match from DOM tracer.
  */
-export interface ElementMatch {
+export type ElementMatch = {
   readonly element: {
     readonly tagName: string;
     readonly id?: string;
@@ -114,19 +118,19 @@ export interface ElementMatch {
     readonly boundingBox: BoundingBox;
   };
   readonly selectors: readonly string[];
-  readonly confidence: 'high' | 'medium' | 'low';
-}
+  readonly confidence: "high" | "medium" | "low";
+};
 
 /**
  * Grep match result.
  */
-export interface GrepMatch {
+export type GrepMatch = {
   readonly file: string;
   readonly line: number;
   readonly column?: number;
   readonly content: string;
   readonly selector: string;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Resolver Types
@@ -135,42 +139,42 @@ export interface GrepMatch {
 /**
  * Options for the strategy resolver.
  */
-export interface ResolverOptions {
+export type ResolverOptions = {
   /** Maximum locations per issue */
   readonly maxLocationsPerIssue: number;
   /** Minimum confidence to include */
-  readonly minConfidence: CodeLocation['confidence'];
+  readonly minConfidence: CodeLocation["confidence"];
   /** Strategies to use (empty = all) */
   readonly strategies: readonly string[];
-}
+};
 
 /**
  * Resolution result for a single issue.
  */
-export interface ResolutionResult {
+export type ResolutionResult = {
   readonly issue: Issue;
   readonly locations: readonly CodeLocation[];
   readonly strategiesUsed: readonly string[];
   readonly durationMs: number;
-}
+};
 
 /**
  * Batch resolution result.
  */
-export interface BatchResolutionResult {
+export type BatchResolutionResult = {
   readonly results: readonly ResolutionResult[];
   readonly totalDurationMs: number;
   readonly summary: {
     readonly issuesProcessed: number;
     readonly issuesWithLocations: number;
     readonly totalLocations: number;
-    readonly byConfidence: Record<CodeLocation['confidence'], number>;
+    readonly byConfidence: Record<CodeLocation["confidence"], number>;
   };
-}
+};
 
 /** Default resolver options */
 export const DEFAULT_RESOLVER_OPTIONS: ResolverOptions = {
   maxLocationsPerIssue: 5,
-  minConfidence: 'low',
+  minConfidence: "low",
   strategies: [],
 };

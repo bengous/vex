@@ -1,16 +1,18 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join, relative } from 'node:path';
-import type { FileSystem } from '@effect/platform';
-import { Effect } from 'effect';
-import { getAllDeviceIds, lookupDevice } from '../core/devices.js';
-import { type AnalysisResult, getViewportDirName } from '../core/types.js';
-import { runPipeline } from '../pipeline/runtime.js';
-import { withProviderExecution } from '../providers/shared/profile-execution.js';
-import type { ResolvedScanOptions } from './resolve.js';
-import { type AuditManifest, type AuditRunRecord, buildAuditId, getAuditPageDir, getAuditViewportDir } from './scan-layout.js';
-import { buildScanPipeline } from './scan-pipeline.js';
+import type { AnalysisResult } from "../core/types.js";
+import type { ResolvedScanOptions } from "./resolve.js";
+import type { AuditManifest, AuditRunRecord } from "./scan-layout.js";
+import type { FileSystem } from "@effect/platform";
+import { Effect } from "effect";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join, relative } from "node:path";
+import { getAllDeviceIds, lookupDevice } from "../core/devices.js";
+import { getViewportDirName } from "../core/types.js";
+import { runPipeline } from "../pipeline/runtime.js";
+import { withProviderExecution } from "../providers/shared/profile-execution.js";
+import { buildAuditId, getAuditPageDir, getAuditViewportDir } from "./scan-layout.js";
+import { buildScanPipeline } from "./scan-pipeline.js";
 
-export interface ScanAuditCliMetadata {
+export type ScanAuditCliMetadata = {
   readonly url: string | undefined;
   readonly device: string | undefined;
   readonly provider: string | undefined;
@@ -20,41 +22,54 @@ export interface ScanAuditCliMetadata {
   readonly full: boolean;
   readonly placeholderMedia: boolean;
   readonly output: string | undefined;
-}
+};
 
-export interface RunScanAuditOptions {
+export type RunScanAuditOptions = {
   readonly resolved: ResolvedScanOptions;
   readonly preset: string | undefined;
   readonly cli: ScanAuditCliMetadata;
-}
+};
 
 export function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === 'string') return error;
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
   return JSON.stringify(error);
 }
 
-export function getAuditFinalStatus(manifest: AuditManifest, interrupted: boolean): AuditManifest['status'] {
-  if (interrupted) return 'interrupted';
-  if (manifest.totalRuns > 0 && manifest.failedRuns === manifest.totalRuns) return 'failed';
-  return 'completed';
+export function getAuditFinalStatus(
+  manifest: AuditManifest,
+  interrupted: boolean,
+): AuditManifest["status"] {
+  if (interrupted) {
+    return "interrupted";
+  }
+  if (manifest.totalRuns > 0 && manifest.failedRuns === manifest.totalRuns) {
+    return "failed";
+  }
+  return "completed";
 }
 
-export function runScanAudit(options: RunScanAuditOptions): Effect.Effect<void, unknown, FileSystem.FileSystem> {
+export function runScanAudit(
+  options: RunScanAuditOptions,
+): Effect.Effect<void, unknown, FileSystem.FileSystem> {
   const { cli, preset, resolved } = options;
 
   return Effect.gen(function* () {
     const auditId = buildAuditId();
     const auditDir = join(resolved.outputDir, auditId);
-    const auditManifestPath = join(auditDir, 'audit.json');
-    const configUsedPath = join(auditDir, 'config.used.json');
-    const urlsPath = join(auditDir, 'urls.txt');
+    const auditManifestPath = join(auditDir, "audit.json");
+    const configUsedPath = join(auditDir, "config.used.json");
+    const urlsPath = join(auditDir, "urls.txt");
     const totalRuns = resolved.urls.length * resolved.devices.length;
 
     const manifest: AuditManifest = {
-      type: 'vex-audit',
+      type: "vex-audit",
       auditId,
-      status: 'running',
+      status: "running",
       startedAt: new Date().toISOString(),
       outputDir: auditDir,
       provider: resolved.provider,
@@ -73,53 +88,66 @@ export function runScanAudit(options: RunScanAuditOptions): Effect.Effect<void, 
       runs: [],
     };
 
-    const saveManifest = () => Effect.promise(() => writeFile(auditManifestPath, JSON.stringify(manifest, null, 2)));
+    const saveManifest = () =>
+      Effect.promise(async () => writeFile(auditManifestPath, JSON.stringify(manifest, null, 2)));
 
-    yield* Effect.promise(() => mkdir(join(auditDir, 'pages'), { recursive: true }));
-    yield* Effect.promise(() => writeFile(urlsPath, `${resolved.urls.join('\n')}\n`, 'utf-8'));
+    yield* Effect.promise(async () => mkdir(join(auditDir, "pages"), { recursive: true }));
+    yield* Effect.promise(async () =>
+      writeFile(urlsPath, `${resolved.urls.join("\n")}\n`, "utf-8"),
+    );
 
     const configUsed = {
       generatedAt: new Date().toISOString(),
-      command: 'scan',
+      command: "scan",
       preset,
       cli,
       resolved,
     };
 
-    yield* Effect.promise(() => writeFile(configUsedPath, JSON.stringify(configUsed, null, 2)));
+    yield* Effect.promise(async () =>
+      writeFile(configUsedPath, JSON.stringify(configUsed, null, 2)),
+    );
     yield* saveManifest();
 
     console.log(`Audit: ${auditDir}`);
-    console.log(`Targets: ${totalRuns} (${resolved.urls.length} URL(s) x ${resolved.devices.length} device(s))`);
-    console.log('');
+    console.log(
+      `Targets: ${totalRuns} (${resolved.urls.length} URL(s) x ${resolved.devices.length} device(s))`,
+    );
+    console.log("");
 
     let interrupted = false;
     const onSigInt = () => {
       if (!interrupted) {
         interrupted = true;
-        console.warn('\n[WARN] Interrupt received. Finishing current page, then stopping audit.');
+        console.warn("\n[WARN] Interrupt received. Finishing current page, then stopping audit.");
       }
     };
     const onSigTerm = () => {
       if (!interrupted) {
         interrupted = true;
-        console.warn('\n[WARN] Termination requested. Finishing current page, then stopping audit.');
+        console.warn(
+          "\n[WARN] Termination requested. Finishing current page, then stopping audit.",
+        );
       }
     };
 
-    process.on('SIGINT', onSigInt);
-    process.on('SIGTERM', onSigTerm);
+    process.on("SIGINT", onSigInt);
+    process.on("SIGTERM", onSigTerm);
 
     try {
       for (const url of resolved.urls) {
-        if (interrupted) break;
+        if (interrupted) {
+          break;
+        }
         for (const deviceId of resolved.devices) {
-          if (interrupted) break;
+          if (interrupted) {
+            break;
+          }
           const runStartedAt = new Date().toISOString();
 
           const deviceResult = lookupDevice(deviceId);
           if (!deviceResult) {
-            const validDevices = getAllDeviceIds().join(', ');
+            const validDevices = getAllDeviceIds().join(", ");
             const unknownDeviceMessage = `Unknown device: ${deviceId}.
 Use explicit device IDs (e.g., iphone-se-2016 or iphone-se-2022).
 Valid devices: ${validDevices}`;
@@ -127,8 +155,8 @@ Valid devices: ${validDevices}`;
               url,
               deviceId,
               pagePath: relative(auditDir, getAuditPageDir(auditDir, url)),
-              viewportPath: '',
-              status: 'failed',
+              viewportPath: "",
+              status: "failed",
               startedAt: runStartedAt,
               completedAt: new Date().toISOString(),
               error: unknownDeviceMessage,
@@ -150,7 +178,7 @@ Valid devices: ${validDevices}`;
             viewport,
             pagePath: relative(auditDir, pageDir),
             viewportPath: relative(auditDir, viewportDir),
-            status: 'running',
+            status: "running",
             startedAt: runStartedAt,
           };
           manifest.runs.push(run);
@@ -158,26 +186,26 @@ Valid devices: ${validDevices}`;
 
           console.log(`Scanning ${url}`);
           console.log(`Viewport: ${viewport.width}x${viewport.height} (${deviceId})`);
-          if (resolved.mode === 'capture-only') {
-            console.log('Pipeline: capture-only (no model call)');
+          if (resolved.mode === "capture-only") {
+            console.log("Pipeline: capture-only (no model call)");
           } else {
             console.log(
-              `Provider: ${resolved.provider}${resolved.model ? ` (model: ${resolved.model})` : ''}${resolved.reasoning ? ` (reasoning: ${resolved.reasoning})` : ''}${resolved.profile !== 'minimal' ? ` (profile: ${resolved.profile})` : ''}`,
+              `Provider: ${resolved.provider}${resolved.model ? ` (model: ${resolved.model})` : ""}${resolved.reasoning ? ` (reasoning: ${resolved.reasoning})` : ""}${resolved.profile !== "minimal" ? ` (profile: ${resolved.profile})` : ""}`,
             );
             if (resolved.full) {
-              console.log('Pipeline: full-annotation (analyze + annotate + render)');
+              console.log("Pipeline: full-annotation (analyze + annotate + render)");
             } else {
-              console.log('Pipeline: simple-analysis (capture + analyze)');
+              console.log("Pipeline: simple-analysis (capture + analyze)");
             }
           }
           if (resolved.placeholderMedia) {
-            console.log('Placeholder media: enabled');
+            console.log("Placeholder media: enabled");
           }
           if (resolved.fullPageScrollFix) {
-            console.log('Full-page scroll fix: enabled');
+            console.log("Full-page scroll fix: enabled");
           }
           console.log(`Output: ${viewportDir}`);
-          console.log('');
+          console.log("");
 
           const pipeline = buildScanPipeline({
             url,
@@ -193,7 +221,7 @@ Valid devices: ${validDevices}`;
 
           const runOptions = {
             sessionId: viewportDirName,
-            artifactLayout: 'session-root' as const,
+            artifactLayout: "session-root" as const,
           };
 
           try {
@@ -202,10 +230,10 @@ Valid devices: ${validDevices}`;
               runPipeline(pipeline, pageDir, undefined, runOptions),
             );
 
-            run.status = result.status === 'completed' ? 'completed' : 'failed';
+            run.status = result.status === "completed" ? "completed" : "failed";
             run.completedAt = new Date().toISOString();
             run.issueCount = result.issues.length;
-            if (run.status === 'completed') {
+            if (run.status === "completed") {
               manifest.completedRuns += 1;
             } else {
               manifest.failedRuns += 1;
@@ -221,9 +249,11 @@ Valid devices: ${validDevices}`;
               console.log(`  - ${artifact.type}: ${artifact.path}`);
             }
 
-            const analysisArtifact = artifacts.find((artifact) => artifact.type === 'analysis');
+            const analysisArtifact = artifacts.find((artifact) => artifact.type === "analysis");
             if (analysisArtifact) {
-              const analysisContent = yield* Effect.promise(() => Bun.file(analysisArtifact.path).text());
+              const analysisContent = yield* Effect.promise(async () =>
+                Bun.file(analysisArtifact.path).text(),
+              );
               const analysis = JSON.parse(analysisContent) as AnalysisResult;
 
               console.log(`\nAnalysis (${analysis.provider}/${analysis.model}):`);
@@ -233,35 +263,39 @@ Valid devices: ${validDevices}`;
                 console.log(`\nIssues found (${analysis.issues.length}):`);
                 for (const issue of analysis.issues) {
                   const regionStr =
-                    typeof issue.region === 'string' ? issue.region : `(${issue.region.x},${issue.region.y})`;
-                  console.log(`  [${issue.severity.toUpperCase()}] ${issue.description} @ ${regionStr}`);
+                    typeof issue.region === "string"
+                      ? issue.region
+                      : `(${issue.region.x},${issue.region.y})`;
+                  console.log(
+                    `  [${issue.severity.toUpperCase()}] ${issue.description} @ ${regionStr}`,
+                  );
                   if (issue.suggestedFix) {
                     console.log(`           Fix: ${issue.suggestedFix}`);
                   }
                 }
               } else {
-                console.log('\nNo issues found.');
+                console.log("\nNo issues found.");
               }
-            } else if (resolved.mode === 'capture-only') {
-              console.log('\nAnalysis skipped (capture-only mode).');
+            } else if (resolved.mode === "capture-only") {
+              console.log("\nAnalysis skipped (capture-only mode).");
             }
 
-            console.log('');
+            console.log("");
           } catch (error) {
-            run.status = 'failed';
+            run.status = "failed";
             run.error = toErrorMessage(error);
             run.completedAt = new Date().toISOString();
             manifest.failedRuns += 1;
             yield* saveManifest();
 
             console.error(`[ERROR] Failed ${url} (${deviceId}): ${run.error}`);
-            console.log('');
+            console.log("");
           }
         }
       }
     } finally {
-      process.off('SIGINT', onSigInt);
-      process.off('SIGTERM', onSigTerm);
+      process.off("SIGINT", onSigInt);
+      process.off("SIGTERM", onSigTerm);
     }
 
     manifest.status = getAuditFinalStatus(manifest, interrupted);
@@ -274,6 +308,6 @@ Valid devices: ${validDevices}`;
       console.log(`Failed runs: ${manifest.failedRuns}`);
     }
     console.log(`Audit metadata: ${auditManifestPath}`);
-    console.log('');
+    console.log("");
   });
 }

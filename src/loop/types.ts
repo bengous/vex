@@ -5,9 +5,9 @@
  * capture → analyze → locate → fix → verify → repeat
  */
 
-import { Data } from 'effect';
-import type { CodeLocation, Issue, ViewportConfig } from '../core/types.js';
-import type { PipelineState } from '../pipeline/types.js';
+import type { CodeLocation, Issue, ViewportConfig } from "../core/types.js";
+import type { PipelineState } from "../pipeline/types.js";
+import { Data } from "effect";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Error Types
@@ -20,8 +20,8 @@ import type { PipelineState } from '../pipeline/types.js';
  * - Is an Error instance with stack trace
  * - Works with Effect.catchTag()
  */
-export class LoopError extends Data.TaggedError('LoopError')<{
-  readonly phase: 'capture' | 'analyze' | 'locate' | 'fix' | 'verify';
+export class LoopError extends Data.TaggedError("LoopError")<{
+  readonly phase: "capture" | "analyze" | "locate" | "fix" | "verify";
   readonly detail: string;
   readonly cause?: unknown;
 }> {
@@ -37,12 +37,12 @@ export class LoopError extends Data.TaggedError('LoopError')<{
 /**
  * Auto-fix threshold settings.
  */
-export type AutoFixThreshold = 'high' | 'medium' | 'none';
+export type AutoFixThreshold = "high" | "medium" | "none";
 
 /**
  * Loop execution options.
  */
-export interface LoopOptions {
+export type LoopOptions = {
   /** Target URL to analyze */
   readonly url: string;
 
@@ -72,13 +72,13 @@ export interface LoopOptions {
 
   /** Run without applying any code changes */
   readonly dryRun?: boolean;
-}
+};
 
 /** Default loop options */
 export const DEFAULT_LOOP_OPTIONS: Partial<LoopOptions> = {
   maxIterations: 5,
   interactive: true,
-  autoFixThreshold: 'high',
+  autoFixThreshold: "high",
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -88,12 +88,12 @@ export const DEFAULT_LOOP_OPTIONS: Partial<LoopOptions> = {
 /**
  * Verification verdict after comparing iterations.
  */
-export type VerificationVerdict = 'improved' | 'regressed' | 'unchanged' | 'mixed';
+export type VerificationVerdict = "improved" | "regressed" | "unchanged" | "mixed";
 
 /**
  * Result of verifying changes between iterations.
  */
-export interface VerificationResult {
+export type VerificationResult = {
   /** Issues that were resolved */
   readonly resolved: readonly Issue[];
 
@@ -111,19 +111,19 @@ export interface VerificationResult {
 
   /** Detailed comparison metrics */
   readonly metrics: VerificationMetrics;
-}
+};
 
 /**
  * Detailed metrics for verification.
  */
-export interface VerificationMetrics {
+export type VerificationMetrics = {
   readonly baselineIssueCount: number;
   readonly currentIssueCount: number;
   readonly resolvedCount: number;
   readonly introducedCount: number;
   readonly unchangedCount: number;
   readonly improvementPercent: number;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Gate Types (Human-in-the-Loop)
@@ -132,49 +132,49 @@ export interface VerificationMetrics {
 /**
  * Actions that can be taken for an issue.
  */
-export type GateAction = 'auto-fix' | 'human-review' | 'skip' | 'abort';
+export type GateAction = "auto-fix" | "human-review" | "skip" | "abort";
 
 /**
  * Decision made by the gate for an issue.
  */
-export interface GateDecision {
+export type GateDecision = {
   readonly action: GateAction;
   readonly issue: Issue;
   readonly location?: CodeLocation;
   readonly reasoning: string;
-}
+};
 
 /**
  * Human response to a review request.
  */
-export interface HumanResponse {
-  readonly action: 'apply' | 'skip' | 'modify' | 'abort';
+export type HumanResponse = {
+  readonly action: "apply" | "skip" | "modify" | "abort";
   readonly location?: CodeLocation;
   readonly modification?: string;
   readonly feedback?: string;
-}
+};
 
 /**
  * Gate configuration.
  */
-export interface GateConfig {
+export type GateConfig = {
   /** Confidence threshold for auto-fix */
   readonly autoFixConfidence: AutoFixThreshold;
 
   /** Severity threshold for human review */
-  readonly humanReviewSeverity: Issue['severity'];
+  readonly humanReviewSeverity: Issue["severity"];
 
   /** Allow multi-file changes without review */
   readonly allowMultiFileAutoFix: boolean;
 
   /** Maximum auto-fixes per iteration */
   readonly maxAutoFixesPerIteration: number;
-}
+};
 
 /** Default gate configuration */
 export const DEFAULT_GATE_CONFIG: GateConfig = {
-  autoFixConfidence: 'high',
-  humanReviewSeverity: 'high',
+  autoFixConfidence: "high",
+  humanReviewSeverity: "high",
   allowMultiFileAutoFix: false,
   maxAutoFixesPerIteration: 3,
 };
@@ -186,7 +186,7 @@ export const DEFAULT_GATE_CONFIG: GateConfig = {
 /**
  * State of a single loop iteration.
  */
-export interface IterationState {
+export type IterationState = {
   readonly number: number;
   readonly startedAt: string;
   readonly completedAt?: string;
@@ -194,35 +194,35 @@ export interface IterationState {
   readonly issuesFound: readonly Issue[];
   readonly fixesApplied: readonly AppliedFix[];
   readonly verification?: VerificationResult;
-}
+};
 
 /**
  * Record of an applied fix.
  */
-export interface AppliedFix {
+export type AppliedFix = {
   readonly issue: Issue;
   readonly location: CodeLocation;
-  readonly action: 'auto' | 'manual';
+  readonly action: "auto" | "manual";
   readonly timestamp: string;
   readonly diff?: string;
-}
+};
 
 /**
  * Loop execution status.
  */
 export type LoopStatus =
-  | 'running'
-  | 'paused-for-review'
-  | 'completed-resolved'
-  | 'completed-max-iterations'
-  | 'completed-no-improvement'
-  | 'failed'
-  | 'aborted';
+  | "running"
+  | "paused-for-review"
+  | "completed-resolved"
+  | "completed-max-iterations"
+  | "completed-no-improvement"
+  | "failed"
+  | "aborted";
 
 /**
  * Final loop result.
  */
-export interface LoopResult {
+export type LoopResult = {
   readonly status: LoopStatus;
   readonly iterations: number;
   readonly sessionDir: string;
@@ -233,7 +233,7 @@ export interface LoopResult {
   readonly totalFixesApplied: number;
   readonly iterationHistory: readonly IterationState[];
   readonly finalVerification?: VerificationResult;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Metrics Types
@@ -242,7 +242,7 @@ export interface LoopResult {
 /**
  * Per-iteration metrics for tracking progress.
  */
-export interface IterationMetrics {
+export type IterationMetrics = {
   readonly iteration: number;
   readonly issueCount: number;
   readonly fixesApplied: number;
@@ -250,16 +250,16 @@ export interface IterationMetrics {
   readonly analysisDurationMs: number;
   readonly locatorDurationMs: number;
   readonly totalDurationMs: number;
-}
+};
 
 /**
  * Aggregate metrics across all iterations.
  */
-export interface LoopMetrics {
+export type LoopMetrics = {
   readonly totalIterations: number;
   readonly totalDurationMs: number;
   readonly issueResolutionRate: number;
   readonly averageIterationDurationMs: number;
   readonly iterationMetrics: readonly IterationMetrics[];
-  readonly bySeverity: Record<Issue['severity'], { initial: number; final: number }>;
-}
+  readonly bySeverity: Record<Issue["severity"], { initial: number; final: number }>;
+};

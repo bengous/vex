@@ -12,8 +12,8 @@
  * - Breakdown by severity
  */
 
-import type { Issue, Severity } from '../core/types.js';
-import type { IterationMetrics, IterationState, LoopMetrics } from './types.js';
+import type { Issue, Severity } from "../core/types.js";
+import type { IterationMetrics, IterationState, LoopMetrics } from "./types.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Iteration Metrics
@@ -66,10 +66,10 @@ export function metricsFromState(state: IterationState): IterationMetrics {
 // Loop Metrics
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface SeveritySnapshot {
+type SeveritySnapshot = {
   readonly initial: number;
   readonly final: number;
-}
+};
 
 /**
  * Calculate aggregate metrics from iteration history.
@@ -101,7 +101,8 @@ export function calculateLoopMetrics(
   const initialCount = initialIssues.length;
   const finalCount = finalIssues.length;
   const resolvedCount = Math.max(0, initialCount - finalCount);
-  const issueResolutionRate = initialCount > 0 ? resolvedCount / initialCount : finalCount === 0 ? 1 : 0;
+  const issueResolutionRate =
+    initialCount > 0 ? resolvedCount / initialCount : finalCount === 0 ? 1 : 0;
 
   const bySeverity: Record<Severity, SeveritySnapshot> = {
     high: { initial: 0, final: 0 },
@@ -167,11 +168,11 @@ export function summarizeMetrics(metrics: LoopMetrics): string {
     `Iterations: ${metrics.totalIterations}`,
     `Duration: ${formatDuration(metrics.totalDurationMs)}`,
     `Resolution rate: ${formatResolutionRate(metrics.issueResolutionRate)}`,
-    '',
-    'By severity:',
+    "",
+    "By severity:",
     `  High: ${metrics.bySeverity.high.initial} → ${metrics.bySeverity.high.final}`,
     `  Medium: ${metrics.bySeverity.medium.initial} → ${metrics.bySeverity.medium.final}`,
     `  Low: ${metrics.bySeverity.low.initial} → ${metrics.bySeverity.low.final}`,
   ];
-  return lines.join('\n');
+  return lines.join("\n");
 }

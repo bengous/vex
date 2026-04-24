@@ -5,9 +5,6 @@
  * CLI flag > preset value > default > error (if required)
  */
 
-import type { FileSystem } from '@effect/platform';
-import { Effect, Option } from 'effect';
-import { ConfigError, getLoopPreset, getScanPreset, loadCodexProfile, loadConfigOptional } from '../config/loader.js';
 import type {
   DeviceSpec,
   FullPageScrollFixSpec,
@@ -16,11 +13,20 @@ import type {
   ProviderSpec,
   ScanPreset,
   VexConfig,
-} from '../config/schema.js';
-import { getAllDeviceIds, lookupDevice } from '../core/devices.js';
-import { BUILTIN_PROFILES } from '../providers/codex-cli/schema.js';
-import { ProfileNotFoundError } from '../providers/shared/errors.js';
-import { getProviderMetadata } from '../providers/shared/registry.js';
+} from "../config/schema.js";
+import type { FileSystem } from "@effect/platform";
+import { Effect, Option } from "effect";
+import {
+  ConfigError,
+  getLoopPreset,
+  getScanPreset,
+  loadCodexProfile,
+  loadConfigOptional,
+} from "../config/loader.js";
+import { getAllDeviceIds, lookupDevice } from "../core/devices.js";
+import { BUILTIN_PROFILES } from "../providers/codex-cli/schema.js";
+import { ProfileNotFoundError } from "../providers/shared/errors.js";
+import { getProviderMetadata } from "../providers/shared/registry.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Resolved Options Types
@@ -38,11 +44,11 @@ import { getProviderMetadata } from '../providers/shared/registry.js';
  * ResolvedPlaceholderMedia is a subtype of core PlaceholderMediaOptions,
  * allowing direct pass-through to capture operations.
  */
-export interface ResolvedPlaceholderMedia {
+export type ResolvedPlaceholderMedia = {
   readonly enabled: true;
   readonly svgMinSize: number;
   readonly preserve: readonly string[];
-}
+};
 
 /**
  * Fully resolved full-page scroll fix options.
@@ -52,19 +58,19 @@ export interface ResolvedPlaceholderMedia {
  * - FullPageScrollFixConfig (schema) = { selectors?, settleMs?, preserveHorizontalOverflow? }
  * - ResolvedFullPageScrollFix (CLI) = { enabled: true, selectors, settleMs, preserveHorizontalOverflow } | undefined
  */
-export interface ResolvedFullPageScrollFix {
+export type ResolvedFullPageScrollFix = {
   readonly enabled: true;
   readonly selectors: readonly string[];
   readonly settleMs: number;
   readonly preserveHorizontalOverflow: boolean;
-}
+};
 
-export type ResolvedScanMode = 'analyze' | 'capture-only';
+export type ResolvedScanMode = "analyze" | "capture-only";
 
 /**
  * Fully resolved scan options ready for pipeline execution.
  */
-export interface ResolvedScanOptions {
+export type ResolvedScanOptions = {
   readonly urls: readonly string[];
   readonly devices: readonly string[];
   readonly provider: string;
@@ -76,41 +82,41 @@ export interface ResolvedScanOptions {
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
   readonly outputDir: string;
-}
+};
 
 /**
  * Fully resolved loop options ready for orchestrator execution.
  */
-export interface ResolvedLoopOptions {
+export type ResolvedLoopOptions = {
   readonly urls: readonly string[];
   readonly devices: readonly string[];
   readonly provider: string;
   readonly model: string | undefined;
   readonly profile: string;
   readonly maxIterations: number;
-  readonly autoFix: 'high' | 'medium' | 'none';
+  readonly autoFix: "high" | "medium" | "none";
   readonly dryRun: boolean;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
   readonly outputDir: string;
   readonly projectRoot: string;
-}
+};
 
 /**
  * Preset fields shared between ScanPreset and LoopPreset.
  */
-export interface CommonPresetFields {
+export type CommonPresetFields = {
   readonly urls?: readonly string[];
   readonly devices?: DeviceSpec;
   readonly provider?: ProviderSpec;
   readonly placeholderMedia?: PlaceholderMediaSpec;
   readonly fullPageScrollFix?: FullPageScrollFixSpec;
-}
+};
 
 /**
  * Resolved options shared between scan and loop.
  */
-export interface ResolvedCommonOptions {
+export type ResolvedCommonOptions = {
   readonly urls: readonly string[];
   readonly devices: readonly string[];
   readonly provider: string;
@@ -120,7 +126,7 @@ export interface ResolvedCommonOptions {
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
   readonly outputDir: string;
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLI Args Types (from @effect/cli parsing)
@@ -129,7 +135,7 @@ export interface ResolvedCommonOptions {
 /**
  * CLI args shared between scan and loop commands.
  */
-export interface CommonCliArgs {
+export type CommonCliArgs = {
   readonly url: Option.Option<string>;
   readonly preset: Option.Option<string>;
   readonly device: Option.Option<string>;
@@ -138,45 +144,45 @@ export interface CommonCliArgs {
   readonly providerProfile: Option.Option<string>;
   readonly placeholderMedia: boolean;
   readonly output: Option.Option<string>;
-}
+};
 
 /**
  * Raw CLI args for scan command.
  */
-export interface ScanCliArgs extends CommonCliArgs {
+export type ScanCliArgs = {
   readonly reasoning: Option.Option<string>;
   readonly full: boolean;
-}
+} & CommonCliArgs;
 
 /**
  * Raw CLI args for loop command.
  */
-export interface LoopCliArgs extends CommonCliArgs {
+export type LoopCliArgs = {
   readonly maxIterations: Option.Option<number>;
   readonly autoFix: Option.Option<string>;
   readonly dryRun: boolean;
   readonly project: string;
-}
+} & CommonCliArgs;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Defaults
 // ═══════════════════════════════════════════════════════════════════════════
 
 const DEFAULTS = {
-  devices: ['desktop-1920'] as readonly string[],
-  provider: 'ollama',
-  profile: 'minimal',
-  mode: 'analyze' as ResolvedScanMode,
+  devices: ["desktop-1920"] as readonly string[],
+  provider: "ollama",
+  profile: "minimal",
+  mode: "analyze" as ResolvedScanMode,
   full: false,
   maxIterations: 5,
-  autoFix: 'high' as const,
+  autoFix: "high" as const,
   dryRun: false,
   placeholderMedia: {
     svgMinSize: 100,
     preserve: [] as readonly string[],
   },
   fullPageScrollFix: {
-    selectors: ['#page-scroll-container'] as readonly string[],
+    selectors: ["#page-scroll-container"] as readonly string[],
     settleMs: 500,
     preserveHorizontalOverflow: false,
   },
@@ -240,7 +246,8 @@ function normalizeFullPageScrollFix(
     selectors: presetSpec.selectors ?? DEFAULTS.fullPageScrollFix.selectors,
     settleMs: presetSpec.settleMs ?? DEFAULTS.fullPageScrollFix.settleMs,
     preserveHorizontalOverflow:
-      presetSpec.preserveHorizontalOverflow ?? DEFAULTS.fullPageScrollFix.preserveHorizontalOverflow,
+      presetSpec.preserveHorizontalOverflow ??
+      DEFAULTS.fullPageScrollFix.preserveHorizontalOverflow,
   };
 }
 
@@ -250,21 +257,23 @@ function normalizeFullPageScrollFix(
 
 /** Maps provider names to their profile prefix */
 const PROVIDER_TO_PROFILE_PREFIX: Record<string, string> = {
-  'codex-cli': 'codex',
-  'claude-cli': 'claude',
-  'gemini-cli': 'gemini',
-  ollama: 'ollama',
+  "codex-cli": "codex",
+  "claude-cli": "claude",
+  "gemini-cli": "gemini",
+  ollama: "ollama",
 };
 
 /**
  * Parse "provider:profile" string into tuple.
  */
-function parseProviderProfile(input: string): Effect.Effect<[provider: string, profile: string], ConfigError> {
-  const idx = input.indexOf(':');
+function parseProviderProfile(
+  input: string,
+): Effect.Effect<[provider: string, profile: string], ConfigError> {
+  const idx = input.indexOf(":");
   if (idx === -1) {
     return Effect.fail(
       new ConfigError({
-        kind: 'invalid_schema',
+        kind: "invalid_schema",
         message: `Invalid profile format '${input}'. Expected 'provider:profile' (e.g., codex:fast).`,
       }),
     );
@@ -280,7 +289,9 @@ function parseProviderProfile(input: string): Effect.Effect<[provider: string, p
  * Normalize device spec to array.
  */
 function normalizeDevices(spec: DeviceSpec | undefined): readonly string[] | undefined {
-  if (!spec) return undefined;
+  if (!spec) {
+    return undefined;
+  }
   if (Array.isArray(spec)) {
     return spec as readonly string[];
   }
@@ -297,11 +308,11 @@ function validateResolvedDevices(devices: readonly string[]): Effect.Effect<void
     return Effect.void;
   }
 
-  const valid = getAllDeviceIds().join(', ');
+  const valid = getAllDeviceIds().join(", ");
   return Effect.fail(
     new ConfigError({
-      kind: 'invalid_schema',
-      message: `Unknown device preset(s): ${unknown.join(', ')}.
+      kind: "invalid_schema",
+      message: `Unknown device preset(s): ${unknown.join(", ")}.
 Use explicit device IDs (e.g., iphone-se-2016 or iphone-se-2022).
 Valid devices: ${valid}`,
     }),
@@ -316,11 +327,13 @@ function extractProviderInfo(spec: ProviderSpec | undefined): {
   model?: string;
   reasoning?: string;
 } {
-  if (!spec) return {};
+  if (!spec) {
+    return {};
+  }
   return {
     provider: spec.name,
     model: spec.model,
-    reasoning: 'reasoning' in spec ? spec.reasoning : undefined,
+    reasoning: "reasoning" in spec ? spec.reasoning : undefined,
   };
 }
 
@@ -347,7 +360,7 @@ function resolveOutputDir(
 
   return Effect.fail(
     new ConfigError({
-      kind: 'missing_required',
+      kind: "missing_required",
       message: `Output directory required.
 Use --output flag, set VEX_OUTPUT_DIR env var, or create vex.config.ts`,
     }),
@@ -367,9 +380,9 @@ Use --output flag, set VEX_OUTPUT_DIR env var, or create vex.config.ts`,
  */
 export function resolveCommonOptions(
   cliArgs: CommonCliArgs,
-  preset: CommonPresetFields | undefined,
-  config: VexConfig | undefined,
-  presetName: string | undefined,
+  preset?: CommonPresetFields | undefined,
+  config?: VexConfig | undefined,
+  presetName?: string | undefined,
 ): Effect.Effect<ResolvedCommonOptions, ConfigError | ProfileNotFoundError> {
   return Effect.gen(function* () {
     // Resolve URLs: CLI > preset > error
@@ -379,10 +392,10 @@ export function resolveCommonOptions(
     } else if (preset?.urls && preset.urls.length > 0) {
       urls = preset.urls;
     } else {
-      const presetInfo = presetName ? ` Preset '${presetName}' has no 'urls' field.` : '';
+      const presetInfo = presetName ? ` Preset '${presetName}' has no 'urls' field.` : "";
       return yield* Effect.fail(
         new ConfigError({
-          kind: 'missing_required',
+          kind: "missing_required",
           message: `URL required.${presetInfo}
 Either provide a URL argument or add 'urls' field to the preset.`,
         }),
@@ -392,7 +405,9 @@ Either provide a URL argument or add 'urls' field to the preset.`,
     // Resolve devices: CLI > preset > default
     const presetProviderInfo = extractProviderInfo(preset?.provider);
     const presetDevices = normalizeDevices(preset?.devices);
-    const devices = Option.isSome(cliArgs.device) ? [cliArgs.device.value] : (presetDevices ?? DEFAULTS.devices);
+    const devices = Option.isSome(cliArgs.device)
+      ? [cliArgs.device.value]
+      : (presetDevices ?? DEFAULTS.devices);
     yield* validateResolvedDevices(devices);
 
     // Resolve provider: CLI > preset > default
@@ -404,34 +419,39 @@ Either provide a URL argument or add 'urls' field to the preset.`,
     const model = Option.isSome(cliArgs.model) ? cliArgs.model.value : presetProviderInfo.model;
 
     // Resolve reasoning: CLI > preset > undefined (scan-only, absent for loop)
-    const cliReasoning = 'reasoning' in cliArgs ? (cliArgs.reasoning as Option.Option<string>) : undefined;
+    const cliReasoning =
+      "reasoning" in cliArgs ? (cliArgs.reasoning as Option.Option<string>) : undefined;
     const reasoning =
-      cliReasoning && Option.isSome(cliReasoning) ? cliReasoning.value : presetProviderInfo.reasoning;
+      cliReasoning && Option.isSome(cliReasoning)
+        ? cliReasoning.value
+        : presetProviderInfo.reasoning;
 
     // Resolve profile: CLI > preset.provider.profile > 'minimal'
     let profile = DEFAULTS.profile;
-    if (preset?.provider && typeof preset.provider === 'object' && 'profile' in preset.provider) {
+    if (preset?.provider && typeof preset.provider === "object" && "profile" in preset.provider) {
       profile = preset.provider.profile ?? profile;
     }
 
     // CLI override with validation
     if (Option.isSome(cliArgs.providerProfile)) {
-      const [profileProvider, profileName] = yield* parseProviderProfile(cliArgs.providerProfile.value);
+      const [profileProvider, profileName] = yield* parseProviderProfile(
+        cliArgs.providerProfile.value,
+      );
       const expectedPrefix = PROVIDER_TO_PROFILE_PREFIX[provider];
 
       if (!expectedPrefix || profileProvider !== expectedPrefix) {
         return yield* Effect.fail(
           new ConfigError({
-            kind: 'invalid_schema',
+            kind: "invalid_schema",
             message: `Profile '${profileProvider}:${profileName}' doesn't match provider '${provider}'.
-Expected: ${expectedPrefix ?? 'unknown'}:${profileName}`,
+Expected: ${expectedPrefix ?? "unknown"}:${profileName}`,
           }),
         );
       }
       profile = profileName;
 
       // Validate profile exists for codex-cli
-      if (provider === 'codex-cli') {
+      if (provider === "codex-cli") {
         yield* loadCodexProfile(profile, config).pipe(
           Effect.mapError(() => {
             const builtinNames = Object.keys(BUILTIN_PROFILES);
@@ -451,15 +471,18 @@ Expected: ${expectedPrefix ?? 'unknown'}:${profileName}`,
       if (providerMeta?.knownModels && !providerMeta.knownModels.includes(model)) {
         return yield* Effect.fail(
           new ConfigError({
-            kind: 'invalid_schema',
+            kind: "invalid_schema",
             message: `Model '${model}' not in known models for '${provider}'.
-Known: ${providerMeta.knownModels.join(', ')}`,
+Known: ${providerMeta.knownModels.join(", ")}`,
           }),
         );
       }
     }
 
-    const placeholderMedia = normalizePlaceholderMedia(cliArgs.placeholderMedia, preset?.placeholderMedia);
+    const placeholderMedia = normalizePlaceholderMedia(
+      cliArgs.placeholderMedia,
+      preset?.placeholderMedia,
+    );
     const fullPageScrollFix = normalizeFullPageScrollFix(preset?.fullPageScrollFix);
     const outputDir = yield* resolveOutputDir(cliArgs.output, config);
 
@@ -496,7 +519,7 @@ export function resolveScanOptions(
       if (!config) {
         return yield* Effect.fail(
           new ConfigError({
-            kind: 'not_found',
+            kind: "not_found",
             message: `Cannot use --preset: no vex.config.ts found.
 Create a config file or remove the --preset flag.`,
           }),
@@ -512,8 +535,8 @@ Create a config file or remove the --preset flag.`,
       Option.getOrUndefined(cliArgs.preset),
     );
 
-    const mode = (preset?.mode ?? DEFAULTS.mode) as ResolvedScanMode;
-    const full = cliArgs.full || preset?.full || DEFAULTS.full;
+    const mode = preset?.mode ?? DEFAULTS.mode;
+    const full = cliArgs.full || (preset?.full ?? DEFAULTS.full);
 
     return {
       ...common,
@@ -542,7 +565,7 @@ export function resolveLoopOptions(
       if (!config) {
         return yield* Effect.fail(
           new ConfigError({
-            kind: 'not_found',
+            kind: "not_found",
             message: `Cannot use --preset: no vex.config.ts found.
 Create a config file or remove the --preset flag.`,
           }),
@@ -562,11 +585,11 @@ Create a config file or remove the --preset flag.`,
       ? cliArgs.maxIterations.value
       : (preset?.maxIterations ?? DEFAULTS.maxIterations);
 
-    const autoFix = (Option.isSome(cliArgs.autoFix)
-      ? cliArgs.autoFix.value
-      : (preset?.autoFix ?? DEFAULTS.autoFix)) as 'high' | 'medium' | 'none';
+    const autoFix = (
+      Option.isSome(cliArgs.autoFix) ? cliArgs.autoFix.value : (preset?.autoFix ?? DEFAULTS.autoFix)
+    ) as "high" | "medium" | "none";
 
-    const dryRun = cliArgs.dryRun || preset?.dryRun || DEFAULTS.dryRun;
+    const dryRun = cliArgs.dryRun || (preset?.dryRun ?? DEFAULTS.dryRun);
 
     return {
       ...commonBase,

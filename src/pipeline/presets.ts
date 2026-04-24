@@ -2,11 +2,11 @@
  * Pipeline presets - common pipeline configurations.
  */
 
-import type { FullPageScrollFixOptions, PlaceholderMediaOptions } from '../core/capture.js';
-import type { ViewportConfig } from '../core/types.js';
-import type { PipelineDefinition, PipelineEdge, PipelineNode } from './types.js';
+import type { FullPageScrollFixOptions, PlaceholderMediaOptions } from "../core/capture.js";
+import type { ViewportConfig } from "../core/types.js";
+import type { PipelineDefinition, PipelineEdge, PipelineNode } from "./types.js";
 
-interface CaptureNodeOptions {
+type CaptureNodeOptions = {
   readonly id: string;
   readonly url: string;
   readonly viewport: ViewportConfig;
@@ -16,7 +16,7 @@ interface CaptureNodeOptions {
   readonly includeCaptureOptions?: true;
   readonly placeholderMedia?: PlaceholderMediaOptions;
   readonly fullPageScrollFix?: FullPageScrollFixOptions;
-}
+};
 
 function edge(from: string, to: string, artifact: string, targetField?: string): PipelineEdge {
   return targetField ? { from, to, artifact, targetField } : { from, to, artifact };
@@ -40,7 +40,7 @@ function captureNode(options: CaptureNodeOptions): PipelineNode {
 
   return {
     id: options.id,
-    operation: 'capture',
+    operation: "capture",
     config,
     inputs: [],
     outputs: options.outputs,
@@ -49,51 +49,51 @@ function captureNode(options: CaptureNodeOptions): PipelineNode {
 
 function foldsNode(viewport: ViewportConfig): PipelineNode {
   return {
-    id: 'folds',
-    operation: 'overlay-folds',
+    id: "folds",
+    operation: "overlay-folds",
     config: { viewportHeight: viewport.height },
-    inputs: ['image'],
-    outputs: ['image-with-folds'],
+    inputs: ["image"],
+    outputs: ["image-with-folds"],
   };
 }
 
 function gridNode(input: string): PipelineNode {
   return {
-    id: 'grid',
-    operation: 'overlay-grid',
+    id: "grid",
+    operation: "overlay-grid",
     config: { showLabels: true },
     inputs: [input],
-    outputs: ['image-with-grid'],
+    outputs: ["image-with-grid"],
   };
 }
 
 function analyzeNode(provider: string, model?: string, reasoning?: string): PipelineNode {
   return {
-    id: 'analyze',
-    operation: 'analyze',
+    id: "analyze",
+    operation: "analyze",
     config: { provider, model, reasoning },
-    inputs: ['image-with-grid'],
-    outputs: ['analysis'],
+    inputs: ["image-with-grid"],
+    outputs: ["analysis"],
   };
 }
 
 function annotateNode(provider: string): PipelineNode {
   return {
-    id: 'annotate',
-    operation: 'annotate',
+    id: "annotate",
+    operation: "annotate",
     config: { provider },
-    inputs: ['analysis'],
-    outputs: ['toolCalls'],
+    inputs: ["analysis"],
+    outputs: ["toolCalls"],
   };
 }
 
 function renderNode(): PipelineNode {
   return {
-    id: 'render',
-    operation: 'render',
+    id: "render",
+    operation: "render",
     config: {},
-    inputs: ['image-with-grid', 'toolCalls'],
-    outputs: ['annotated-image'],
+    inputs: ["image-with-grid", "toolCalls"],
+    outputs: ["annotated-image"],
   };
 }
 
@@ -104,11 +104,11 @@ function screenshotCaptureNode(
   fullPageScrollFix?: FullPageScrollFixOptions,
 ): PipelineNode {
   return captureNode({
-    id: 'capture',
+    id: "capture",
     url,
     viewport,
-    filename: 'screenshot.png',
-    outputs: ['image'],
+    filename: "screenshot.png",
+    outputs: ["image"],
     includeCaptureOptions: true,
     placeholderMedia,
     fullPageScrollFix,
@@ -122,11 +122,11 @@ function domScreenshotCaptureNode(
   fullPageScrollFix?: FullPageScrollFixOptions,
 ): PipelineNode {
   return captureNode({
-    id: 'capture',
+    id: "capture",
     url,
     viewport,
-    filename: 'screenshot.png',
-    outputs: ['image'],
+    filename: "screenshot.png",
+    outputs: ["image"],
     withDOM: true,
     includeCaptureOptions: true,
     placeholderMedia,
@@ -146,13 +146,17 @@ function analysisBaseNodes(
   return [
     domScreenshotCaptureNode(url, viewport, placeholderMedia, fullPageScrollFix),
     foldsNode(viewport),
-    gridNode('image-with-folds'),
+    gridNode("image-with-folds"),
     analyzeNode(provider, model, reasoning),
   ];
 }
 
 function analysisBaseEdges(): PipelineEdge[] {
-  return [edge('capture', 'folds', 'image'), edge('folds', 'grid', 'image'), edge('grid', 'analyze', 'image')];
+  return [
+    edge("capture", "folds", "image"),
+    edge("folds", "grid", "image"),
+    edge("grid", "analyze", "image"),
+  ];
 }
 
 /**
@@ -168,11 +172,19 @@ export function simpleAnalysis(
   fullPageScrollFix?: FullPageScrollFixOptions,
 ): PipelineDefinition {
   return {
-    name: 'simple-analysis',
-    description: 'Capture screenshot and analyze for issues',
-    inputs: ['url', 'viewport', 'provider'],
-    outputs: ['analysis'],
-    nodes: analysisBaseNodes(url, viewport, provider, model, reasoning, placeholderMedia, fullPageScrollFix),
+    name: "simple-analysis",
+    description: "Capture screenshot and analyze for issues",
+    inputs: ["url", "viewport", "provider"],
+    outputs: ["analysis"],
+    nodes: analysisBaseNodes(
+      url,
+      viewport,
+      provider,
+      model,
+      reasoning,
+      placeholderMedia,
+      fullPageScrollFix,
+    ),
     edges: analysisBaseEdges(),
   };
 }
@@ -190,20 +202,28 @@ export function fullAnnotation(
   fullPageScrollFix?: FullPageScrollFixOptions,
 ): PipelineDefinition {
   return {
-    name: 'full-annotation',
-    description: 'Capture, analyze, and render annotated screenshot',
-    inputs: ['url', 'viewport', 'provider'],
-    outputs: ['annotated-image'],
+    name: "full-annotation",
+    description: "Capture, analyze, and render annotated screenshot",
+    inputs: ["url", "viewport", "provider"],
+    outputs: ["annotated-image"],
     nodes: [
-      ...analysisBaseNodes(url, viewport, provider, model, reasoning, placeholderMedia, fullPageScrollFix),
+      ...analysisBaseNodes(
+        url,
+        viewport,
+        provider,
+        model,
+        reasoning,
+        placeholderMedia,
+        fullPageScrollFix,
+      ),
       annotateNode(provider),
       renderNode(),
     ],
     edges: [
       ...analysisBaseEdges(),
-      edge('analyze', 'annotate', 'result'),
-      edge('grid', 'render', 'image'),
-      edge('annotate', 'render', 'toolCalls'),
+      edge("analyze", "annotate", "result"),
+      edge("grid", "render", "image"),
+      edge("annotate", "render", "toolCalls"),
     ],
   };
 }
@@ -217,36 +237,36 @@ export function responsiveComparison(
   mobileViewport: ViewportConfig,
 ): PipelineDefinition {
   return {
-    name: 'responsive-comparison',
-    description: 'Compare desktop and mobile screenshots',
-    inputs: ['url', 'desktopViewport', 'mobileViewport'],
-    outputs: ['diff-report'],
+    name: "responsive-comparison",
+    description: "Compare desktop and mobile screenshots",
+    inputs: ["url", "desktopViewport", "mobileViewport"],
+    outputs: ["diff-report"],
     nodes: [
       captureNode({
-        id: 'capture-desktop',
+        id: "capture-desktop",
         url,
         viewport: desktopViewport,
-        filename: 'desktop.png',
-        outputs: ['desktop-image'],
+        filename: "desktop.png",
+        outputs: ["desktop-image"],
       }),
       captureNode({
-        id: 'capture-mobile',
+        id: "capture-mobile",
         url,
         viewport: mobileViewport,
-        filename: 'mobile.png',
-        outputs: ['mobile-image'],
+        filename: "mobile.png",
+        outputs: ["mobile-image"],
       }),
       {
-        id: 'diff',
-        operation: 'diff',
+        id: "diff",
+        operation: "diff",
         config: { threshold: 5 },
-        inputs: ['desktop-image', 'mobile-image'],
-        outputs: ['diff-report'],
+        inputs: ["desktop-image", "mobile-image"],
+        outputs: ["diff-report"],
       },
     ],
     edges: [
-      edge('capture-desktop', 'diff', 'image', 'baseImage'),
-      edge('capture-mobile', 'diff', 'image', 'compareImage'),
+      edge("capture-desktop", "diff", "image", "baseImage"),
+      edge("capture-mobile", "diff", "image", "compareImage"),
     ],
   };
 }
@@ -262,33 +282,35 @@ export function captureOnly(
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
 ): PipelineDefinition {
-  const nodes: PipelineNode[] = [screenshotCaptureNode(url, viewport, placeholderMedia, fullPageScrollFix)];
+  const nodes: PipelineNode[] = [
+    screenshotCaptureNode(url, viewport, placeholderMedia, fullPageScrollFix),
+  ];
   const edges: PipelineEdge[] = [];
-  let currentOutput = 'image';
+  let currentOutput = "image";
 
   if (withFolds) {
     nodes.push(foldsNode(viewport));
-    edges.push(edge('capture', 'folds', 'image'));
-    currentOutput = 'image-with-folds';
+    edges.push(edge("capture", "folds", "image"));
+    currentOutput = "image-with-folds";
   }
 
   if (withGrid) {
     nodes.push(gridNode(currentOutput));
-    edges.push(edge(withFolds ? 'folds' : 'capture', 'grid', 'image'));
-    currentOutput = 'image-with-grid';
+    edges.push(edge(withFolds ? "folds" : "capture", "grid", "image"));
+    currentOutput = "image-with-grid";
   }
 
   return {
-    name: 'capture-only',
+    name: "capture-only",
     description:
       withFolds && withGrid
-        ? 'Capture screenshot with fold lines and grid'
+        ? "Capture screenshot with fold lines and grid"
         : withFolds
-          ? 'Capture screenshot with fold lines'
+          ? "Capture screenshot with fold lines"
           : withGrid
-            ? 'Capture screenshot with grid'
-            : 'Capture screenshot without fold lines',
-    inputs: ['url', 'viewport'],
+            ? "Capture screenshot with grid"
+            : "Capture screenshot without fold lines",
+    inputs: ["url", "viewport"],
     outputs: [currentOutput],
     nodes,
     edges,

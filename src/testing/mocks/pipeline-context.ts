@@ -5,10 +5,10 @@
  * in isolation without running the full pipeline runtime.
  */
 
-import { join } from 'node:path';
-import { Effect } from 'effect';
-import type { Artifact, ImageArtifact, ViewportConfig } from '../../core/types.js';
-import type { DataKey, DataValue, Logger, PipelineContext } from '../../pipeline/types.js';
+import type { Artifact, ImageArtifact, ViewportConfig } from "../../core/types.js";
+import type { DataKey, DataValue, Logger, PipelineContext } from "../../pipeline/types.js";
+import { Effect } from "effect";
+import { join } from "node:path";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Mock Logger
@@ -29,22 +29,26 @@ export function createSilentLogger(): Logger {
 /**
  * Capturing logger that stores all messages (for assertions).
  */
-export interface CapturingLogger extends Logger {
+export type CapturingLogger = {
   readonly messages: { level: string; message: string }[];
   readonly warnings: string[];
   readonly errors: string[];
-}
+} & Logger;
 
 export function createCapturingLogger(): CapturingLogger {
   const messages: { level: string; message: string }[] = [];
   return {
     messages,
-    get warnings() { return messages.filter((m) => m.level === 'warn').map((m) => m.message); },
-    get errors() { return messages.filter((m) => m.level === 'error').map((m) => m.message); },
-    debug: (msg) => messages.push({ level: 'debug', message: msg }),
-    info: (msg) => messages.push({ level: 'info', message: msg }),
-    warn: (msg) => messages.push({ level: 'warn', message: msg }),
-    error: (msg) => messages.push({ level: 'error', message: msg }),
+    get warnings() {
+      return messages.filter((m) => m.level === "warn").map((m) => m.message);
+    },
+    get errors() {
+      return messages.filter((m) => m.level === "error").map((m) => m.message);
+    },
+    debug: (msg) => messages.push({ level: "debug", message: msg }),
+    info: (msg) => messages.push({ level: "info", message: msg }),
+    warn: (msg) => messages.push({ level: "warn", message: msg }),
+    error: (msg) => messages.push({ level: "error", message: msg }),
   };
 }
 
@@ -52,10 +56,10 @@ export function createCapturingLogger(): CapturingLogger {
 // Mock Context Factory
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface MockContextOptions {
+export type MockContextOptions = {
   readonly sessionDir: string;
   readonly logger?: Logger;
-}
+};
 
 /**
  * Create a mock PipelineContext for operation testing.
@@ -88,13 +92,13 @@ export function createMockContext(options: MockContextOptions): PipelineContext 
 // Image Artifact Factory
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface MockImageArtifactOptions {
+export type MockImageArtifactOptions = {
   readonly path: string;
   readonly id?: string;
   readonly width?: number;
   readonly height?: number;
   readonly viewport?: ViewportConfig;
-}
+};
 
 /**
  * Create a mock ImageArtifact for testing operations that consume images.
@@ -103,12 +107,12 @@ export function createMockImageArtifact(options: MockImageArtifactOptions): Imag
   const { path, id = crypto.randomUUID(), width = 1920, height = 1080, viewport } = options;
 
   return {
-    _kind: 'artifact',
+    _kind: "artifact",
     id,
-    type: 'image',
+    type: "image",
     path,
     createdAt: new Date().toISOString(),
-    createdBy: 'test',
+    createdBy: "test",
     metadata: {
       width,
       height,

@@ -5,7 +5,8 @@
  * Provider implementations import from here to avoid circular dependencies.
  */
 
-import { Context, Data, type Effect } from 'effect';
+import type { Effect } from "effect";
+import { Context, Data } from "effect";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Error Types - Explicit, typed, pattern-matchable
@@ -14,7 +15,7 @@ import { Context, Data, type Effect } from 'effect';
 /**
  * Provider is not available (server not running, CLI not installed).
  */
-export class ProviderUnavailable extends Data.TaggedError('ProviderUnavailable')<{
+export class ProviderUnavailable extends Data.TaggedError("ProviderUnavailable")<{
   readonly provider: string;
   readonly reason: string;
   readonly suggestion?: string;
@@ -23,9 +24,9 @@ export class ProviderUnavailable extends Data.TaggedError('ProviderUnavailable')
 /**
  * Analysis operation failed.
  */
-export class AnalysisFailed extends Data.TaggedError('AnalysisFailed')<{
+export class AnalysisFailed extends Data.TaggedError("AnalysisFailed")<{
   readonly provider: string;
-  readonly kind: 'timeout' | 'execution' | 'http' | 'image_read' | 'parse';
+  readonly kind: "timeout" | "execution" | "http" | "image_read" | "parse";
   readonly message: string;
   readonly cause?: unknown;
 }> {}
@@ -36,18 +37,18 @@ export type ProviderError = ProviderUnavailable | AnalysisFailed;
 // Service Interface - What providers must implement
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface VisionResult {
+export type VisionResult = {
   readonly response: string;
   readonly durationMs: number;
   readonly model: string;
   readonly provider: string;
-}
+};
 
-export interface VisionQueryOptions {
+export type VisionQueryOptions = {
   readonly model?: string;
   readonly timeoutMs?: number;
   readonly reasoning?: string;
-}
+};
 
 /**
  * VisionProvider service contract.
@@ -59,7 +60,7 @@ export interface VisionQueryOptions {
  * - hasModel: Optional - validate model exists, defaults to true
  * - normalizeModel: Optional - map aliases like "sonnet" -> "claude-sonnet-4-..."
  */
-export interface VisionProviderService {
+export type VisionProviderService = {
   readonly name: string;
   readonly displayName: string;
 
@@ -70,16 +71,19 @@ export interface VisionProviderService {
   ) => Effect.Effect<VisionResult, ProviderError>;
 
   /** Never fails - returns false if unavailable */
-  readonly isAvailable: () => Effect.Effect<boolean, never>;
+  readonly isAvailable: () => Effect.Effect<boolean>;
 
   /** Returns available models or empty array on error (never fails) */
-  readonly listModels: () => Effect.Effect<readonly string[], never>;
+  readonly listModels: () => Effect.Effect<readonly string[]>;
 
   /** Returns true if model available, true by default for CLI providers (never fails) */
-  readonly hasModel: (model: string) => Effect.Effect<boolean, never>;
+  readonly hasModel: (model: string) => Effect.Effect<boolean>;
 
   readonly normalizeModel: (model: string) => string;
-}
+};
 
 /** Effect Service Tag - dependency injection point */
-export class VisionProvider extends Context.Tag('VisionProvider')<VisionProvider, VisionProviderService>() {}
+export class VisionProvider extends Context.Tag("VisionProvider")<
+  VisionProvider,
+  VisionProviderService
+>() {}

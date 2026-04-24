@@ -5,13 +5,19 @@
  * Uses mock() from bun:test for call tracking.
  */
 
-import { describe, expect, mock, test } from 'bun:test';
-import { Effect } from 'effect';
-import type { CodeLocation, Issue, ViewportConfig } from '../core/types.js';
-import { runEffect, runEffectExit } from '../testing/effect-helpers.js';
-import { createCodeLocation, createIssue, createLoopOptions, createPipelineState } from '../testing/factories.js';
-import { type LoopCallbacks, type LoopCaptureResult, LoopOrchestrator } from './orchestrator.js';
-import type { AppliedFix, GateDecision, HumanResponse } from './types.js';
+import type { CodeLocation, Issue, ViewportConfig } from "../core/types.js";
+import type { LoopCallbacks, LoopCaptureResult } from "./orchestrator.js";
+import type { AppliedFix, GateDecision, HumanResponse } from "./types.js";
+import { describe, expect, mock, test } from "bun:test";
+import { Effect } from "effect";
+import { runEffect, runEffectExit } from "../testing/effect-helpers.js";
+import {
+  createCodeLocation,
+  createIssue,
+  createLoopOptions,
+  createPipelineState,
+} from "../testing/factories.js";
+import { LoopOrchestrator } from "./orchestrator.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Fixtures
@@ -21,7 +27,7 @@ function createAppliedFix(issue: Issue, location: CodeLocation): AppliedFix {
   return {
     issue,
     location,
-    action: 'auto',
+    action: "auto",
     timestamp: new Date().toISOString(),
   };
 }
@@ -30,7 +36,7 @@ function createMockCallbacks(overrides: Partial<LoopCallbacks> = {}): LoopCallba
   return {
     capture: mock(() => Effect.succeed({ state: createPipelineState(), issues: [] })),
     applyFix: mock(() => Effect.succeed(createAppliedFix(createIssue(), createCodeLocation()))),
-    promptHuman: mock(() => Effect.succeed({ action: 'skip' } as HumanResponse)),
+    promptHuman: mock(() => Effect.succeed({ action: "skip" } as HumanResponse)),
     ...overrides,
   };
 }
@@ -39,15 +45,17 @@ function createMockCallbacks(overrides: Partial<LoopCallbacks> = {}): LoopCallba
 // State Machine Transition Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('LoopOrchestrator', () => {
-  describe('completed-resolved status', () => {
-    test('exits with completed-resolved when no issues found on first capture', async () => {
-      const captureMock = mock((_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult, never> => {
-        return Effect.succeed({
-          state: createPipelineState(),
-          issues: [],
-        });
-      });
+describe("LoopOrchestrator", () => {
+  describe("completed-resolved status", () => {
+    test("exits with completed-resolved when no issues found on first capture", async () => {
+      const captureMock = mock(
+        (_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult> => {
+          return Effect.succeed({
+            state: createPipelineState(),
+            issues: [],
+          });
+        },
+      );
 
       const callbacks = createMockCallbacks({ capture: captureMock });
 
@@ -56,7 +64,7 @@ describe('LoopOrchestrator', () => {
 
       const result = await runEffect(orchestrator.run());
 
-      expect(result.status).toBe('completed-resolved');
+      expect(result.status).toBe("completed-resolved");
       expect(result.iterations).toBe(1);
       expect(result.initialIssueCount).toBe(0);
       expect(result.finalIssueCount).toBe(0);
@@ -64,21 +72,23 @@ describe('LoopOrchestrator', () => {
     });
   });
 
-  describe('completed-max-iterations status', () => {
-    test('exits with completed-max-iterations when issues persist', async () => {
-      const persistentIssue = createIssue({ id: 1, description: 'Persistent issue' });
+  describe("completed-max-iterations status", () => {
+    test("exits with completed-max-iterations when issues persist", async () => {
+      const persistentIssue = createIssue({ id: 1, description: "Persistent issue" });
       let callCount = 0;
 
-      const captureMock = mock((_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult, never> => {
-        callCount++;
-        return Effect.succeed({
-          state: createPipelineState({
-            // Each iteration gets a fresh state to avoid verification detecting "unchanged"
-            startedAt: new Date(Date.now() + callCount * 1000).toISOString(),
-          }),
-          issues: [persistentIssue],
-        });
-      });
+      const captureMock = mock(
+        (_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult> => {
+          callCount++;
+          return Effect.succeed({
+            state: createPipelineState({
+              // Each iteration gets a fresh state to avoid verification detecting "unchanged"
+              startedAt: new Date(Date.now() + callCount * 1000).toISOString(),
+            }),
+            issues: [persistentIssue],
+          });
+        },
+      );
 
       const callbacks = createMockCallbacks({ capture: captureMock });
 
@@ -87,34 +97,36 @@ describe('LoopOrchestrator', () => {
 
       const result = await runEffect(orchestrator.run());
 
-      expect(result.status).toBe('completed-max-iterations');
+      expect(result.status).toBe("completed-max-iterations");
       expect(result.iterations).toBe(3);
       expect(captureMock).toHaveBeenCalledTimes(3);
     });
   });
 
-  describe('aborted status', () => {
-    test('issues without locations are skipped (no human review triggered)', async () => {
+  describe("aborted status", () => {
+    test("issues without locations are skipped (no human review triggered)", async () => {
       // Without DOM snapshot in capture state, the locator finds no locations.
       // Issues with no locations get "skip" action, not "human-review".
       // This test verifies the correct behavior: promptHuman is NOT called.
 
-      const issue = createIssue({ severity: 'high' });
+      const issue = createIssue({ severity: "high" });
 
-      const captureMock = mock((_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult, never> => {
-        return Effect.succeed({
-          state: createPipelineState(),
-          issues: [issue],
-        });
-      });
+      const captureMock = mock(
+        (_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult> => {
+          return Effect.succeed({
+            state: createPipelineState(),
+            issues: [issue],
+          });
+        },
+      );
 
       const promptMock = mock(
         (
           _issue: Issue,
           _locations: readonly CodeLocation[],
           _decision: GateDecision,
-        ): Effect.Effect<HumanResponse, never> => {
-          return Effect.succeed({ action: 'abort' });
+        ): Effect.Effect<HumanResponse> => {
+          return Effect.succeed({ action: "abort" });
         },
       );
 
@@ -126,28 +138,34 @@ describe('LoopOrchestrator', () => {
       const result = await runEffect(orchestrator.run());
 
       // Issues with no locations are skipped, not sent to human review
-      expect(result.status).toBe('completed-max-iterations');
+      expect(result.status).toBe("completed-max-iterations");
       expect(promptMock).not.toHaveBeenCalled();
     });
   });
 
-  describe('auto-fix path', () => {
-    test('calls applyFix for high-confidence single-file issues', async () => {
-      const issue = createIssue({ severity: 'medium' });
-      const location = createCodeLocation({ confidence: 'high', file: 'single.liquid' });
+  describe("auto-fix path", () => {
+    test("calls applyFix for high-confidence single-file issues", async () => {
+      const issue = createIssue({ severity: "medium" });
+      const location = createCodeLocation({ confidence: "high", file: "single.liquid" });
 
       // Include codeLocations so the resolver finds them
       const issueWithLocation = { ...issue, codeLocations: [location] };
 
-      const captureMock = mock((_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult, never> => {
-        return Effect.succeed({
-          state: createPipelineState(),
-          issues: [issueWithLocation],
-        });
-      });
+      const captureMock = mock(
+        (_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult> => {
+          return Effect.succeed({
+            state: createPipelineState(),
+            issues: [issueWithLocation],
+          });
+        },
+      );
 
       const applyFixMock = mock(
-        (_issue: Issue, _location: CodeLocation, _decision: GateDecision): Effect.Effect<AppliedFix, never> => {
+        (
+          _issue: Issue,
+          _location: CodeLocation,
+          _decision: GateDecision,
+        ): Effect.Effect<AppliedFix> => {
           return Effect.succeed(createAppliedFix(_issue, _location));
         },
       );
@@ -162,56 +180,60 @@ describe('LoopOrchestrator', () => {
       // The resolver needs DOM snapshot to find locations.
       // Without it, issues get "skip" action (no locations found).
       // This test verifies the orchestrator flow, not the locator.
-      expect(result.status).toBe('completed-max-iterations');
+      expect(result.status).toBe("completed-max-iterations");
       expect(result.iterations).toBe(1);
     });
   });
 
-  describe('human review path', () => {
-    test('completes flow for issues without locations in interactive mode', async () => {
+  describe("human review path", () => {
+    test("completes flow for issues without locations in interactive mode", async () => {
       // This test verifies the flow completes without error.
       // Without DOM snapshot, issues have no locations → skip action → promptHuman not called.
-      const issue = createIssue({ severity: 'medium' });
+      const issue = createIssue({ severity: "medium" });
 
-      const captureMock = mock((_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult, never> => {
-        return Effect.succeed({
-          state: createPipelineState(),
-          issues: [issue],
-        });
-      });
+      const captureMock = mock(
+        (_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult> => {
+          return Effect.succeed({
+            state: createPipelineState(),
+            issues: [issue],
+          });
+        },
+      );
 
       const callbacks = createMockCallbacks({ capture: captureMock });
 
       const options = createLoopOptions({ maxIterations: 1, interactive: true });
       const orchestrator = new LoopOrchestrator(options, callbacks, {
-        humanReviewSeverity: 'low',
+        humanReviewSeverity: "low",
       });
 
       const result = await runEffect(orchestrator.run());
 
-      expect(result.status).toBe('completed-max-iterations');
+      expect(result.status).toBe("completed-max-iterations");
     });
   });
 
-  describe('onIterationComplete callback', () => {
-    test('calls onIterationComplete after each iteration', async () => {
+  describe("onIterationComplete callback", () => {
+    test("calls onIterationComplete after each iteration", async () => {
       const issue = createIssue();
       let iterationCount = 0;
 
-      const captureMock = mock((_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult, never> => {
-        iterationCount++;
-        // Return issues for first 2 iterations, then none
-        if (iterationCount <= 2) {
+      const captureMock = mock(
+        (_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult> => {
+          iterationCount++;
+          // Return issues for first 2 iterations, then none
+          if (iterationCount <= 2) {
+            return Effect.succeed({
+              state: createPipelineState(),
+              issues: [issue],
+            });
+          }
           return Effect.succeed({
             state: createPipelineState(),
-            issues: [issue],
+            issues: [],
           });
-        }
-        return Effect.succeed({
-          state: createPipelineState(),
-          issues: [],
-        });
-      });
+        },
+      );
 
       const onIterationCompleteMock = mock(() => {});
 
@@ -225,14 +247,14 @@ describe('LoopOrchestrator', () => {
 
       const result = await runEffect(orchestrator.run());
 
-      expect(result.status).toBe('completed-resolved');
+      expect(result.status).toBe("completed-resolved");
       expect(result.iterations).toBe(3);
       expect(onIterationCompleteMock).toHaveBeenCalledTimes(3);
     });
   });
 
-  describe('error handling', () => {
-    test('returns error when no viewport configured', async () => {
+  describe("error handling", () => {
+    test("returns error when no viewport configured", async () => {
       const callbacks = createMockCallbacks();
 
       const options = createLoopOptions({ viewports: [] }); // No viewports!
@@ -240,27 +262,31 @@ describe('LoopOrchestrator', () => {
 
       const exit = await runEffectExit(orchestrator.run());
 
-      expect(exit._tag).toBe('Failure');
+      expect(exit._tag).toBe("Failure");
     });
   });
 
-  describe('iteration tracking', () => {
-    test('tracks correct initialIssueCount and finalIssueCount', async () => {
+  describe("iteration tracking", () => {
+    test("tracks correct initialIssueCount and finalIssueCount", async () => {
       let callCount = 0;
 
-      const captureMock = mock((_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult, never> => {
-        callCount++;
-        // Start with 3 issues, reduce to 1, then 0
-        const issueCount = Math.max(0, 3 - callCount);
-        const issues = Array.from({ length: issueCount }, (_, i) =>
-          createIssue({ id: i + 1, description: `Issue ${i + 1}` }),
-        );
+      const captureMock = mock(
+        (_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult> => {
+          callCount++;
+          // Start with 3 issues, reduce to 1, then 0
+          const issueCount = Math.max(0, 3 - callCount);
+          const issues = Array.from({ length: issueCount }, (_, i) =>
+            createIssue({ id: i + 1, description: `Issue ${i + 1}` }),
+          );
 
-        return Effect.succeed({
-          state: createPipelineState({ startedAt: new Date(Date.now() + callCount * 1000).toISOString() }),
-          issues,
-        });
-      });
+          return Effect.succeed({
+            state: createPipelineState({
+              startedAt: new Date(Date.now() + callCount * 1000).toISOString(),
+            }),
+            issues,
+          });
+        },
+      );
 
       const callbacks = createMockCallbacks({ capture: captureMock });
 
@@ -271,20 +297,24 @@ describe('LoopOrchestrator', () => {
 
       expect(result.initialIssueCount).toBe(2); // First call: 3-1=2
       expect(result.finalIssueCount).toBe(0);
-      expect(result.status).toBe('completed-resolved');
+      expect(result.status).toBe("completed-resolved");
     });
 
-    test('iteration history records all iterations', async () => {
+    test("iteration history records all iterations", async () => {
       const issue = createIssue();
       let callCount = 0;
 
-      const captureMock = mock((_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult, never> => {
-        callCount++;
-        return Effect.succeed({
-          state: createPipelineState({ startedAt: new Date(Date.now() + callCount * 1000).toISOString() }),
-          issues: callCount < 3 ? [issue] : [],
-        });
-      });
+      const captureMock = mock(
+        (_url: string, _viewport: ViewportConfig): Effect.Effect<LoopCaptureResult> => {
+          callCount++;
+          return Effect.succeed({
+            state: createPipelineState({
+              startedAt: new Date(Date.now() + callCount * 1000).toISOString(),
+            }),
+            issues: callCount < 3 ? [issue] : [],
+          });
+        },
+      );
 
       const callbacks = createMockCallbacks({ capture: captureMock });
 

@@ -2,9 +2,9 @@
  * Shared provider layer resolution with OperationError wrapping.
  */
 
-import { Effect } from 'effect';
-import { resolveProviderLayer } from '../../providers/shared/registry.js';
-import { OperationError } from '../types.js';
+import { Effect } from "effect";
+import { resolveProviderLayer } from "../../providers/shared/registry.js";
+import { OperationError } from "../types.js";
 
 /**
  * Resolve a provider layer, mapping ProviderUnavailable to OperationError.

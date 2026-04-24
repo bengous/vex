@@ -7,7 +7,6 @@
  * - Annotation rendering (rectangles, arrows, labels)
  */
 
-import sharp from 'sharp';
 import type {
   AddLabelParams,
   BoundingBox,
@@ -19,8 +18,9 @@ import type {
   GridRef,
   StyleConfig,
   ToolCall,
-} from './types.js';
-import { GRID_CONFIG, GRID_STYLE, STYLE_MAP } from './types.js';
+} from "./types.js";
+import sharp from "sharp";
+import { GRID_CONFIG, GRID_STYLE, STYLE_MAP } from "./types.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Grid Math
@@ -31,7 +31,11 @@ const CELL_REF_PATTERN = /^([A-Z])(\d{1,2})$/;
 /**
  * Calculate grid metadata for an image.
  */
-export function calculateGrid(width: number, height: number, config: GridConfig = GRID_CONFIG): GridMetadata {
+export function calculateGrid(
+  width: number,
+  height: number,
+  config: GridConfig = GRID_CONFIG,
+): GridMetadata {
   const { cellSize, maxColumns, maxRows } = config;
 
   const cols = Math.min(Math.ceil(width / cellSize), maxColumns);
@@ -51,7 +55,9 @@ export function calculateGrid(width: number, height: number, config: GridConfig 
  */
 export function isValidCellRef(cell: string): boolean {
   const match = cell.match(CELL_REF_PATTERN);
-  if (!match || match[2] === undefined) return false;
+  if (match?.[2] === undefined) {
+    return false;
+  }
 
   const row = Number.parseInt(match[2], 10);
   return row >= 1 && row <= GRID_CONFIG.maxRows;
@@ -62,7 +68,7 @@ export function isValidCellRef(cell: string): boolean {
  */
 export function parseCellRef(cell: string): { col: number; row: number } {
   const match = cell.match(CELL_REF_PATTERN);
-  if (!match || match[1] === undefined || match[2] === undefined) {
+  if (match?.[1] === undefined || match[2] === undefined) {
     throw new Error(`Invalid cell reference: ${cell}. Expected format: A1-Z99`);
   }
 
@@ -70,7 +76,9 @@ export function parseCellRef(cell: string): { col: number; row: number } {
   const row = Number.parseInt(match[2], 10) - 1;
 
   if (row < 0 || row >= GRID_CONFIG.maxRows) {
-    throw new Error(`Invalid row number in cell reference: ${cell}. Expected 1-${GRID_CONFIG.maxRows}`);
+    throw new Error(
+      `Invalid row number in cell reference: ${cell}. Expected 1-${GRID_CONFIG.maxRows}`,
+    );
   }
 
   return { col, row };
@@ -94,9 +102,15 @@ export function cellToPixels(cell: GridRef, config: GridConfig = GRID_CONFIG): B
 /**
  * Convert a cell range to pixel bounding box.
  */
-export function cellRangeToPixels(start: GridRef, end?: GridRef, config: GridConfig = GRID_CONFIG): BoundingBox {
+export function cellRangeToPixels(
+  start: GridRef,
+  end?: GridRef,
+  config: GridConfig = GRID_CONFIG,
+): BoundingBox {
   const startBox = cellToPixels(start, config);
-  if (!end) return startBox;
+  if (!end) {
+    return startBox;
+  }
 
   const endBox = cellToPixels(end, config);
 
@@ -111,7 +125,10 @@ export function cellRangeToPixels(start: GridRef, end?: GridRef, config: GridCon
 /**
  * Get the center point of a cell.
  */
-export function cellCenter(cell: GridRef, config: GridConfig = GRID_CONFIG): { x: number; y: number } {
+export function cellCenter(
+  cell: GridRef,
+  config: GridConfig = GRID_CONFIG,
+): { x: number; y: number } {
   const box = cellToPixels(cell, config);
   return {
     x: box.x + box.width / 2,
@@ -141,7 +158,11 @@ export function pixelsToCell(x: number, y: number, config: GridConfig = GRID_CON
 /**
  * Generate SVG grid overlay.
  */
-export function generateGridSvg(width: number, height: number, options: { showLabels?: boolean } = {}): string {
+export function generateGridSvg(
+  width: number,
+  height: number,
+  options: { showLabels?: boolean } = {},
+): string {
   const { showLabels = true } = options;
   const grid = calculateGrid(width, height);
   const style = GRID_STYLE;
@@ -178,7 +199,9 @@ export function generateGridSvg(width: number, height: number, options: { showLa
         const x = col * grid.cellSize + 4;
         const y = row * grid.cellSize + 14;
 
-        labels.push(`<rect x="${x - 2}" y="${y - 11}" width="22" height="13" fill="${style.labelBackground}" rx="2"/>`);
+        labels.push(
+          `<rect x="${x - 2}" y="${y - 11}" width="22" height="13" fill="${style.labelBackground}" rx="2"/>`,
+        );
         labels.push(
           `<text x="${x}" y="${y}" font-family="monospace" ` +
             `font-size="${style.labelFontSize}" fill="${style.labelColor}">${label}</text>`,
@@ -188,22 +211,25 @@ export function generateGridSvg(width: number, height: number, options: { showLa
   }
 
   return `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <g id="grid-lines">${lines.join('\n    ')}</g>
-  ${showLabels ? `<g id="grid-labels">${labels.join('\n    ')}</g>` : ''}
+  <g id="grid-lines">${lines.join("\n    ")}</g>
+  ${showLabels ? `<g id="grid-labels">${labels.join("\n    ")}</g>` : ""}
 </svg>`;
 }
 
 /**
  * Add grid overlay to a screenshot image.
  */
-export async function addGridOverlay(imageBuffer: Buffer, options: { showLabels?: boolean } = {}): Promise<Buffer> {
+export async function addGridOverlay(
+  imageBuffer: Buffer,
+  options: { showLabels?: boolean } = {},
+): Promise<Buffer> {
   const { showLabels = true } = options;
 
   const metadata = await sharp(imageBuffer).metadata();
-  const { width = 0, height = 0 } = metadata;
+  const { width, height } = metadata;
 
   if (width === 0 || height === 0) {
-    throw new Error('Failed to read image dimensions');
+    throw new Error("Failed to read image dimensions");
   }
 
   const svg = generateGridSvg(width, height, { showLabels });
@@ -217,22 +243,22 @@ export async function addGridOverlay(imageBuffer: Buffer, options: { showLabels?
 // Fold Lines
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface FoldLineOptions {
+export type FoldLineOptions = {
   readonly viewportHeight: number;
   readonly lineColor?: string;
   readonly showLabels?: boolean;
   readonly cssViewportHeight?: number;
-}
+};
 
 /**
  * Add viewport fold line markers to a screenshot.
  */
 export async function addFoldLines(imageBuffer: Buffer, options: FoldLineOptions): Promise<Buffer> {
-  const { viewportHeight, lineColor = '#FF0000', showLabels = true, cssViewportHeight } = options;
+  const { viewportHeight, lineColor = "#FF0000", showLabels = true, cssViewportHeight } = options;
   const cssHeightForLabel = cssViewportHeight ?? viewportHeight;
 
   const metadata = await sharp(imageBuffer).metadata();
-  const { width = 0, height = 0 } = metadata;
+  const { width, height } = metadata;
 
   if (height <= viewportHeight) {
     return imageBuffer;
@@ -266,11 +292,11 @@ export async function addFoldLines(imageBuffer: Buffer, options: FoldLineOptions
           ━ Fold ${foldNum} (${cssPosition}px)
         </text>
       `
-          : ''
+          : ""
       }
     `;
     })
-    .join('\n');
+    .join("\n");
 
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${svgLines}</svg>`;
 
@@ -305,24 +331,32 @@ export async function addFoldOverlay(
 // ═══════════════════════════════════════════════════════════════════════════
 
 function dashArrayAttr(style: StyleConfig): string {
-  if (!style.strokeDash) return '';
-  return ` stroke-dasharray="${style.strokeDash.join(',')}"`;
+  if (!style.strokeDash) {
+    return "";
+  }
+  return ` stroke-dasharray="${style.strokeDash.join(",")}"`;
 }
 
 function escapeXml(text: string): string {
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 function estimateTextWidth(text: string, fontSize: number): number {
   return text.length * fontSize * 0.6;
 }
 
-function renderLabelText(x: number, y: number, text: string, style: StyleConfig, anchor: string): string {
+function renderLabelText(
+  x: number,
+  y: number,
+  text: string,
+  style: StyleConfig,
+  anchor: string,
+): string {
   const escapedText = escapeXml(text);
   const padding = 4;
   const fontSize = 12;
@@ -331,10 +365,10 @@ function renderLabelText(x: number, y: number, text: string, style: StyleConfig,
 
   let bgX: number;
   switch (anchor) {
-    case 'middle':
+    case "middle":
       bgX = x - textWidth / 2 - padding;
       break;
-    case 'end':
+    case "end":
       bgX = x - textWidth - padding;
       break;
     default:
@@ -351,7 +385,10 @@ function renderLabelText(x: number, y: number, text: string, style: StyleConfig,
 /**
  * Generate SVG for a rectangle annotation.
  */
-export function renderRectangleSvg(params: DrawRectangleParams, config: GridConfig = GRID_CONFIG): string {
+export function renderRectangleSvg(
+  params: DrawRectangleParams,
+  config: GridConfig = GRID_CONFIG,
+): string {
   const box = cellRangeToPixels(params.start, params.end, config);
   const style = STYLE_MAP[params.style];
 
@@ -365,10 +402,10 @@ export function renderRectangleSvg(params: DrawRectangleParams, config: GridConf
   if (params.label) {
     const labelX = box.x + box.width / 2;
     const labelY = box.y - 8;
-    elements.push(renderLabelText(labelX, labelY, params.label, style, 'middle'));
+    elements.push(renderLabelText(labelX, labelY, params.label, style, "middle"));
   }
 
-  return elements.join('\n');
+  return elements.join("\n");
 }
 
 /**
@@ -399,10 +436,10 @@ export function renderArrowSvg(params: DrawArrowParams, config: GridConfig = GRI
   if (params.label) {
     const midX = (from.x + to.x) / 2;
     const midY = (from.y + to.y) / 2 - 12;
-    elements.push(renderLabelText(midX, midY, params.label, style, 'middle'));
+    elements.push(renderLabelText(midX, midY, params.label, style, "middle"));
   }
 
-  return elements.join('\n');
+  return elements.join("\n");
 }
 
 /**
@@ -411,33 +448,33 @@ export function renderArrowSvg(params: DrawArrowParams, config: GridConfig = GRI
 export function renderLabelSvg(params: AddLabelParams, config: GridConfig = GRID_CONFIG): string {
   const box = cellToPixels(params.cell, config);
   const style = STYLE_MAP[params.style];
-  const position = params.position ?? 'auto';
+  const position = params.position ?? "auto";
 
   let x: number;
   let y: number;
-  let anchor: 'start' | 'middle' | 'end';
+  let anchor: "start" | "middle" | "end";
 
   switch (position) {
-    case 'top':
+    case "top":
       x = box.x + box.width / 2;
       y = box.y - 8;
-      anchor = 'middle';
+      anchor = "middle";
       break;
-    case 'bottom':
+    case "bottom":
       x = box.x + box.width / 2;
       y = box.y + box.height + 18;
-      anchor = 'middle';
+      anchor = "middle";
       break;
-    case 'left':
+    case "left":
       x = box.x - 8;
       y = box.y + box.height / 2;
-      anchor = 'end';
+      anchor = "end";
       break;
     default:
       // 'right', 'auto', or unrecognized position
       x = box.x + box.width + 8;
       y = box.y + box.height / 2;
-      anchor = 'start';
+      anchor = "start";
       break;
   }
 
@@ -448,7 +485,7 @@ export function renderLabelSvg(params: AddLabelParams, config: GridConfig = GRID
       `fill="${style.color}" stroke="white" stroke-width="1"/>`,
   );
 
-  if (position !== 'auto') {
+  if (position !== "auto") {
     const cx = box.x + box.width / 2;
     const cy = box.y + box.height / 2;
     elements.push(
@@ -459,7 +496,7 @@ export function renderLabelSvg(params: AddLabelParams, config: GridConfig = GRID
 
   elements.push(renderLabelText(x, y, params.text, style, anchor));
 
-  return elements.join('\n');
+  return elements.join("\n");
 }
 
 /**
@@ -467,11 +504,11 @@ export function renderLabelSvg(params: AddLabelParams, config: GridConfig = GRID
  */
 export function renderToolCallSvg(call: ToolCall, config: GridConfig = GRID_CONFIG): string {
   switch (call.tool) {
-    case 'draw_rectangle':
+    case "draw_rectangle":
       return renderRectangleSvg(call.params, config);
-    case 'draw_arrow':
+    case "draw_arrow":
       return renderArrowSvg(call.params, config);
-    case 'add_label':
+    case "add_label":
       return renderLabelSvg(call.params, config);
   }
 }
@@ -489,7 +526,7 @@ export function generateAnnotationSvg(
 
   return `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
   <g id="annotations">
-    ${elements.join('\n    ')}
+    ${elements.join("\n    ")}
   </g>
 </svg>`;
 }
@@ -503,10 +540,10 @@ export async function renderAnnotations(
   config: GridConfig = GRID_CONFIG,
 ): Promise<Buffer> {
   const metadata = await sharp(imageBuffer).metadata();
-  const { width = 0, height = 0 } = metadata;
+  const { width, height } = metadata;
 
   if (width === 0 || height === 0) {
-    throw new Error('Failed to read image dimensions');
+    throw new Error("Failed to read image dimensions");
   }
 
   const svg = generateAnnotationSvg(toolCalls, width, height, config);
@@ -528,7 +565,7 @@ export async function renderAnnotationsToFile(
   const imageBuffer = await sharp(imagePath).toBuffer();
   const annotatedBuffer = await renderAnnotations(imageBuffer, toolCalls, config);
 
-  const output = outputPath ?? imagePath.replace(/(\.[^.]+)$/, '-annotated$1');
+  const output = outputPath ?? imagePath.replace(/(\.[^.]+)$/, "-annotated$1");
   await sharp(annotatedBuffer).toFile(output);
 
   return output;
@@ -545,6 +582,6 @@ export async function saveAnnotationSvg(
   config: GridConfig = GRID_CONFIG,
 ): Promise<void> {
   const svg = generateAnnotationSvg(toolCalls, width, height, config);
-  const fs = await import('node:fs/promises');
-  await fs.writeFile(outputPath, svg, 'utf-8');
+  const fs = await import("node:fs/promises");
+  await fs.writeFile(outputPath, svg, "utf-8");
 }

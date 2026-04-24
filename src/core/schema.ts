@@ -5,13 +5,13 @@
  * source of truth, eliminating `as Type[]` assertions when parsing LLM JSON.
  */
 
-import { Schema as S } from 'effect';
+import { Schema as S } from "effect";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Severity
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const Severity = S.Literal('high', 'medium', 'low');
+export const Severity = S.Literal("high", "medium", "low");
 export type Severity = typeof Severity.Type;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -35,7 +35,7 @@ export type BoundingBox = typeof BoundingBox.Type;
  */
 export const GridRef = S.String.pipe(
   S.pattern(/^[A-Z]\d{1,2}$/, {
-    message: () => 'Invalid grid reference (expected A1-Z99)',
+    message: () => "Invalid grid reference (expected A1-Z99)",
   }),
 );
 export type GridRef = typeof GridRef.Type;
@@ -50,7 +50,7 @@ export type Region = typeof Region.Type;
 // Code Location Types
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const Confidence = S.Literal('high', 'medium', 'low');
+export const Confidence = S.Literal("high", "medium", "low");
 export type Confidence = typeof Confidence.Type;
 
 export const CodeLocation = S.mutable(

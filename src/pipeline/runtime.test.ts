@@ -5,21 +5,21 @@
  * Uses temp directories for session creation.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { existsSync, mkdtempSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Effect, Exit } from 'effect';
-import type { Artifact } from '../core/types.js';
-import { runEffectExit } from '../testing/effect-helpers.js';
+import type { Artifact } from "../core/types.js";
+import type { Operation, PipelineDefinition, PipelineState } from "./types.js";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { Effect, Exit } from "effect";
+import { existsSync, mkdtempSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { runEffectExit } from "../testing/effect-helpers.js";
 import {
   registerTestOperation,
   runPipeline,
   syncContextFromState,
   unregisterTestOperation,
-} from './runtime.js';
-import type { Operation, PipelineDefinition, PipelineState } from './types.js';
+} from "./runtime.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Fixtures
@@ -27,8 +27,8 @@ import type { Operation, PipelineDefinition, PipelineState } from './types.js';
 
 function createEmptyPipeline(): PipelineDefinition {
   return {
-    name: 'empty',
-    description: 'Empty test pipeline',
+    name: "empty",
+    description: "Empty test pipeline",
     nodes: [],
     edges: [],
     inputs: [],
@@ -38,12 +38,12 @@ function createEmptyPipeline(): PipelineDefinition {
 
 function createPipelineWithUnknownOperation(): PipelineDefinition {
   return {
-    name: 'unknown-op',
-    description: 'Pipeline with unknown operation',
+    name: "unknown-op",
+    description: "Pipeline with unknown operation",
     nodes: [
       {
-        id: 'node1',
-        operation: 'nonexistent-operation',
+        id: "node1",
+        operation: "nonexistent-operation",
         config: {},
         inputs: [],
         outputs: [],
@@ -59,19 +59,19 @@ function createPipelineWithUnknownOperation(): PipelineDefinition {
 // Validation Error Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('runPipeline', () => {
+describe("runPipeline", () => {
   let testDir: string;
 
   beforeAll(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'pipeline-runtime-test-'));
+    testDir = mkdtempSync(join(tmpdir(), "pipeline-runtime-test-"));
   });
 
   afterAll(async () => {
     await rm(testDir, { recursive: true });
   });
 
-  describe('validation errors', () => {
-    test('returns validation error for empty pipeline', async () => {
+  describe("validation errors", () => {
+    test("returns validation error for empty pipeline", async () => {
       const definition = createEmptyPipeline();
 
       const exit = await runEffectExit(runPipeline(definition, testDir));
@@ -80,17 +80,17 @@ describe('runPipeline', () => {
       if (Exit.isFailure(exit)) {
         const cause = exit.cause;
         // Effect's Cause structure
-        if (cause._tag === 'Fail') {
-          expect(cause.error._tag).toBe('PipelineError');
-          expect(cause.error.phase).toBe('validation');
-          expect(cause.error.message).toContain('no nodes');
+        if (cause._tag === "Fail") {
+          expect(cause.error._tag).toBe("PipelineError");
+          expect(cause.error.phase).toBe("validation");
+          expect(cause.error.message).toContain("no nodes");
         }
       }
     });
   });
 
-  describe('execution errors', () => {
-    test('returns error for unknown operation', async () => {
+  describe("execution errors", () => {
+    test("returns error for unknown operation", async () => {
       const definition = createPipelineWithUnknownOperation();
 
       const exit = await runEffectExit(runPipeline(definition, testDir));
@@ -98,17 +98,17 @@ describe('runPipeline', () => {
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {
         const cause = exit.cause;
-        if (cause._tag === 'Fail') {
-          expect(cause.error._tag).toBe('PipelineError');
-          expect(cause.error.phase).toBe('execution');
-          expect(cause.error.message).toContain('Unknown operation');
+        if (cause._tag === "Fail") {
+          expect(cause.error._tag).toBe("PipelineError");
+          expect(cause.error.phase).toBe("execution");
+          expect(cause.error.message).toContain("Unknown operation");
         }
       }
     });
   });
 
-  describe('session directory creation', () => {
-    test('creates session directory on success path', async () => {
+  describe("session directory creation", () => {
+    test("creates session directory on success path", async () => {
       // Since we can't easily test a successful pipeline without real operations,
       // we verify that validation happens before session creation by checking
       // the error doesn't mention session directory failures.
@@ -119,16 +119,16 @@ describe('runPipeline', () => {
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {
         const cause = exit.cause;
-        if (cause._tag === 'Fail') {
+        if (cause._tag === "Fail") {
           // Validation error, not session creation error
-          expect(cause.error.phase).toBe('validation');
+          expect(cause.error.phase).toBe("validation");
         }
       }
     });
 
-    test('uses provided sessionId when run options specify one', async () => {
+    test("uses provided sessionId when run options specify one", async () => {
       const definition = createPipelineWithUnknownOperation();
-      const sessionId = 'custom-session-id';
+      const sessionId = "custom-session-id";
 
       const exit = await runEffectExit(runPipeline(definition, testDir, undefined, { sessionId }));
 
@@ -142,15 +142,15 @@ describe('runPipeline', () => {
 // Context Sync Tests
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('syncContextFromState', () => {
-  test('populates context maps from state', () => {
+describe("syncContextFromState", () => {
+  test("populates context maps from state", () => {
     const artifact: Artifact = {
-      _kind: 'artifact',
-      id: 'test-art',
-      type: 'image',
-      path: '/tmp/test.png',
+      _kind: "artifact",
+      id: "test-art",
+      type: "image",
+      path: "/tmp/test.png",
       createdAt: new Date().toISOString(),
-      createdBy: 'test',
+      createdBy: "test",
       metadata: { width: 1920, height: 1080 },
     };
 
@@ -159,22 +159,22 @@ describe('syncContextFromState', () => {
     const dataMap = new Map<string, unknown>();
 
     const state: PipelineState = {
-      definition: { name: 'test', description: '', nodes: [], edges: [], inputs: [], outputs: [] },
-      sessionDir: '/tmp/test-session',
+      definition: { name: "test", description: "", nodes: [], edges: [], inputs: [], outputs: [] },
+      sessionDir: "/tmp/test-session",
       startedAt: new Date().toISOString(),
-      status: 'completed',
+      status: "completed",
       nodes: {},
-      artifacts: { 'test-art': artifact },
-      data: { 'capture:meta': { width: 1920 } },
+      artifacts: { "test-art": artifact },
+      data: { "capture:meta": { width: 1920 } },
       issues: [],
-      semanticNames: { 'capture:image': 'test-art' },
+      semanticNames: { "capture:image": "test-art" },
     };
 
     syncContextFromState(state, { artifacts, _semanticNames: semanticNames, _dataMap: dataMap });
 
-    expect(artifacts.get('test-art')).toBe(artifact);
-    expect(semanticNames.get('capture:image')).toBe(artifact);
-    expect(dataMap.get('capture:meta')).toEqual({ width: 1920 });
+    expect(artifacts.get("test-art")).toBe(artifact);
+    expect(semanticNames.get("capture:image")).toBe(artifact);
+    expect(dataMap.get("capture:meta")).toEqual({ width: 1920 });
   });
 });
 
@@ -185,57 +185,57 @@ describe('syncContextFromState', () => {
 const executionLog: string[] = [];
 
 const mockOperationA: Operation = {
-  name: 'mock-a',
-  description: 'Mock operation A',
+  name: "mock-a",
+  description: "Mock operation A",
   inputTypes: [],
-  outputTypes: ['analysis'],
+  outputTypes: ["analysis"],
   execute: (_input, _config, _ctx) =>
     Effect.gen(function* () {
-      executionLog.push('a-start');
-      yield* Effect.sleep('10 millis');
-      executionLog.push('a-end');
+      executionLog.push("a-start");
+      yield* Effect.sleep("10 millis");
+      executionLog.push("a-end");
       return {};
     }),
 };
 
 const mockOperationB: Operation = {
-  name: 'mock-b',
-  description: 'Mock operation B',
+  name: "mock-b",
+  description: "Mock operation B",
   inputTypes: [],
-  outputTypes: ['analysis'],
+  outputTypes: ["analysis"],
   execute: (_input, _config, _ctx) =>
     Effect.gen(function* () {
-      executionLog.push('b-start');
-      yield* Effect.sleep('10 millis');
-      executionLog.push('b-end');
+      executionLog.push("b-start");
+      yield* Effect.sleep("10 millis");
+      executionLog.push("b-end");
       return {};
     }),
 };
 
-describe('parallel node execution', () => {
+describe("parallel node execution", () => {
   let testDir: string;
 
   beforeAll(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'pipeline-parallel-test-'));
-    registerTestOperation('mock-a', mockOperationA);
-    registerTestOperation('mock-b', mockOperationB);
+    testDir = mkdtempSync(join(tmpdir(), "pipeline-parallel-test-"));
+    registerTestOperation("mock-a", mockOperationA);
+    registerTestOperation("mock-b", mockOperationB);
   });
 
   afterAll(async () => {
-    unregisterTestOperation('mock-a');
-    unregisterTestOperation('mock-b');
+    unregisterTestOperation("mock-a");
+    unregisterTestOperation("mock-b");
     await rm(testDir, { recursive: true });
   });
 
-  test('independent nodes execute concurrently', async () => {
+  test("independent nodes execute concurrently", async () => {
     executionLog.length = 0;
 
     const definition: PipelineDefinition = {
-      name: 'parallel-mock-test',
-      description: 'Two independent mock nodes',
+      name: "parallel-mock-test",
+      description: "Two independent mock nodes",
       nodes: [
-        { id: 'nodeA', operation: 'mock-a', config: {}, inputs: [], outputs: [] },
-        { id: 'nodeB', operation: 'mock-b', config: {}, inputs: [], outputs: [] },
+        { id: "nodeA", operation: "mock-a", config: {}, inputs: [], outputs: [] },
+        { id: "nodeB", operation: "mock-b", config: {}, inputs: [], outputs: [] },
       ],
       edges: [],
       inputs: [],
@@ -247,34 +247,34 @@ describe('parallel node execution', () => {
     expect(Exit.isSuccess(exit)).toBe(true);
     if (Exit.isSuccess(exit)) {
       const state = exit.value;
-      expect(state.status).toBe('completed');
-      expect(state.nodes.nodeA?.status).toBe('completed');
-      expect(state.nodes.nodeB?.status).toBe('completed');
+      expect(state.status).toBe("completed");
+      expect(state.nodes.nodeA?.status).toBe("completed");
+      expect(state.nodes.nodeB?.status).toBe("completed");
     }
 
     // With parallel execution, both should start before either ends.
     // Sequential would be: [a-start, a-end, b-start, b-end]
     // Parallel should interleave: [a-start, b-start, ...]
-    const aStartIdx = executionLog.indexOf('a-start');
-    const bStartIdx = executionLog.indexOf('b-start');
-    const aEndIdx = executionLog.indexOf('a-end');
+    const aStartIdx = executionLog.indexOf("a-start");
+    const bStartIdx = executionLog.indexOf("b-start");
+    const aEndIdx = executionLog.indexOf("a-end");
 
     expect(bStartIdx).toBeLessThan(aEndIdx);
     expect(aStartIdx).toBeGreaterThanOrEqual(0);
     expect(bStartIdx).toBeGreaterThanOrEqual(0);
   });
 
-  test('sequential nodes still execute in order', async () => {
+  test("sequential nodes still execute in order", async () => {
     executionLog.length = 0;
 
     const definition: PipelineDefinition = {
-      name: 'sequential-mock-test',
-      description: 'Two dependent mock nodes',
+      name: "sequential-mock-test",
+      description: "Two dependent mock nodes",
       nodes: [
-        { id: 'nodeA', operation: 'mock-a', config: {}, inputs: [], outputs: ['out'] },
-        { id: 'nodeB', operation: 'mock-b', config: {}, inputs: ['out'], outputs: [] },
+        { id: "nodeA", operation: "mock-a", config: {}, inputs: [], outputs: ["out"] },
+        { id: "nodeB", operation: "mock-b", config: {}, inputs: ["out"], outputs: [] },
       ],
-      edges: [{ from: 'nodeA', to: 'nodeB', artifact: 'out' }],
+      edges: [{ from: "nodeA", to: "nodeB", artifact: "out" }],
       inputs: [],
       outputs: [],
     };
@@ -284,8 +284,8 @@ describe('parallel node execution', () => {
     expect(Exit.isSuccess(exit)).toBe(true);
 
     // With an edge dependency, A must complete before B starts
-    const aEndIdx = executionLog.indexOf('a-end');
-    const bStartIdx = executionLog.indexOf('b-start');
+    const aEndIdx = executionLog.indexOf("a-end");
+    const bStartIdx = executionLog.indexOf("b-start");
     expect(aEndIdx).toBeLessThan(bStartIdx);
   });
 });
