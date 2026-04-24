@@ -77,9 +77,7 @@ describe("mergeNodeResults", () => {
 
     const merged = mergeNodeResults(base, [resultA, resultB]);
 
-    // biome-ignore lint/complexity/useLiteralKeys: node IDs come from the test fixture.
     expect(merged.nodes["a"]?.status).toBe("completed");
-    // biome-ignore lint/complexity/useLiteralKeys: node IDs come from the test fixture.
     expect(merged.nodes["b"]?.status).toBe("completed");
 
     expect(merged.artifacts["art-a"]).toBeDefined();

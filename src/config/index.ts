@@ -16,5 +16,5 @@
  * ```
  */
 
-// biome-ignore lint/performance/noBarrelFile: User-facing defineConfig API
+// User-facing defineConfig API.
 export { defineConfig, VexConfig } from "./schema.js";

@@ -17,7 +17,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Capture
-// biome-ignore lint/performance/noBarrelFile: Public API entry point for vex library
+// Public API entry point for vex library.
 export {
   applyPlaceholderMedia,
   BLOCKED_SCRIPT_PATTERNS,

@@ -256,7 +256,7 @@ When modifying integration with external CLIs (codex, claude, etc.):
 
 ```bash
 bunx tsc --noEmit                    # Type check
-bunx biome check --write .           # Lint + format
+bun run autofix                      # Lint + format
 bun test                             # Run all tests
 bun test src/                        # Run vex tests only
 bun test --watch                     # Watch mode
