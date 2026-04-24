@@ -12,8 +12,8 @@
   "scripts": {
     "dev": "bun src/cli/index.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check src/",
-    "lint:fix": "biome check --write src/",
+    "lint": "bun run --silent lint:errors && bun run --silent format:check",
+    "lint:fix": "bun run --silent autofix",
     "test": "bun test src/ --ignore \"**/*e2e*/**\"",
     "test:all": "RUN_E2E=1 bun test src/",
     "test:watch": "bun test --watch src/ --ignore \"**/*e2e*/**\"",
@@ -37,7 +37,6 @@
     "validate:scale": "bun run --silent validate && bun run --silent lint:dead && bun run --silent lint:arch && bun run --silent lint:dupes && bun run --silent check:links"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.13",
     "@types/bun": "^1.3.8",
     "playwright": "^1.58.1",
     "typescript": "5.9.3",

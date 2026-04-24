@@ -114,7 +114,7 @@ export function createLoopOptions(overrides: Partial<LoopOptions> = {}): LoopOpt
 ```bash
 bun test src/
 bunx tsc --noEmit
-bunx biome check --write .
+bun run autofix
 ```
 
 **Commit:** Fix any lint issues from prior tasks (if needed)

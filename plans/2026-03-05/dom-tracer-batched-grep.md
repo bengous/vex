@@ -118,7 +118,7 @@ Use the existing `mkdtempSync` pattern from the test file.
 **Verify:**
 - `bun test src/locator/` — all locator tests pass
 - `bunx tsc --noEmit` — type check
-- `bunx biome check .` — lint + format
+- `bun run lint` — lint + format check
 - Spawn 3 verification agents: compliance, best practices, code simplifier
 
 ## Task Dependencies
