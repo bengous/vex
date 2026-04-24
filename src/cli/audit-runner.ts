@@ -31,7 +31,7 @@ export type RunScanAuditOptions = {
   readonly cli: ScanAuditCliMetadata;
 };
 
-class AuditRunError extends Data.TaggedError("AuditRunError")<{
+export class AuditRunError extends Data.TaggedError("AuditRunError")<{
   readonly detail: string;
 }> {
   override get message(): string {
@@ -73,7 +73,7 @@ export function getAuditFinalStatus(
 
 export function runScanAudit(
   options: RunScanAuditOptions,
-): Effect.Effect<void, unknown, FileSystem.FileSystem> {
+): Effect.Effect<void, AuditRunError, FileSystem.FileSystem> {
   const { cli, preset, resolved } = options;
 
   return Effect.gen(function* () {
@@ -334,5 +334,9 @@ Valid devices: ${validDevices}`;
     }
     console.log(`Audit metadata: ${auditManifestPath}`);
     console.log("");
-  });
+  }).pipe(
+    Effect.mapError((error) =>
+      error instanceof AuditRunError ? error : new AuditRunError({ detail: toErrorMessage(error) }),
+    ),
+  );
 }
