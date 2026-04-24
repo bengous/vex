@@ -19,7 +19,9 @@ type CaptureNodeOptions = {
 };
 
 function edge(from: string, to: string, artifact: string, targetField?: string): PipelineEdge {
-  return targetField ? { from, to, artifact, targetField } : { from, to, artifact };
+  return targetField !== undefined && targetField.length > 0
+    ? { from, to, artifact, targetField }
+    : { from, to, artifact };
 }
 
 function captureNode(options: CaptureNodeOptions): PipelineNode {
@@ -29,11 +31,11 @@ function captureNode(options: CaptureNodeOptions): PipelineNode {
     filename: options.filename,
   };
 
-  if (options.withDOM) {
+  if (options.withDOM === true) {
     config.withDOM = true;
   }
 
-  if (options.includeCaptureOptions) {
+  if (options.includeCaptureOptions === true) {
     config.placeholderMedia = options.placeholderMedia;
     config.fullPageScrollFix = options.fullPageScrollFix;
   }

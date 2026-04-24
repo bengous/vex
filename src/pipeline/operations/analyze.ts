@@ -41,10 +41,11 @@ export type AnalyzeOutput = {
  * misinterpreting desktop screenshots as mobile viewports.
  */
 function buildAnalysisPrompt(viewport?: ViewportConfig): string {
-  const viewportContext = viewport
-    ? `\nViewport: ${viewport.width}×${viewport.height}px (${viewport.isMobile ? "mobile" : "desktop"})
+  const viewportContext =
+    viewport !== undefined
+      ? `\nViewport: ${viewport.width}×${viewport.height}px (${viewport.isMobile ? "mobile" : "desktop"})
 Grid: Each cell (A1, B2, etc.) is ${GRID_CONFIG.cellSize}×${GRID_CONFIG.cellSize} pixels.\n`
-    : "";
+      : "";
 
   return `Analyze this web page screenshot for visual and layout issues.${viewportContext}
 For each issue found, provide:
@@ -81,7 +82,8 @@ export const analyzeOperation: Operation<AnalyzeInput, AnalyzeOutput, AnalyzeCon
 
       // Validate reasoning is only used with supported providers
       if (
-        reasoning &&
+        reasoning !== undefined &&
+        reasoning.length > 0 &&
         !REASONING_PROVIDERS.includes(provider as (typeof REASONING_PROVIDERS)[number])
       ) {
         return yield* new OperationError({
