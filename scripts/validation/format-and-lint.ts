@@ -72,6 +72,14 @@ function blockingLines(output: string): string[] {
     .filter((line) => line !== "" && !SUMMARY_LINE.test(line) && !PHANTOM_WARNING.test(line));
 }
 
+async function readFileContent(filePath: string): Promise<string | null> {
+  try {
+    return await Bun.file(filePath).text();
+  } catch {
+    return null;
+  }
+}
+
 if (import.meta.main) {
   const projectRoot = resolveProjectRoot(import.meta.dir);
   const oxlint = resolveBin(projectRoot, "oxlint");
@@ -83,6 +91,8 @@ if (import.meta.main) {
   if (filePath === null || workspace === null) {
     process.exit(0);
   }
+
+  const contentBeforeFormat = await readFileContent(filePath);
 
   Bun.spawnSync(
     [oxlint, ...workspace.oxlintArgs, "-c", workspace.oxlintConfig, "--fix", "--quiet", filePath],
@@ -96,6 +106,19 @@ if (import.meta.main) {
     stdout: "ignore",
     stderr: "ignore",
   });
+
+  const contentAfterFormat = await readFileContent(filePath);
+  const hookOutput =
+    contentBeforeFormat !== null &&
+    contentAfterFormat !== null &&
+    contentAfterFormat !== contentBeforeFormat
+      ? {
+          hookSpecificOutput: {
+            hookEventName: "PostToolUse",
+            updatedToolOutput: contentAfterFormat,
+          },
+        }
+      : {};
 
   const lint = Bun.spawnSync(
     [
@@ -111,13 +134,17 @@ if (import.meta.main) {
   );
 
   if (lint.exitCode !== 0) {
-    const output = [lint.stderr.toString(), lint.stdout.toString()]
+    const lintOutput = [lint.stderr.toString(), lint.stdout.toString()]
       .filter(Boolean)
       .join("\n")
       .trim();
-    const lines = blockingLines(output);
+    const lines = blockingLines(lintOutput);
     if (lines.length > 0) {
-      console.log(JSON.stringify({ decision: "block", reason: lines.join("\n") }));
+      console.log(JSON.stringify({ ...hookOutput, decision: "block", reason: lines.join("\n") }));
+    } else if ("hookSpecificOutput" in hookOutput) {
+      console.log(JSON.stringify(hookOutput));
     }
+  } else if ("hookSpecificOutput" in hookOutput) {
+    console.log(JSON.stringify(hookOutput));
   }
 }
