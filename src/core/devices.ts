@@ -100,6 +100,7 @@ export const PLAYWRIGHT_DEVICE_ALIASES: Record<
   string,
   { name: string; category: "phone" | "tablet" }
 > = {
+  "iphone-14-pro-max": { name: "iPhone 14 Pro Max", category: "phone" },
   "iphone-15-pro-max": { name: "iPhone 15 Pro Max", category: "phone" },
   "iphone-15-pro": { name: "iPhone 15 Pro", category: "phone" },
   "iphone-se-2022": { name: "iPhone SE (3rd gen)", category: "phone" },

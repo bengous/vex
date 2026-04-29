@@ -23,6 +23,16 @@ describe("lookupDevice iPhone SE variants", () => {
 });
 
 describe("lookupDevice Playwright descriptor metadata", () => {
+  test("iphone-14-pro-max preserves screen and WebKit default browser", () => {
+    const result = lookupDevice("iphone-14-pro-max");
+    expect(result).toBeDefined();
+    expect(result?.preset.viewport.width).toBe(430);
+    expect(result?.preset.viewport.height).toBe(740);
+    expect(result?.preset.viewport.screen).toEqual({ width: 430, height: 932 });
+    expect(result?.preset.viewport.deviceScaleFactor).toBe(3);
+    expect(result?.preset.viewport.defaultBrowserType).toBe("webkit");
+  });
+
   test("iphone-15-pro preserves screen and WebKit default browser", () => {
     const result = lookupDevice("iphone-15-pro");
     expect(result).toBeDefined();

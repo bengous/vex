@@ -31,6 +31,7 @@ export const DeviceId = S.Literal(
   "desktop-1366",
   "desktop-hidpi",
   // iPhones
+  "iphone-14-pro-max",
   "iphone-15-pro-max",
   "iphone-15-pro",
   "iphone-se-2022",
