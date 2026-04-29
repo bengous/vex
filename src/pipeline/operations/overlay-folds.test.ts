@@ -20,13 +20,19 @@ import {
 import { overlayFoldsOperation } from "./overlay-folds.js";
 
 async function countRedPixelsAtRow(imagePath: string, row: number): Promise<number> {
-  const { data, info } = await sharp(imagePath)
+  const image = sharp(imagePath);
+  const { width } = await image.metadata();
+  if (width === undefined) {
+    return 0;
+  }
+  const { data } = await image
+    .extract({ left: 0, top: row, width, height: 1 })
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
   let count = 0;
-  for (let x = 0; x < info.width; x += 1) {
-    const offset = (row * info.width + x) * 4;
+  for (let x = 0; x < width; x += 1) {
+    const offset = x * 4;
     const red = data[offset];
     const green = data[offset + 1];
     const blue = data[offset + 2];

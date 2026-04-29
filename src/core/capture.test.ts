@@ -128,7 +128,6 @@ class FakePage {
         viewportUnits: { svh: 568, lvh: 568, dvh: 568 },
         safeAreaInsets: { top: 0, right: 0, bottom: 0, left: 0 },
         userAgent: "fake",
-        browserChromeCaptured: false,
         note: "fake",
       };
     }
@@ -270,7 +269,6 @@ describe("capture wrappers", () => {
     ]);
     expect(result.artifact.createdBy).toBe("capture-with-dom");
     expect(result.artifact.metadata.width).toBe(640);
-    expect(result.artifact.metadata["browserChromeCaptured"]).toBe(false);
     expect(result.viewportMetrics.innerHeight).toBe(568);
     expect(browser.contextOptions).toMatchObject({
       screen: { width: 320, height: 568 },
@@ -310,13 +308,10 @@ describe("capture wrappers", () => {
     ]);
     expect(result.artifact.createdBy).toBe("capture");
     expect(result.artifact.metadata.width).toBe(640);
-    expect(result.artifact.metadata["viewportMetricsPath"]).toBe(
-      join(outputDir, "capture-viewport-metrics.json"),
-    );
-    const metrics = JSON.parse(
-      readFileSync(join(outputDir, "capture-viewport-metrics.json"), "utf8"),
-    );
-    expect(metrics.browserChromeCaptured).toBe(false);
+    const metricsPath = join(outputDir, "capture-viewport-metrics.json");
+    expect(existsSync(metricsPath)).toBe(true);
+    const metrics = JSON.parse(readFileSync(metricsPath, "utf8"));
+    expect(metrics.innerHeight).toBe(568);
     expect(existsSync(join(outputDir, "capture.png"))).toBe(true);
   });
 });

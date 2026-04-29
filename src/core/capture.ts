@@ -15,7 +15,7 @@ import type {
 } from "./types.js";
 import type { Browser, BrowserContext, Page, Route } from "playwright";
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, extname, join } from "node:path";
 import sharp from "sharp";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -472,7 +472,6 @@ export type ViewportMetrics = {
     readonly left: number;
   };
   readonly userAgent: string;
-  readonly browserChromeCaptured: false;
   readonly note: string;
 };
 
@@ -490,28 +489,34 @@ export async function collectViewportMetrics(page: Page): Promise<ViewportMetric
       return Number.isFinite(value) ? value : 0;
     };
 
-    const readSafeAreaInset = (property: "top" | "right" | "bottom" | "left"): number => {
+    const readSafeAreaInsets = (): {
+      top: number;
+      right: number;
+      bottom: number;
+      left: number;
+    } => {
       const element = document.createElement("div");
       element.style.position = "fixed";
       element.style.visibility = "hidden";
       element.style.pointerEvents = "none";
-      element.style.paddingTop = property === "top" ? "env(safe-area-inset-top)" : "0px";
-      element.style.paddingRight = property === "right" ? "env(safe-area-inset-right)" : "0px";
-      element.style.paddingBottom = property === "bottom" ? "env(safe-area-inset-bottom)" : "0px";
-      element.style.paddingLeft = property === "left" ? "env(safe-area-inset-left)" : "0px";
+      element.style.paddingTop = "env(safe-area-inset-top)";
+      element.style.paddingRight = "env(safe-area-inset-right)";
+      element.style.paddingBottom = "env(safe-area-inset-bottom)";
+      element.style.paddingLeft = "env(safe-area-inset-left)";
       document.documentElement.append(element);
       const styles = getComputedStyle(element);
-      const value = Number.parseFloat(
-        property === "top"
-          ? styles.paddingTop
-          : property === "right"
-            ? styles.paddingRight
-            : property === "bottom"
-              ? styles.paddingBottom
-              : styles.paddingLeft,
-      );
+      const parse = (value: string): number => {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const result = {
+        top: parse(styles.paddingTop),
+        right: parse(styles.paddingRight),
+        bottom: parse(styles.paddingBottom),
+        left: parse(styles.paddingLeft),
+      };
       element.remove();
-      return Number.isFinite(value) ? value : 0;
+      return result;
     };
 
     const visual = window.visualViewport;
@@ -545,14 +550,8 @@ export async function collectViewportMetrics(page: Page): Promise<ViewportMetric
         lvh: readViewportUnit("100lvh"),
         dvh: readViewportUnit("100dvh"),
       },
-      safeAreaInsets: {
-        top: readSafeAreaInset("top"),
-        right: readSafeAreaInset("right"),
-        bottom: readSafeAreaInset("bottom"),
-        left: readSafeAreaInset("left"),
-      },
+      safeAreaInsets: readSafeAreaInsets(),
       userAgent: navigator.userAgent,
-      browserChromeCaptured: false,
       note: "Playwright page.screenshot captures the page viewport, not native browser or system chrome.",
     };
   });
@@ -620,14 +619,14 @@ async function captureDOMSnapshot(
   );
 
   const html = await page.content();
-  const domElements: DOMElement[] = elements.map((el) => ({
-    tagName: el.tagName,
-    ...(el.id !== undefined ? { id: el.id } : {}),
-    classes: el.classes,
-    boundingBox: el.boundingBox as BoundingBox,
-    computedStyles: el.computedStyles,
-    attributes: el.attributes,
-  }));
+  const domElements: DOMElement[] = elements.map((el) =>
+    Object.assign({ tagName: el.tagName }, el.id !== undefined ? { id: el.id } : {}, {
+      classes: el.classes,
+      boundingBox: el.boundingBox as BoundingBox,
+      computedStyles: el.computedStyles,
+      attributes: el.attributes,
+    }),
+  );
 
   return {
     url,
@@ -712,10 +711,12 @@ async function runCapture(
     const outputPath = join(outputDir, filename);
     const metricsPath = join(
       outputDir,
-      `${filename.replace(/\.[^.]+$/, "")}-viewport-metrics.json`,
+      `${basename(filename, extname(filename))}-viewport-metrics.json`,
     );
-    await Bun.write(outputPath, buffer);
-    await Bun.write(metricsPath, JSON.stringify(viewportMetrics, null, 2));
+    await Promise.all([
+      Bun.write(outputPath, buffer),
+      Bun.write(metricsPath, JSON.stringify(viewportMetrics, null, 2)),
+    ]);
 
     const artifact: ImageArtifact = {
       _kind: "artifact",
@@ -729,9 +730,6 @@ async function runCapture(
         height: dimensions.height,
         url,
         viewport,
-        viewportMetrics,
-        viewportMetricsPath: metricsPath,
-        browserChromeCaptured: false,
         hasGrid: false,
         hasFoldLines: false,
         hasAnnotations: false,

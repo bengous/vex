@@ -8,7 +8,12 @@ import type {
   FullPageScrollFixOptions,
   PlaceholderMediaOptions,
 } from "../../core/capture.js";
-import type { DOMSnapshotArtifact, ImageArtifact, ViewportConfig } from "../../core/types.js";
+import type {
+  BrowserType,
+  DOMSnapshotArtifact,
+  ImageArtifact,
+  ViewportConfig,
+} from "../../core/types.js";
 import type { Operation } from "../types.js";
 import type { Browser } from "playwright";
 import { Effect } from "effect";
@@ -17,14 +22,11 @@ import { chromium, firefox, webkit } from "playwright";
 import { captureScreenshot, captureWithDOM } from "../../core/capture.js";
 import { OperationError } from "../types.js";
 
-export function getBrowserTypeForViewport(
-  viewport: ViewportConfig,
-): "chromium" | "webkit" | "firefox" {
+export function getBrowserTypeForViewport(viewport: ViewportConfig): BrowserType {
   return viewport.defaultBrowserType ?? "chromium";
 }
 
-export async function launchBrowserForViewport(viewport: ViewportConfig) {
-  const browserType = getBrowserTypeForViewport(viewport);
+async function launchBrowser(browserType: BrowserType): Promise<Browser> {
   if (browserType === "webkit") {
     return webkit.launch();
   }
@@ -36,34 +38,40 @@ export async function launchBrowserForViewport(viewport: ViewportConfig) {
 
 type BrowserLaunchResult = {
   readonly browser: Browser;
-  readonly requestedBrowserType: "chromium" | "webkit" | "firefox";
-  readonly actualBrowserType: "chromium" | "webkit" | "firefox";
+  readonly actualBrowserType: BrowserType;
   readonly fallbackReason?: string;
 };
 
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+// Avoid retrying a known-broken engine on every capture in the same process.
+const fallbackCache = new Map<BrowserType, string>();
 
 async function launchBrowserForViewportWithFallback(
   viewport: ViewportConfig,
 ): Promise<BrowserLaunchResult> {
   const requestedBrowserType = getBrowserTypeForViewport(viewport);
+  const cachedReason = fallbackCache.get(requestedBrowserType);
+  if (cachedReason !== undefined) {
+    return {
+      browser: await chromium.launch(),
+      actualBrowserType: "chromium",
+      fallbackReason: cachedReason,
+    };
+  }
   try {
     return {
-      browser: await launchBrowserForViewport(viewport),
-      requestedBrowserType,
+      browser: await launchBrowser(requestedBrowserType),
       actualBrowserType: requestedBrowserType,
     };
   } catch (error) {
     if (requestedBrowserType === "chromium") {
       throw error;
     }
+    const reason = error instanceof Error ? error.message : String(error);
+    fallbackCache.set(requestedBrowserType, reason);
     return {
       browser: await chromium.launch(),
-      requestedBrowserType,
       actualBrowserType: "chromium",
-      fallbackReason: toErrorMessage(error),
+      fallbackReason: reason,
     };
   }
 }
@@ -122,7 +130,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
         Effect.gen(function* () {
           if (launched.fallbackReason !== undefined) {
             ctx.logger.warn(
-              `Falling back from ${launched.requestedBrowserType} to ${launched.actualBrowserType}: ${launched.fallbackReason}`,
+              `Falling back from ${browserType} to ${launched.actualBrowserType}: ${launched.fallbackReason}`,
             );
           }
 
@@ -161,7 +169,6 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
             path: screenshotPath,
             metadata: {
               ...result.artifact.metadata,
-              requestedBrowserType: launched.requestedBrowserType,
               actualBrowserType: launched.actualBrowserType,
               ...(launched.fallbackReason !== undefined
                 ? { browserFallbackReason: launched.fallbackReason }

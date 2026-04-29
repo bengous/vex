@@ -78,6 +78,7 @@ export type {
   ArtifactName,
   ArtifactType,
   BoundingBox,
+  BrowserType,
   CodeLocation,
   DiffReportArtifact,
   DOMElement,

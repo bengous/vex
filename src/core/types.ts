@@ -35,6 +35,9 @@ export type Severity = SeveritySchema;
 // Viewport & Capture Configuration
 // ═══════════════════════════════════════════════════════════════════════════
 
+/** Playwright browser engine identifier. */
+export type BrowserType = "chromium" | "webkit" | "firefox";
+
 /**
  * Viewport configuration for screenshot capture.
  */
@@ -49,7 +52,7 @@ export type ViewportConfig = {
   readonly isMobile: boolean;
   readonly hasTouch?: boolean;
   readonly userAgent?: string;
-  readonly defaultBrowserType?: "chromium" | "webkit" | "firefox";
+  readonly defaultBrowserType?: BrowserType;
 };
 
 /**
