@@ -359,8 +359,8 @@ describe("capture wrappers", () => {
     expect(page.steps).toEqual([
       "cleanup-css",
       "cleanup-overlays",
-      "viewport-metrics",
       "fold-occlusion",
+      "viewport-metrics",
       "screenshot",
       "context-close",
     ]);
@@ -370,5 +370,31 @@ describe("capture wrappers", () => {
       readFileSync(join(outputDir, "capture-viewport-metrics.json"), "utf8"),
     );
     expect(metrics.foldOcclusion.top).toBe(64);
+  });
+
+  test("captureScreenshot detects fold occlusion before full-page scroll fix", async () => {
+    const outputDir = createTempDir();
+    const page = new FakePage(await createScreenshotBuffer(640, 900));
+    const browser = new FakeBrowser(page);
+
+    await captureScreenshot(browser as unknown as Parameters<typeof captureScreenshot>[0], {
+      url: "https://example.test/",
+      viewport,
+      outputDir,
+      filename: "capture.png",
+      fullPageScrollFix,
+      foldOcclusion: { enabled: true, mode: "auto", minHeight: 24 },
+    });
+
+    expect(page.steps).toEqual([
+      "cleanup-css",
+      "cleanup-overlays",
+      "fold-occlusion",
+      "full-page-scroll-fix",
+      "viewport-metrics",
+      "overflow-clamp",
+      "screenshot",
+      "context-close",
+    ]);
   });
 });

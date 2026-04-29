@@ -23,12 +23,6 @@ type DetectionOptions = {
   readonly sampleScrolls?: readonly number[];
 };
 
-function uniqueSorted(values: readonly number[]): readonly number[] {
-  return [...new Set(values.map((value) => Math.max(0, Math.round(value))))].toSorted(
-    (a, b) => a - b,
-  );
-}
-
 function mergeIntervals(intervals: readonly EdgeInterval[]): readonly EdgeInterval[] {
   const sorted = [...intervals].toSorted((a, b) => a.start - b.start);
   const merged: EdgeInterval[] = [];
@@ -87,11 +81,26 @@ export function computeFoldOcclusionMetrics(
   };
 }
 
-function normalizeSampleScrolls(
-  sampleScrolls: readonly number[] | undefined,
-  viewportHeight: number,
-): readonly number[] {
-  return uniqueSorted([0, ...(sampleScrolls ?? [viewportHeight])]);
+function dedupeRegions(regions: readonly FoldOcclusionRegion[]): readonly FoldOcclusionRegion[] {
+  const seen = new Set<string>();
+  const result: FoldOcclusionRegion[] = [];
+
+  for (const region of regions) {
+    const key = [
+      region.selector,
+      region.position,
+      region.edge,
+      Math.round(region.top),
+      Math.round(region.bottom),
+    ].join(":");
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(region);
+  }
+
+  return result;
 }
 
 async function detectFoldOcclusionRegions(
@@ -219,12 +228,10 @@ export async function collectFoldOcclusionMetrics(
     minHeight: options.minHeight,
     ...(options.sampleScrolls !== undefined ? { sampleScrolls: options.sampleScrolls } : {}),
   });
-  const sampleScrolls = normalizeSampleScrolls(options.sampleScrolls, detection.viewportHeight);
-  const activeScrolls = sampleScrolls.filter((scrollY) => scrollY > 0);
-  const activeRegions =
-    activeScrolls.length > 0
-      ? detection.regions.filter((region) => activeScrolls.includes(Math.round(region.scrollY)))
-      : detection.regions;
 
-  return computeFoldOcclusionMetrics(detection.viewportHeight, activeRegions, options.minHeight);
+  return computeFoldOcclusionMetrics(
+    detection.viewportHeight,
+    dedupeRegions(detection.regions),
+    options.minHeight,
+  );
 }

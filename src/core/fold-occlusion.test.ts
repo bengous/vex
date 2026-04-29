@@ -52,6 +52,20 @@ describe("computeFoldOcclusionMetrics", () => {
     expect(metrics.usableViewportHeight).toBe(664);
   });
 
+  test("does not double-count duplicate samples of the same sticky region", () => {
+    const metrics = computeFoldOcclusionMetrics(
+      740,
+      [
+        region({ scrollY: 0, top: 0, bottom: 76, height: 76 }),
+        region({ scrollY: 0, top: 0, bottom: 76, height: 76 }),
+      ],
+      24,
+    );
+
+    expect(metrics.top).toBe(76);
+    expect(metrics.usableViewportHeight).toBe(664);
+  });
+
   test("ignores regions below the minimum height", () => {
     const metrics = computeFoldOcclusionMetrics(740, [region({ bottom: 12, height: 12 })], 24);
 

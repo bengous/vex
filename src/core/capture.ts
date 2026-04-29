@@ -624,14 +624,14 @@ async function captureDOMSnapshot(
   );
 
   const html = await page.content();
-  const domElements: DOMElement[] = elements.map((el) => ({
-    tagName: el.tagName,
-    ...(el.id !== undefined ? { id: el.id } : {}),
-    classes: el.classes,
-    boundingBox: el.boundingBox as BoundingBox,
-    computedStyles: el.computedStyles,
-    attributes: el.attributes,
-  }));
+  const domElements: DOMElement[] = elements.map((el) =>
+    Object.assign({ tagName: el.tagName }, el.id !== undefined ? { id: el.id } : {}, {
+      classes: el.classes,
+      boundingBox: el.boundingBox as BoundingBox,
+      computedStyles: el.computedStyles,
+      attributes: el.attributes,
+    }),
+  );
 
   return {
     url,
@@ -691,15 +691,16 @@ async function runCapture(
     });
 
     await cleanupOverlays(page);
+    const foldOcclusionMetrics =
+      foldOcclusion?.enabled === true
+        ? await collectFoldOcclusionMetrics(page, foldOcclusion)
+        : undefined;
+
     if (fullPageScrollFix?.enabled === true) {
       await applyFullPageScrollFix(page, fullPageScrollFix);
     }
 
     const viewportMetrics = await collectViewportMetrics(page);
-    const foldOcclusionMetrics =
-      foldOcclusion?.enabled === true
-        ? await collectFoldOcclusionMetrics(page, foldOcclusion)
-        : undefined;
     const metrics: ViewportMetrics =
       foldOcclusionMetrics !== undefined
         ? { ...viewportMetrics, foldOcclusion: foldOcclusionMetrics }
