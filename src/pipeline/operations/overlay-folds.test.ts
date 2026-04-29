@@ -19,6 +19,34 @@ import {
 } from "../../testing/mocks/pipeline-context.js";
 import { overlayFoldsOperation } from "./overlay-folds.js";
 
+async function countRedPixelsAtRow(imagePath: string, row: number): Promise<number> {
+  const { data, info } = await sharp(imagePath)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  let count = 0;
+  for (let x = 0; x < info.width; x += 1) {
+    const offset = (row * info.width + x) * 4;
+    const red = data[offset];
+    const green = data[offset + 1];
+    const blue = data[offset + 2];
+    const alpha = data[offset + 3];
+    if (
+      red !== undefined &&
+      green !== undefined &&
+      blue !== undefined &&
+      alpha !== undefined &&
+      alpha > 160 &&
+      red > 220 &&
+      green < 110 &&
+      blue < 110
+    ) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Setup
 // ═══════════════════════════════════════════════════════════════════════════
@@ -123,6 +151,33 @@ describe("overlayFoldsOperation", () => {
       if (Exit.isSuccess(exit)) {
         // Fold lines should be at viewport.height (800px) intervals
         expect(exit.value.artifacts.image.metadata.hasFoldLines).toBe(true);
+      }
+    });
+
+    test("prefers screen height from image metadata when present", async () => {
+      const ctx = createMockContext({ sessionDir: testDir });
+      const viewport = {
+        width: 390,
+        height: 739,
+        screen: { width: 390, height: 932 },
+        deviceScaleFactor: 1,
+        isMobile: true,
+      };
+      const input = {
+        image: createMockImageArtifact({
+          path: testImagePath,
+          height: 1200,
+          viewport,
+        }),
+      };
+
+      const exit = await runEffectExit(overlayFoldsOperation.execute(input, {}, ctx));
+
+      expect(Exit.isSuccess(exit)).toBe(true);
+      if (Exit.isSuccess(exit)) {
+        expect(exit.value.artifacts.image.metadata.hasFoldLines).toBe(true);
+        expect(await countRedPixelsAtRow(exit.value.artifacts.image.path, 739)).toBe(0);
+        expect(await countRedPixelsAtRow(exit.value.artifacts.image.path, 932)).toBeGreaterThan(50);
       }
     });
 

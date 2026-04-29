@@ -10,6 +10,7 @@ import type {
 } from "../../core/capture.js";
 import type { DOMSnapshotArtifact, ImageArtifact, ViewportConfig } from "../../core/types.js";
 import type { Operation } from "../types.js";
+import type { Browser } from "playwright";
 import { Effect } from "effect";
 import { dirname } from "node:path";
 import { chromium, firefox, webkit } from "playwright";
@@ -31,6 +32,40 @@ export async function launchBrowserForViewport(viewport: ViewportConfig) {
     return firefox.launch();
   }
   return chromium.launch();
+}
+
+type BrowserLaunchResult = {
+  readonly browser: Browser;
+  readonly requestedBrowserType: "chromium" | "webkit" | "firefox";
+  readonly actualBrowserType: "chromium" | "webkit" | "firefox";
+  readonly fallbackReason?: string;
+};
+
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function launchBrowserForViewportWithFallback(
+  viewport: ViewportConfig,
+): Promise<BrowserLaunchResult> {
+  const requestedBrowserType = getBrowserTypeForViewport(viewport);
+  try {
+    return {
+      browser: await launchBrowserForViewport(viewport),
+      requestedBrowserType,
+      actualBrowserType: requestedBrowserType,
+    };
+  } catch (error) {
+    if (requestedBrowserType === "chromium") {
+      throw error;
+    }
+    return {
+      browser: await chromium.launch(),
+      requestedBrowserType,
+      actualBrowserType: "chromium",
+      fallbackReason: toErrorMessage(error),
+    };
+  }
 }
 
 export type CaptureConfig = {
@@ -73,7 +108,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
     return Effect.acquireUseRelease(
       // acquire: launch browser
       Effect.tryPromise({
-        try: async () => launchBrowserForViewport(viewport),
+        try: async () => launchBrowserForViewportWithFallback(viewport),
         catch: (e) =>
           new OperationError({
             operation: "capture",
@@ -83,8 +118,14 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
       }),
 
       // use: all capture logic — browser.close() is NOT called here
-      (browser) =>
+      (launched) =>
         Effect.gen(function* () {
+          if (launched.fallbackReason !== undefined) {
+            ctx.logger.warn(
+              `Falling back from ${launched.requestedBrowserType} to ${launched.actualBrowserType}: ${launched.fallbackReason}`,
+            );
+          }
+
           const screenshotPath = yield* ctx.getArtifactPath("screenshot").pipe(
             Effect.mapError(
               (e) =>
@@ -99,7 +140,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
           const capture = withDOM ? captureWithDOM : captureScreenshot;
           const result: CaptureResult | DOMCaptureResult = yield* Effect.tryPromise({
             try: async () =>
-              capture(browser, {
+              capture(launched.browser, {
                 url,
                 viewport,
                 outputDir: dirname(screenshotPath),
@@ -118,7 +159,14 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
           const artifact = ctx.createArtifact<ImageArtifact>({
             type: "image",
             path: screenshotPath,
-            metadata: result.artifact.metadata,
+            metadata: {
+              ...result.artifact.metadata,
+              requestedBrowserType: launched.requestedBrowserType,
+              actualBrowserType: launched.actualBrowserType,
+              ...(launched.fallbackReason !== undefined
+                ? { browserFallbackReason: launched.fallbackReason }
+                : {}),
+            },
             createdBy: "capture",
           });
 
@@ -169,7 +217,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
         }),
 
       // release: guaranteed cleanup even on error
-      (browser) => Effect.promise(async () => browser.close()).pipe(Effect.orDie),
+      (launched) => Effect.promise(async () => launched.browser.close()).pipe(Effect.orDie),
     );
   },
 };

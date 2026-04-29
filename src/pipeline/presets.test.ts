@@ -122,6 +122,15 @@ describe("captureOnly preset", () => {
     expect(captureConfig(pipeline).withDOM).toBeUndefined();
   });
 
+  it("uses screen height for mobile fold spacing when available", () => {
+    const pipeline = captureOnly("https://example.com", {
+      ...mobileViewport,
+      screen: { width: 390, height: 932 },
+    });
+    const folds = pipeline.nodes.find((node) => node.id === "folds");
+    expect(folds?.config).toMatchObject({ viewportHeight: 932 });
+  });
+
   it("supports folds only", () => {
     const pipeline = captureOnly("https://example.com", viewport, true, false);
     expect(pipeline.outputs).toEqual(["image-with-folds"]);
