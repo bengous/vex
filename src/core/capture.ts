@@ -13,7 +13,7 @@ import type {
   ImageArtifact,
   ViewportConfig,
 } from "./types.js";
-import type { BrowserContext, chromium, Page, Route } from "playwright";
+import type { Browser, BrowserContext, Page, Route } from "playwright";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -426,9 +426,8 @@ export type CaptureOptions = {
 export type CaptureResult = {
   readonly artifact: ImageArtifact;
   readonly buffer: Buffer;
+  readonly viewportMetrics: ViewportMetrics;
 };
-
-type Browser = Awaited<ReturnType<typeof chromium.launch>>;
 
 type InternalCaptureOptions = {
   readonly captureDOM: boolean;
@@ -439,6 +438,125 @@ type InternalCaptureOptions = {
 type InternalCaptureResult = {
   readonly domSnapshot?: DOMSnapshot;
 } & CaptureResult;
+
+export type ViewportMetrics = {
+  readonly innerWidth: number;
+  readonly innerHeight: number;
+  readonly documentElementClientWidth: number;
+  readonly documentElementClientHeight: number;
+  readonly devicePixelRatio: number;
+  readonly screen: {
+    readonly width: number;
+    readonly height: number;
+    readonly availWidth: number;
+    readonly availHeight: number;
+  };
+  readonly visualViewport?: {
+    readonly width: number;
+    readonly height: number;
+    readonly offsetTop: number;
+    readonly offsetLeft: number;
+    readonly pageTop: number;
+    readonly pageLeft: number;
+    readonly scale: number;
+  };
+  readonly viewportUnits: {
+    readonly svh: number;
+    readonly lvh: number;
+    readonly dvh: number;
+  };
+  readonly safeAreaInsets: {
+    readonly top: number;
+    readonly right: number;
+    readonly bottom: number;
+    readonly left: number;
+  };
+  readonly userAgent: string;
+  readonly browserChromeCaptured: false;
+  readonly note: string;
+};
+
+export async function collectViewportMetrics(page: Page): Promise<ViewportMetrics> {
+  return page.evaluate(() => {
+    const readViewportUnit = (height: string): number => {
+      const element = document.createElement("div");
+      element.style.position = "fixed";
+      element.style.visibility = "hidden";
+      element.style.pointerEvents = "none";
+      element.style.height = height;
+      document.documentElement.append(element);
+      const value = Number.parseFloat(getComputedStyle(element).height);
+      element.remove();
+      return Number.isFinite(value) ? value : 0;
+    };
+
+    const readSafeAreaInset = (property: "top" | "right" | "bottom" | "left"): number => {
+      const element = document.createElement("div");
+      element.style.position = "fixed";
+      element.style.visibility = "hidden";
+      element.style.pointerEvents = "none";
+      element.style.paddingTop = property === "top" ? "env(safe-area-inset-top)" : "0px";
+      element.style.paddingRight = property === "right" ? "env(safe-area-inset-right)" : "0px";
+      element.style.paddingBottom = property === "bottom" ? "env(safe-area-inset-bottom)" : "0px";
+      element.style.paddingLeft = property === "left" ? "env(safe-area-inset-left)" : "0px";
+      document.documentElement.append(element);
+      const styles = getComputedStyle(element);
+      const value = Number.parseFloat(
+        property === "top"
+          ? styles.paddingTop
+          : property === "right"
+            ? styles.paddingRight
+            : property === "bottom"
+              ? styles.paddingBottom
+              : styles.paddingLeft,
+      );
+      element.remove();
+      return Number.isFinite(value) ? value : 0;
+    };
+
+    const visual = window.visualViewport;
+    return {
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+      documentElementClientWidth: document.documentElement.clientWidth,
+      documentElementClientHeight: document.documentElement.clientHeight,
+      devicePixelRatio: window.devicePixelRatio,
+      screen: {
+        width: window.screen.width,
+        height: window.screen.height,
+        availWidth: window.screen.availWidth,
+        availHeight: window.screen.availHeight,
+      },
+      ...(visual !== null
+        ? {
+            visualViewport: {
+              width: visual.width,
+              height: visual.height,
+              offsetTop: visual.offsetTop,
+              offsetLeft: visual.offsetLeft,
+              pageTop: visual.pageTop,
+              pageLeft: visual.pageLeft,
+              scale: visual.scale,
+            },
+          }
+        : {}),
+      viewportUnits: {
+        svh: readViewportUnit("100svh"),
+        lvh: readViewportUnit("100lvh"),
+        dvh: readViewportUnit("100dvh"),
+      },
+      safeAreaInsets: {
+        top: readSafeAreaInset("top"),
+        right: readSafeAreaInset("right"),
+        bottom: readSafeAreaInset("bottom"),
+        left: readSafeAreaInset("left"),
+      },
+      userAgent: navigator.userAgent,
+      browserChromeCaptured: false,
+      note: "Playwright page.screenshot captures the page viewport, not native browser or system chrome.",
+    };
+  });
+}
 
 async function captureDOMSnapshot(
   page: Page,
@@ -502,14 +620,14 @@ async function captureDOMSnapshot(
   );
 
   const html = await page.content();
-  const domElements: DOMElement[] = elements.map((el) =>
-    Object.assign({ tagName: el.tagName }, el.id !== undefined ? { id: el.id } : {}, {
-      classes: el.classes,
-      boundingBox: el.boundingBox as BoundingBox,
-      computedStyles: el.computedStyles,
-      attributes: el.attributes,
-    }),
-  );
+  const domElements: DOMElement[] = elements.map((el) => ({
+    tagName: el.tagName,
+    ...(el.id !== undefined ? { id: el.id } : {}),
+    classes: el.classes,
+    boundingBox: el.boundingBox as BoundingBox,
+    computedStyles: el.computedStyles,
+    attributes: el.attributes,
+  }));
 
   return {
     url,
@@ -543,6 +661,7 @@ async function runCapture(
 
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
+    ...(viewport.screen !== undefined ? { screen: viewport.screen } : {}),
     deviceScaleFactor: viewport.deviceScaleFactor,
     isMobile: viewport.isMobile,
     ...(viewport.hasTouch !== undefined ? { hasTouch: viewport.hasTouch } : {}),
@@ -571,6 +690,8 @@ async function runCapture(
       await applyFullPageScrollFix(page, fullPageScrollFix);
     }
 
+    const viewportMetrics = await collectViewportMetrics(page);
+
     const domSnapshot = captureDOM
       ? await captureDOMSnapshot(page, url, viewport, captureStyles)
       : undefined;
@@ -589,7 +710,12 @@ async function runCapture(
     }
     const dimensions = await getImageDimensionsFromBuffer(buffer, viewport);
     const outputPath = join(outputDir, filename);
+    const metricsPath = join(
+      outputDir,
+      `${filename.replace(/\.[^.]+$/, "")}-viewport-metrics.json`,
+    );
     await Bun.write(outputPath, buffer);
+    await Bun.write(metricsPath, JSON.stringify(viewportMetrics, null, 2));
 
     const artifact: ImageArtifact = {
       _kind: "artifact",
@@ -603,6 +729,9 @@ async function runCapture(
         height: dimensions.height,
         url,
         viewport,
+        viewportMetrics,
+        viewportMetricsPath: metricsPath,
+        browserChromeCaptured: false,
         hasGrid: false,
         hasFoldLines: false,
         hasAnnotations: false,
@@ -612,6 +741,7 @@ async function runCapture(
     return {
       artifact,
       buffer,
+      viewportMetrics,
       ...(domSnapshot !== undefined ? { domSnapshot } : {}),
     };
   } finally {
@@ -632,7 +762,11 @@ export async function captureScreenshot(
     captureStyles: [],
     createdBy: "capture",
   });
-  return { artifact: result.artifact, buffer: result.buffer };
+  return {
+    artifact: result.artifact,
+    buffer: result.buffer,
+    viewportMetrics: result.viewportMetrics,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -672,5 +806,10 @@ export async function captureWithDOM(
     throw new Error("DOM snapshot was not captured");
   }
 
-  return { artifact: result.artifact, buffer: result.buffer, domSnapshot: result.domSnapshot };
+  return {
+    artifact: result.artifact,
+    buffer: result.buffer,
+    viewportMetrics: result.viewportMetrics,
+    domSnapshot: result.domSnapshot,
+  };
 }

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ARTIFACT_NAMES } from "../../core/types.js";
 import { createMockContext } from "../../testing/mocks/pipeline-context.js";
-import { captureOperation } from "./capture.js";
+import { captureOperation, getBrowserTypeForViewport } from "./capture.js";
 
 describe("captureOperation", () => {
   let server: ReturnType<typeof Bun.serve>;
@@ -86,5 +86,25 @@ describe("captureOperation", () => {
     expect(dom.url).toBe(server.url.href);
     expect(dom.html).toContain("Capture operation");
     expect(output.artifacts.domSnapshot?.metadata.elementCount).toBeGreaterThan(0);
+  });
+});
+
+describe("getBrowserTypeForViewport", () => {
+  const testViewport: ViewportConfig = {
+    width: 320,
+    height: 568,
+    deviceScaleFactor: 1,
+    isMobile: true,
+    hasTouch: true,
+  };
+
+  test("uses descriptor browser when present", () => {
+    expect(getBrowserTypeForViewport({ ...testViewport, defaultBrowserType: "webkit" })).toBe(
+      "webkit",
+    );
+  });
+
+  test("defaults to chromium for older/custom viewport configs", () => {
+    expect(getBrowserTypeForViewport(testViewport)).toBe("chromium");
   });
 });

@@ -41,10 +41,15 @@ export type Severity = SeveritySchema;
 export type ViewportConfig = {
   readonly width: number;
   readonly height: number;
+  readonly screen?: {
+    readonly width: number;
+    readonly height: number;
+  };
   readonly deviceScaleFactor: number;
   readonly isMobile: boolean;
   readonly hasTouch?: boolean;
   readonly userAgent?: string;
+  readonly defaultBrowserType?: "chromium" | "webkit" | "firefox";
 };
 
 /**

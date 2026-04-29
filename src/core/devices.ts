@@ -33,6 +33,18 @@ export type DeviceLookupResult = {
   readonly playwrightName?: string;
 };
 
+function readDescriptorScreen(
+  descriptor: Readonly<Record<string, unknown>>,
+): { readonly width: number; readonly height: number } | undefined {
+  const screen = descriptor["screen"];
+  if (typeof screen !== "object" || screen === null) {
+    return undefined;
+  }
+  const width = "width" in screen ? screen.width : undefined;
+  const height = "height" in screen ? screen.height : undefined;
+  return typeof width === "number" && typeof height === "number" ? { width, height } : undefined;
+}
+
 /**
  * Custom desktop viewport presets.
  * Playwright only provides a few desktop sizes, so we define common breakpoints.
@@ -45,6 +57,7 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
       deviceScaleFactor: 1,
       isMobile: false,
       hasTouch: false,
+      defaultBrowserType: "chromium",
     },
     category: "desktop",
   },
@@ -55,6 +68,7 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
       deviceScaleFactor: 1,
       isMobile: false,
       hasTouch: false,
+      defaultBrowserType: "chromium",
     },
     category: "desktop",
   },
@@ -65,6 +79,7 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
       deviceScaleFactor: 1,
       isMobile: false,
       hasTouch: false,
+      defaultBrowserType: "chromium",
     },
     category: "desktop",
   },
@@ -75,6 +90,7 @@ export const DESKTOP_PRESETS: Record<string, DevicePreset> = {
       deviceScaleFactor: 2,
       isMobile: false,
       hasTouch: false,
+      defaultBrowserType: "chromium",
     },
     category: "desktop",
   },
@@ -108,6 +124,7 @@ export const CUSTOM_MOBILE_PRESETS: Record<string, DevicePreset> = {
       deviceScaleFactor: 2.625,
       isMobile: true,
       hasTouch: true,
+      defaultBrowserType: "chromium",
     },
     category: "phone",
   },
@@ -118,6 +135,7 @@ export const CUSTOM_MOBILE_PRESETS: Record<string, DevicePreset> = {
       deviceScaleFactor: 2,
       isMobile: true,
       hasTouch: true,
+      defaultBrowserType: "chromium",
     },
     category: "tablet",
   },
@@ -148,15 +166,18 @@ export function lookupDevice(id: string): DeviceLookupResult | undefined {
   if (alias !== undefined) {
     const playwrightDevice = devices[alias.name];
     if (playwrightDevice !== undefined) {
+      const screen = readDescriptorScreen(playwrightDevice);
       return {
         preset: {
           viewport: {
             width: playwrightDevice.viewport.width,
             height: playwrightDevice.viewport.height,
+            ...(screen !== undefined ? { screen } : {}),
             deviceScaleFactor: playwrightDevice.deviceScaleFactor,
             isMobile: playwrightDevice.isMobile,
             hasTouch: playwrightDevice.hasTouch,
             userAgent: playwrightDevice.userAgent,
+            defaultBrowserType: playwrightDevice.defaultBrowserType,
           },
           category: alias.category,
         },

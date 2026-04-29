@@ -12,9 +12,26 @@ import type { DOMSnapshotArtifact, ImageArtifact, ViewportConfig } from "../../c
 import type { Operation } from "../types.js";
 import { Effect } from "effect";
 import { dirname } from "node:path";
-import { chromium } from "playwright";
+import { chromium, firefox, webkit } from "playwright";
 import { captureScreenshot, captureWithDOM } from "../../core/capture.js";
 import { OperationError } from "../types.js";
+
+export function getBrowserTypeForViewport(
+  viewport: ViewportConfig,
+): "chromium" | "webkit" | "firefox" {
+  return viewport.defaultBrowserType ?? "chromium";
+}
+
+export async function launchBrowserForViewport(viewport: ViewportConfig) {
+  const browserType = getBrowserTypeForViewport(viewport);
+  if (browserType === "webkit") {
+    return webkit.launch();
+  }
+  if (browserType === "firefox") {
+    return firefox.launch();
+  }
+  return chromium.launch();
+}
 
 export type CaptureConfig = {
   readonly url: string;
@@ -49,13 +66,14 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
 
   execute: (_, config, ctx) => {
     const { url, viewport, withDOM = false, placeholderMedia, fullPageScrollFix } = config;
+    const browserType = getBrowserTypeForViewport(viewport);
 
-    ctx.logger.info(`Capturing ${url} at ${viewport.width}x${viewport.height}`);
+    ctx.logger.info(`Capturing ${url} at ${viewport.width}x${viewport.height} via ${browserType}`);
 
     return Effect.acquireUseRelease(
       // acquire: launch browser
       Effect.tryPromise({
-        try: async () => chromium.launch(),
+        try: async () => launchBrowserForViewport(viewport),
         catch: (e) =>
           new OperationError({
             operation: "capture",

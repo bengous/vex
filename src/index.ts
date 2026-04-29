@@ -25,6 +25,7 @@ export {
   type CaptureResult,
   captureScreenshot,
   captureWithDOM,
+  collectViewportMetrics,
   cleanupOverlays,
   type DOMCaptureOptions,
   type DOMCaptureResult,
@@ -33,6 +34,7 @@ export {
   type PlaceholderMediaOptions,
   removeOverlayElements,
   setupNetworkBlocking,
+  type ViewportMetrics,
 } from "./core/capture.js";
 
 // DOM Snapshot Loader

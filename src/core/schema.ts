@@ -117,10 +117,17 @@ export const ViewportConfig = S.mutable(
   S.Struct({
     width: S.Number.pipe(S.positive()),
     height: S.Number.pipe(S.positive()),
+    screen: S.optional(
+      S.Struct({
+        width: S.Number.pipe(S.positive()),
+        height: S.Number.pipe(S.positive()),
+      }),
+    ),
     deviceScaleFactor: S.Number.pipe(S.positive()),
     isMobile: S.Boolean,
     hasTouch: S.optional(S.Boolean),
     userAgent: S.optional(S.String),
+    defaultBrowserType: S.optional(S.Literal("chromium", "webkit", "firefox")),
   }),
 );
 export type ViewportConfig = typeof ViewportConfig.Type;

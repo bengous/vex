@@ -1,7 +1,7 @@
 import type { FullPageScrollFixOptions, PlaceholderMediaOptions } from "./capture.js";
 import type { ViewportConfig } from "./types.js";
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -107,6 +107,32 @@ class FakePage {
   }
 
   async evaluate(_fn: unknown, arg: unknown): Promise<unknown> {
+    if (arg === undefined) {
+      this.steps.push("viewport-metrics");
+      return {
+        innerWidth: 320,
+        innerHeight: 568,
+        documentElementClientWidth: 320,
+        documentElementClientHeight: 568,
+        devicePixelRatio: 2,
+        screen: { width: 320, height: 568, availWidth: 320, availHeight: 568 },
+        visualViewport: {
+          width: 320,
+          height: 568,
+          offsetTop: 0,
+          offsetLeft: 0,
+          pageTop: 0,
+          pageLeft: 0,
+          scale: 1,
+        },
+        viewportUnits: { svh: 568, lvh: 568, dvh: 568 },
+        safeAreaInsets: { top: 0, right: 0, bottom: 0, left: 0 },
+        userAgent: "fake",
+        browserChromeCaptured: false,
+        note: "fake",
+      };
+    }
+
     if (Array.isArray(arg)) {
       if (arg.includes("display")) {
         this.steps.push("dom-snapshot");
@@ -157,12 +183,14 @@ class FakeContext {
 
 class FakeBrowser {
   readonly context: FakeContext;
+  contextOptions: unknown;
 
   constructor(page: FakePage) {
     this.context = new FakeContext(page);
   }
 
-  async newContext(): Promise<FakeContext> {
+  async newContext(options: unknown): Promise<FakeContext> {
+    this.contextOptions = options;
     return this.context;
   }
 }
@@ -215,7 +243,11 @@ describe("capture wrappers", () => {
       browser as unknown as Parameters<typeof captureWithDOM>[0],
       {
         url: "https://example.test/",
-        viewport,
+        viewport: {
+          ...viewport,
+          screen: { width: 320, height: 568 },
+          defaultBrowserType: "webkit",
+        },
         outputDir,
         filename: "capture.png",
         placeholderMedia,
@@ -227,6 +259,7 @@ describe("capture wrappers", () => {
       "cleanup-css",
       "cleanup-overlays",
       "full-page-scroll-fix",
+      "viewport-metrics",
       "dom-snapshot",
       "dom-html",
       "placeholder-css",
@@ -237,8 +270,14 @@ describe("capture wrappers", () => {
     ]);
     expect(result.artifact.createdBy).toBe("capture-with-dom");
     expect(result.artifact.metadata.width).toBe(640);
+    expect(result.artifact.metadata["browserChromeCaptured"]).toBe(false);
+    expect(result.viewportMetrics.innerHeight).toBe(568);
+    expect(browser.contextOptions).toMatchObject({
+      screen: { width: 320, height: 568 },
+    });
     expect(result.domSnapshot.elements).toHaveLength(1);
     expect(existsSync(join(outputDir, "capture.png"))).toBe(true);
+    expect(existsSync(join(outputDir, "capture-viewport-metrics.json"))).toBe(true);
   });
 
   test("captureScreenshot uses the same screenshot path without DOM capture", async () => {
@@ -262,6 +301,7 @@ describe("capture wrappers", () => {
       "cleanup-css",
       "cleanup-overlays",
       "full-page-scroll-fix",
+      "viewport-metrics",
       "placeholder-css",
       "placeholder-media",
       "overflow-clamp",
@@ -270,6 +310,13 @@ describe("capture wrappers", () => {
     ]);
     expect(result.artifact.createdBy).toBe("capture");
     expect(result.artifact.metadata.width).toBe(640);
+    expect(result.artifact.metadata["viewportMetricsPath"]).toBe(
+      join(outputDir, "capture-viewport-metrics.json"),
+    );
+    const metrics = JSON.parse(
+      readFileSync(join(outputDir, "capture-viewport-metrics.json"), "utf8"),
+    );
+    expect(metrics.browserChromeCaptured).toBe(false);
     expect(existsSync(join(outputDir, "capture.png"))).toBe(true);
   });
 });
