@@ -1,7 +1,7 @@
 import type { ImageArtifact, SafariFrameOptions } from "../../core/types.js";
 import type { Operation } from "../types.js";
 import { Effect } from "effect";
-import sharp from "sharp";
+import { writeFile } from "node:fs/promises";
 import { renderSafariFrame } from "../../core/safari-frame.js";
 import { OperationError } from "../types.js";
 
@@ -55,7 +55,7 @@ export const overlaySafariFrameOperation: Operation<
       );
 
       yield* Effect.tryPromise({
-        try: async () => sharp(result.buffer).toFile(outputPath),
+        try: async () => writeFile(outputPath, result.buffer),
         catch: (e) =>
           new OperationError({
             operation: "overlay-safari-frame",

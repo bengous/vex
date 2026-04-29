@@ -1,3 +1,4 @@
+import type { FrameName, FrameStyle } from "../../config/schema.js";
 import type { ResolvedScanOptions } from "../resolve.js";
 
 export type ScanAuditCliMetadata = {
@@ -8,8 +9,8 @@ export type ScanAuditCliMetadata = {
   readonly reasoning: string | undefined;
   readonly providerProfile: string | undefined;
   readonly full: boolean;
-  readonly frame: string | undefined;
-  readonly frameStyle: string | undefined;
+  readonly frame: FrameName | undefined;
+  readonly frameStyle: FrameStyle | undefined;
   readonly placeholderMedia: boolean;
   readonly output: string | undefined;
 };

@@ -8,6 +8,8 @@
 import type {
   DeviceSpec,
   FrameConfig,
+  FrameName,
+  FrameStyle,
   FullPageScrollFixSpec,
   LoopPreset,
   PlaceholderMediaSpec,
@@ -15,6 +17,7 @@ import type {
   ScanPreset,
   VexConfig,
 } from "../config/schema.js";
+import type { SafariFrameOptions } from "../core/types.js";
 import type { FileSystem } from "@effect/platform";
 import { Effect, Option } from "effect";
 import {
@@ -68,11 +71,6 @@ export type ResolvedFullPageScrollFix = {
 
 export type ResolvedScanMode = "analyze" | "capture-only";
 
-export type ResolvedFrame = {
-  readonly name: "safari-ios";
-  readonly style: "singleshot";
-};
-
 /**
  * Fully resolved scan options ready for pipeline execution.
  */
@@ -85,7 +83,7 @@ export type ResolvedScanOptions = {
   readonly profile: string;
   readonly mode: ResolvedScanMode;
   readonly full: boolean;
-  readonly frame: ResolvedFrame | undefined;
+  readonly frame: SafariFrameOptions | undefined;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
   readonly outputDir: string;
@@ -159,8 +157,8 @@ export type CommonCliArgs = {
 export type ScanCliArgs = {
   readonly reasoning: Option.Option<string>;
   readonly full: boolean;
-  readonly frame: Option.Option<string>;
-  readonly frameStyle: Option.Option<string>;
+  readonly frame: Option.Option<FrameName>;
+  readonly frameStyle: Option.Option<FrameStyle>;
 } & CommonCliArgs;
 
 /**
@@ -261,10 +259,10 @@ function normalizeFullPageScrollFix(
 }
 
 function normalizeFrame(
-  cliFrame: Option.Option<string>,
-  cliFrameStyle: Option.Option<string>,
+  cliFrame: Option.Option<"safari-ios">,
+  cliFrameStyle: Option.Option<"singleshot">,
   presetFrame: FrameConfig | undefined,
-): ResolvedFrame | undefined {
+): SafariFrameOptions | undefined {
   const name = Option.isSome(cliFrame) ? cliFrame.value : presetFrame?.name;
   if (name === undefined) {
     return undefined;
@@ -273,10 +271,6 @@ function normalizeFrame(
   const style = Option.isSome(cliFrameStyle)
     ? cliFrameStyle.value
     : (presetFrame?.style ?? "singleshot");
-
-  if (name !== "safari-ios" || style !== "singleshot") {
-    return undefined;
-  }
 
   return { name, style };
 }

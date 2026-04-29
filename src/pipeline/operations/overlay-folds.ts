@@ -47,22 +47,12 @@ export const overlayFoldsOperation: Operation<
 
       ctx.logger.info(`Adding fold lines to ${input.image.path}`);
 
-      const imageBuffer = yield* Effect.tryPromise({
-        try: async () => sharp(input.image.path).toBuffer(),
+      const { data: imageBuffer, info: imageMetadata } = yield* Effect.tryPromise({
+        try: async () => sharp(input.image.path).toBuffer({ resolveWithObject: true }),
         catch: (e) =>
           new OperationError({
             operation: "overlay-folds",
             detail: "Failed to read image",
-            cause: e,
-          }),
-      });
-
-      const imageMetadata = yield* Effect.tryPromise({
-        try: async () => sharp(imageBuffer).metadata(),
-        catch: (e) =>
-          new OperationError({
-            operation: "overlay-folds",
-            detail: "Failed to read image metadata",
             cause: e,
           }),
       });
@@ -75,7 +65,6 @@ export const overlayFoldsOperation: Operation<
           : undefined;
       const isDeviceScale =
         expectedDeviceWidth !== undefined &&
-        imageMetadata.width !== undefined &&
         Math.abs(imageMetadata.width - expectedDeviceWidth) <= 2;
       const viewportHeight = isDeviceScale
         ? Math.round(cssViewportHeight * deviceScaleFactor)
