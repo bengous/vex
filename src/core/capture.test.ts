@@ -132,6 +132,31 @@ class FakePage {
       };
     }
 
+    if (
+      typeof arg === "object" &&
+      arg !== null &&
+      "minHeight" in arg &&
+      typeof arg.minHeight === "number"
+    ) {
+      this.steps.push("fold-occlusion");
+      return {
+        viewportHeight: 568,
+        regions: [
+          {
+            selector: "header.site",
+            tagName: "header",
+            position: "sticky",
+            edge: "top",
+            source: "auto",
+            scrollY: 568,
+            top: 0,
+            bottom: 64,
+            height: 64,
+          },
+        ],
+      };
+    }
+
     if (Array.isArray(arg)) {
       if (arg.includes("display")) {
         this.steps.push("dom-snapshot");
@@ -313,5 +338,37 @@ describe("capture wrappers", () => {
     const metrics = JSON.parse(readFileSync(metricsPath, "utf8"));
     expect(metrics.innerHeight).toBe(568);
     expect(existsSync(join(outputDir, "capture.png"))).toBe(true);
+  });
+
+  test("captureScreenshot stores fold occlusion metrics when enabled", async () => {
+    const outputDir = createTempDir();
+    const page = new FakePage(await createScreenshotBuffer(640, 900));
+    const browser = new FakeBrowser(page);
+
+    const result = await captureScreenshot(
+      browser as unknown as Parameters<typeof captureScreenshot>[0],
+      {
+        url: "https://example.test/",
+        viewport,
+        outputDir,
+        filename: "capture.png",
+        foldOcclusion: { enabled: true, mode: "auto", minHeight: 24 },
+      },
+    );
+
+    expect(page.steps).toEqual([
+      "cleanup-css",
+      "cleanup-overlays",
+      "viewport-metrics",
+      "fold-occlusion",
+      "screenshot",
+      "context-close",
+    ]);
+    expect(result.artifact.metadata.foldOcclusion?.top).toBe(64);
+    expect(result.artifact.metadata.foldOcclusion?.usableViewportHeight).toBe(504);
+    const metrics = JSON.parse(
+      readFileSync(join(outputDir, "capture-viewport-metrics.json"), "utf8"),
+    );
+    expect(metrics.foldOcclusion.top).toBe(64);
   });
 });

@@ -72,6 +72,37 @@ export type FoldConfig = {
   readonly showLabels: boolean;
 };
 
+export type FoldOcclusionMode = "auto";
+
+export type FoldOcclusionEdge = "top" | "bottom";
+
+export type FoldOcclusionRegion = {
+  readonly selector: string;
+  readonly tagName: string;
+  readonly position: "fixed" | "sticky";
+  readonly edge: FoldOcclusionEdge;
+  readonly source: "auto";
+  readonly scrollY: number;
+  readonly top: number;
+  readonly bottom: number;
+  readonly height: number;
+};
+
+export type FoldOcclusionMetrics = {
+  readonly mode: FoldOcclusionMode;
+  readonly top: number;
+  readonly bottom: number;
+  readonly usableViewportHeight: number;
+  readonly regions: readonly FoldOcclusionRegion[];
+};
+
+export type FoldOcclusionOptions = {
+  readonly enabled: true;
+  readonly mode: FoldOcclusionMode;
+  readonly minHeight: number;
+  readonly sampleScrolls?: readonly number[];
+};
+
 export type SafariFrameStyle = "singleshot";
 
 export type SafariFrameOptions = {
@@ -133,6 +164,7 @@ export type ImageArtifact = {
     readonly hasGrid?: boolean;
     readonly hasFoldLines?: boolean;
     readonly hasAnnotations?: boolean;
+    readonly foldOcclusion?: FoldOcclusionMetrics;
   };
 } & Artifact;
 

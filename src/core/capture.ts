@@ -10,6 +10,8 @@ import type {
   DOMElement,
   DOMSnapshot,
   FoldConfig,
+  FoldOcclusionMetrics,
+  FoldOcclusionOptions,
   ImageArtifact,
   ViewportConfig,
 } from "./types.js";
@@ -17,6 +19,7 @@ import type { Browser, BrowserContext, Page, Route } from "playwright";
 import { mkdir } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import sharp from "sharp";
+import { collectFoldOcclusionMetrics } from "./fold-occlusion.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Network Blocking
@@ -419,6 +422,7 @@ export type CaptureOptions = {
   readonly foldConfig?: FoldConfig;
   readonly placeholderMedia?: PlaceholderMediaOptions;
   readonly fullPageScrollFix?: FullPageScrollFixOptions;
+  readonly foldOcclusion?: FoldOcclusionOptions;
   readonly navigationTimeout?: number;
   readonly loadStateTimeout?: number;
 };
@@ -471,6 +475,7 @@ export type ViewportMetrics = {
     readonly bottom: number;
     readonly left: number;
   };
+  readonly foldOcclusion?: FoldOcclusionMetrics;
   readonly userAgent: string;
   readonly note: string;
 };
@@ -619,14 +624,14 @@ async function captureDOMSnapshot(
   );
 
   const html = await page.content();
-  const domElements: DOMElement[] = elements.map((el) =>
-    Object.assign({ tagName: el.tagName }, el.id !== undefined ? { id: el.id } : {}, {
-      classes: el.classes,
-      boundingBox: el.boundingBox as BoundingBox,
-      computedStyles: el.computedStyles,
-      attributes: el.attributes,
-    }),
-  );
+  const domElements: DOMElement[] = elements.map((el) => ({
+    tagName: el.tagName,
+    ...(el.id !== undefined ? { id: el.id } : {}),
+    classes: el.classes,
+    boundingBox: el.boundingBox as BoundingBox,
+    computedStyles: el.computedStyles,
+    attributes: el.attributes,
+  }));
 
   return {
     url,
@@ -649,6 +654,7 @@ async function runCapture(
     fullPage = true,
     placeholderMedia,
     fullPageScrollFix,
+    foldOcclusion,
     navigationTimeout = 30000,
     loadStateTimeout = 10000,
     captureDOM,
@@ -690,6 +696,14 @@ async function runCapture(
     }
 
     const viewportMetrics = await collectViewportMetrics(page);
+    const foldOcclusionMetrics =
+      foldOcclusion?.enabled === true
+        ? await collectFoldOcclusionMetrics(page, foldOcclusion)
+        : undefined;
+    const metrics: ViewportMetrics =
+      foldOcclusionMetrics !== undefined
+        ? { ...viewportMetrics, foldOcclusion: foldOcclusionMetrics }
+        : viewportMetrics;
 
     const domSnapshot = captureDOM
       ? await captureDOMSnapshot(page, url, viewport, captureStyles)
@@ -715,7 +729,7 @@ async function runCapture(
     );
     await Promise.all([
       Bun.write(outputPath, buffer),
-      Bun.write(metricsPath, JSON.stringify(viewportMetrics, null, 2)),
+      Bun.write(metricsPath, JSON.stringify(metrics, null, 2)),
     ]);
 
     const artifact: ImageArtifact = {
@@ -733,13 +747,14 @@ async function runCapture(
         hasGrid: false,
         hasFoldLines: false,
         hasAnnotations: false,
+        ...(foldOcclusionMetrics !== undefined ? { foldOcclusion: foldOcclusionMetrics } : {}),
       },
     };
 
     return {
       artifact,
       buffer,
-      viewportMetrics,
+      viewportMetrics: metrics,
       ...(domSnapshot !== undefined ? { domSnapshot } : {}),
     };
   } finally {
