@@ -160,7 +160,7 @@ describe("overlayFoldsOperation", () => {
       }
     });
 
-    test("prefers screen height from image metadata when present", async () => {
+    test("uses viewport height from image metadata when screen height is present", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const viewport = {
         width: 390,
@@ -182,8 +182,8 @@ describe("overlayFoldsOperation", () => {
       expect(Exit.isSuccess(exit)).toBe(true);
       if (Exit.isSuccess(exit)) {
         expect(exit.value.artifacts.image.metadata.hasFoldLines).toBe(true);
-        expect(await countRedPixelsAtRow(exit.value.artifacts.image.path, 739)).toBe(0);
-        expect(await countRedPixelsAtRow(exit.value.artifacts.image.path, 932)).toBeGreaterThan(50);
+        expect(await countRedPixelsAtRow(exit.value.artifacts.image.path, 739)).toBeGreaterThan(50);
+        expect(await countRedPixelsAtRow(exit.value.artifacts.image.path, 932)).toBe(0);
       }
     });
 

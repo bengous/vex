@@ -43,10 +43,7 @@ export const overlayFoldsOperation: Operation<
     Effect.gen(function* () {
       const foldConfig = config.foldConfig ?? DEFAULT_FOLD_CONFIG;
       const cssViewportHeight =
-        config.viewportHeight ??
-        input.image.metadata.viewport?.screen?.height ??
-        input.image.metadata.viewport?.height ??
-        900;
+        config.viewportHeight ?? input.image.metadata.viewport?.height ?? 900;
 
       ctx.logger.info(`Adding fold lines to ${input.image.path}`);
 

@@ -62,7 +62,7 @@ function foldsNode(viewport: ViewportConfig): PipelineNode {
   return {
     id: "folds",
     operation: "overlay-folds",
-    config: { viewportHeight: viewport.screen?.height ?? viewport.height },
+    config: { viewportHeight: viewport.height },
     inputs: ["image"],
     outputs: ["image"],
   };
