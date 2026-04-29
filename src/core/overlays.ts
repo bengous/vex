@@ -13,6 +13,7 @@ import type {
   DrawArrowParams,
   DrawRectangleParams,
   FoldConfig,
+  FoldOcclusionMetrics,
   GridConfig,
   GridMetadata,
   GridRef,
@@ -248,14 +249,50 @@ export type FoldLineOptions = {
   readonly lineColor?: string;
   readonly showLabels?: boolean;
   readonly cssViewportHeight?: number;
+  readonly foldOcclusion?: FoldOcclusionMetrics;
 };
+
+export type FoldLinePosition = {
+  readonly y: number;
+  readonly cssPosition: number;
+};
+
+export function calculateFoldPositions(options: {
+  readonly imageHeight: number;
+  readonly viewportHeight: number;
+  readonly cssViewportHeight?: number;
+  readonly foldOcclusion?: FoldOcclusionMetrics;
+}): readonly FoldLinePosition[] {
+  const cssViewportHeight = options.cssViewportHeight ?? options.viewportHeight;
+  const scale = options.viewportHeight / cssViewportHeight;
+  const cssStep = options.foldOcclusion?.usableViewportHeight ?? cssViewportHeight;
+  const positions: FoldLinePosition[] = [];
+
+  for (
+    let cssY = cssViewportHeight;
+    Math.round(cssY * scale) < options.imageHeight;
+    cssY += cssStep
+  ) {
+    positions.push({
+      y: Math.round(cssY * scale),
+      cssPosition: Math.round(cssY),
+    });
+  }
+
+  return positions;
+}
 
 /**
  * Add viewport fold line markers to a screenshot.
  */
 export async function addFoldLines(imageBuffer: Buffer, options: FoldLineOptions): Promise<Buffer> {
-  const { viewportHeight, lineColor = "#FF0000", showLabels = true, cssViewportHeight } = options;
-  const cssHeightForLabel = cssViewportHeight ?? viewportHeight;
+  const {
+    viewportHeight,
+    lineColor = "#FF0000",
+    showLabels = true,
+    cssViewportHeight,
+    foldOcclusion,
+  } = options;
 
   const metadata = await sharp(imageBuffer).metadata();
   const { width, height } = metadata;
@@ -264,21 +301,23 @@ export async function addFoldLines(imageBuffer: Buffer, options: FoldLineOptions
     return imageBuffer;
   }
 
-  const folds: number[] = [];
-  for (let y = viewportHeight; y < height; y += viewportHeight) {
-    folds.push(y);
-  }
+  const folds = calculateFoldPositions({
+    imageHeight: height,
+    viewportHeight,
+    ...(cssViewportHeight !== undefined ? { cssViewportHeight } : {}),
+    ...(foldOcclusion !== undefined ? { foldOcclusion } : {}),
+  });
 
   const svgLines = folds
-    .map((y, i) => {
+    .map((fold, i) => {
       const foldNum = i + 1;
+      const y = fold.y;
       const boxWidth = 130;
       const boxHeight = 18;
       const boxY = y - boxHeight - 2;
-      const cssPosition = cssHeightForLabel * foldNum;
 
       return `
-      <!-- Fold ${foldNum} at ${y}px (CSS: ${cssPosition}px) -->
+      <!-- Fold ${foldNum} at ${y}px (CSS: ${fold.cssPosition}px) -->
       <line x1="0" y1="${y}" x2="${width}" y2="${y}"
             stroke="${lineColor}" stroke-width="2"
             stroke-dasharray="10,5" stroke-opacity="0.9"/>
@@ -289,7 +328,7 @@ export async function addFoldLines(imageBuffer: Buffer, options: FoldLineOptions
               fill="${lineColor}" opacity="0.85" rx="3"/>
         <text x="10" y="${y - 6}" fill="white"
               font-family="monospace" font-size="11" font-weight="bold">
-          ━ Fold ${foldNum} (${cssPosition}px)
+          ━ Fold ${foldNum} (${fold.cssPosition}px)
         </text>
       `
           : ""
@@ -313,6 +352,7 @@ export async function addFoldOverlay(
   viewportHeight: number,
   config: FoldConfig,
   cssViewportHeight?: number,
+  foldOcclusion?: FoldOcclusionMetrics,
 ): Promise<Buffer> {
   if (!config.enabled) {
     return imageBuffer;
@@ -321,6 +361,7 @@ export async function addFoldOverlay(
   return addFoldLines(imageBuffer, {
     viewportHeight,
     ...(cssViewportHeight !== undefined ? { cssViewportHeight } : {}),
+    ...(foldOcclusion !== undefined ? { foldOcclusion } : {}),
     lineColor: config.color,
     showLabels: config.showLabels,
   });

@@ -6,7 +6,7 @@ import type { FoldConfig, ImageArtifact } from "../../core/types.js";
 import type { Operation } from "../types.js";
 import { Effect } from "effect";
 import sharp from "sharp";
-import { addFoldOverlay } from "../../core/overlays.js";
+import { addFoldOverlay, calculateFoldPositions } from "../../core/overlays.js";
 import { DEFAULT_FOLD_CONFIG } from "../../core/types.js";
 import { OperationError } from "../types.js";
 
@@ -69,9 +69,17 @@ export const overlayFoldsOperation: Operation<
       const viewportHeight = isDeviceScale
         ? Math.round(cssViewportHeight * deviceScaleFactor)
         : cssViewportHeight;
+      const foldOcclusion = input.image.metadata.foldOcclusion;
+      const foldPositions = calculateFoldPositions({
+        imageHeight: imageMetadata.height ?? input.image.metadata.height,
+        viewportHeight,
+        cssViewportHeight,
+        ...(foldOcclusion !== undefined ? { foldOcclusion } : {}),
+      });
 
       const foldBuffer = yield* Effect.tryPromise({
-        try: async () => addFoldOverlay(imageBuffer, viewportHeight, foldConfig, cssViewportHeight),
+        try: async () =>
+          addFoldOverlay(imageBuffer, viewportHeight, foldConfig, cssViewportHeight, foldOcclusion),
         catch: (e) =>
           new OperationError({
             operation: "overlay-folds",
@@ -108,6 +116,8 @@ export const overlayFoldsOperation: Operation<
         metadata: {
           ...input.image.metadata,
           hasFoldLines: true,
+          foldPositionsCss: foldPositions.map((fold) => fold.cssPosition),
+          foldPositionsPx: foldPositions.map((fold) => fold.y),
         },
       });
 

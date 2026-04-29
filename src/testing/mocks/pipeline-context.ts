@@ -5,7 +5,12 @@
  * in isolation without running the full pipeline runtime.
  */
 
-import type { Artifact, ImageArtifact, ViewportConfig } from "../../core/types.js";
+import type {
+  Artifact,
+  FoldOcclusionMetrics,
+  ImageArtifact,
+  ViewportConfig,
+} from "../../core/types.js";
 import type { DataKey, DataValue, Logger, PipelineContext } from "../../pipeline/types.js";
 import { Effect } from "effect";
 import { join } from "node:path";
@@ -110,13 +115,21 @@ export type MockImageArtifactOptions = {
   readonly width?: number;
   readonly height?: number;
   readonly viewport?: ViewportConfig;
+  readonly foldOcclusion?: FoldOcclusionMetrics;
 };
 
 /**
  * Create a mock ImageArtifact for testing operations that consume images.
  */
 export function createMockImageArtifact(options: MockImageArtifactOptions): ImageArtifact {
-  const { path, id = crypto.randomUUID(), width = 1920, height = 1080, viewport } = options;
+  const {
+    path,
+    id = crypto.randomUUID(),
+    width = 1920,
+    height = 1080,
+    viewport,
+    foldOcclusion,
+  } = options;
 
   return {
     _kind: "artifact",
@@ -129,6 +142,7 @@ export function createMockImageArtifact(options: MockImageArtifactOptions): Imag
       width,
       height,
       ...(viewport !== undefined ? { viewport } : {}),
+      ...(foldOcclusion !== undefined ? { foldOcclusion } : {}),
     },
   };
 }

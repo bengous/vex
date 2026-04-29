@@ -165,6 +165,8 @@ export type ImageArtifact = {
     readonly hasFoldLines?: boolean;
     readonly hasAnnotations?: boolean;
     readonly foldOcclusion?: FoldOcclusionMetrics;
+    readonly foldPositionsCss?: readonly number[];
+    readonly foldPositionsPx?: readonly number[];
   };
 } & Artifact;
 

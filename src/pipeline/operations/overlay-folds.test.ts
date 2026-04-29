@@ -187,6 +187,46 @@ describe("overlayFoldsOperation", () => {
       }
     });
 
+    test("uses detected fold occlusion for folds after the first viewport", async () => {
+      const ctx = createMockContext({ sessionDir: testDir });
+      const input = {
+        image: createMockImageArtifact({
+          path: testImagePath,
+          height: 1200,
+          viewport: { width: 400, height: 300, deviceScaleFactor: 1, isMobile: true },
+          foldOcclusion: {
+            mode: "auto",
+            top: 60,
+            bottom: 0,
+            usableViewportHeight: 240,
+            regions: [
+              {
+                selector: "header.site",
+                tagName: "header",
+                position: "sticky",
+                edge: "top",
+                source: "auto",
+                scrollY: 300,
+                top: 0,
+                bottom: 60,
+                height: 60,
+              },
+            ],
+          },
+        }),
+      };
+
+      const exit = await runEffectExit(overlayFoldsOperation.execute(input, {}, ctx));
+
+      expect(Exit.isSuccess(exit)).toBe(true);
+      if (Exit.isSuccess(exit)) {
+        expect(await countRedPixelsAtRow(exit.value.artifacts.image.path, 300)).toBeGreaterThan(50);
+        expect(await countRedPixelsAtRow(exit.value.artifacts.image.path, 540)).toBeGreaterThan(50);
+        expect(await countRedPixelsAtRow(exit.value.artifacts.image.path, 600)).toBe(0);
+        expect(exit.value.artifacts.image.metadata.foldPositionsCss).toEqual([300, 540, 780, 1020]);
+      }
+    });
+
     test("returns artifact for runtime storage without mutating context", async () => {
       const ctx = createMockContext({ sessionDir: testDir });
       const input = { image: createMockImageArtifact({ path: testImagePath }) };
