@@ -9,6 +9,8 @@ import { Options } from "@effect/cli";
 import {
   AutoFixThreshold,
   DeviceId,
+  FrameName,
+  FrameStyle,
   PositiveInt,
   ProviderName,
   ReasoningLevel,
@@ -101,6 +103,18 @@ export const fullOption = Options.boolean("full").pipe(
   Options.withAlias("f"),
   Options.withDescription("Full annotation pipeline (analyze + annotate + render)"),
   Options.withDefault(false),
+);
+
+export const frameOption = Options.text("frame").pipe(
+  Options.withSchema(FrameName),
+  Options.withDescription("Optional browser chrome frame artifact (safari-ios)"),
+  Options.optional,
+);
+
+export const frameStyleOption = Options.text("frame-style").pipe(
+  Options.withSchema(FrameStyle),
+  Options.withDescription("Browser chrome frame style (singleshot)"),
+  Options.optional,
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

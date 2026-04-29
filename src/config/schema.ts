@@ -75,6 +75,18 @@ export type AutoFixThreshold = S.Schema.Type<typeof AutoFixThreshold>;
 export const ScanMode = S.Literal("analyze", "capture-only");
 export type ScanMode = S.Schema.Type<typeof ScanMode>;
 
+export const FrameName = S.Literal("safari-ios");
+export type FrameName = S.Schema.Type<typeof FrameName>;
+
+export const FrameStyle = S.Literal("singleshot");
+export type FrameStyle = S.Schema.Type<typeof FrameStyle>;
+
+export const FrameConfig = S.Struct({
+  name: FrameName,
+  style: S.optional(FrameStyle),
+});
+export type FrameConfig = S.Schema.Type<typeof FrameConfig>;
+
 /**
  * Positive integer (for maxIterations, etc.).
  */
@@ -219,6 +231,8 @@ export const ScanPreset = S.Struct({
   placeholderMedia: S.optional(PlaceholderMediaSpec),
   /** Expand internal scroll container(s) for true full-page screenshots */
   fullPageScrollFix: S.optional(FullPageScrollFixSpec),
+  /** Optional browser chrome frame artifact. */
+  frame: S.optional(FrameConfig),
 });
 export type ScanPreset = S.Schema.Type<typeof ScanPreset>;
 

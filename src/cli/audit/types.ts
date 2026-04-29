@@ -8,6 +8,8 @@ export type ScanAuditCliMetadata = {
   readonly reasoning: string | undefined;
   readonly providerProfile: string | undefined;
   readonly full: boolean;
+  readonly frame: string | undefined;
+  readonly frameStyle: string | undefined;
   readonly placeholderMedia: boolean;
   readonly output: string | undefined;
 };

@@ -118,6 +118,9 @@ Valid devices: ${getAllDeviceIds().join(", ")}`,
       devices: resolved.devices,
       mode: resolved.mode,
       full: resolved.full,
+      ...(resolved.frame !== undefined
+        ? { frame: resolved.frame.name, frameStyle: resolved.frame.style }
+        : {}),
       placeholderMedia: resolved.placeholderMedia !== undefined,
       fullPageScrollFix: resolved.fullPageScrollFix !== undefined,
       totalRuns: resolved.urls.length * resolved.devices.length,

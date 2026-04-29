@@ -28,6 +28,7 @@ export const EffectPipelineRunner: PipelineRunner = {
         provider: resolved.provider,
         model: resolved.model,
         reasoning: resolved.reasoning,
+        frame: resolved.frame,
         placeholderMedia: resolved.placeholderMedia,
         fullPageScrollFix: resolved.fullPageScrollFix,
       });

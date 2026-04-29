@@ -14,6 +14,8 @@ import { listDevices } from "../../core/devices.js";
 import { runScanAudit } from "../audit-runner.js";
 import {
   deviceOption,
+  frameOption,
+  frameStyleOption,
   fullOption,
   listDevicesOption,
   modelOption,
@@ -50,6 +52,8 @@ export const scanCommand = Command.make(
     reasoning: reasoningOption,
     providerProfile: providerProfileOption,
     full: fullOption,
+    frame: frameOption,
+    frameStyle: frameStyleOption,
     placeholderMedia: placeholderMediaOption,
     output: outputOption,
     listDevices: listDevicesOption,
@@ -70,6 +74,8 @@ export const scanCommand = Command.make(
         reasoning: args.reasoning,
         providerProfile: args.providerProfile,
         full: args.full,
+        frame: args.frame,
+        frameStyle: args.frameStyle,
         placeholderMedia: args.placeholderMedia,
         output: args.output,
       };
@@ -86,6 +92,8 @@ export const scanCommand = Command.make(
           reasoning: Option.getOrUndefined(args.reasoning),
           providerProfile: Option.getOrUndefined(args.providerProfile),
           full: args.full,
+          frame: Option.getOrUndefined(args.frame),
+          frameStyle: Option.getOrUndefined(args.frameStyle),
           placeholderMedia: args.placeholderMedia,
           output: Option.getOrUndefined(args.output),
         },

@@ -2,6 +2,7 @@ import type { ViewportConfig } from "../core/types.js";
 import type { PipelineDefinition } from "../pipeline/types.js";
 import type {
   ResolvedFullPageScrollFix,
+  ResolvedFrame,
   ResolvedPlaceholderMedia,
   ResolvedScanMode,
 } from "./resolve.js";
@@ -15,6 +16,7 @@ export type BuildScanPipelineSpec = {
   readonly provider: string;
   readonly model: string | undefined;
   readonly reasoning: string | undefined;
+  readonly frame: ResolvedFrame | undefined;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
 };
@@ -28,6 +30,7 @@ export function buildScanPipeline(spec: BuildScanPipelineSpec): PipelineDefiniti
       true,
       spec.placeholderMedia,
       spec.fullPageScrollFix,
+      spec.frame,
     );
   }
 
@@ -40,6 +43,7 @@ export function buildScanPipeline(spec: BuildScanPipelineSpec): PipelineDefiniti
       spec.reasoning,
       spec.placeholderMedia,
       spec.fullPageScrollFix,
+      spec.frame,
     );
   }
 
@@ -51,5 +55,6 @@ export function buildScanPipeline(spec: BuildScanPipelineSpec): PipelineDefiniti
     spec.reasoning,
     spec.placeholderMedia,
     spec.fullPageScrollFix,
+    spec.frame,
   );
 }

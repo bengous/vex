@@ -7,6 +7,7 @@
 
 import type {
   DeviceSpec,
+  FrameConfig,
   FullPageScrollFixSpec,
   LoopPreset,
   PlaceholderMediaSpec,
@@ -67,6 +68,11 @@ export type ResolvedFullPageScrollFix = {
 
 export type ResolvedScanMode = "analyze" | "capture-only";
 
+export type ResolvedFrame = {
+  readonly name: "safari-ios";
+  readonly style: "singleshot";
+};
+
 /**
  * Fully resolved scan options ready for pipeline execution.
  */
@@ -79,6 +85,7 @@ export type ResolvedScanOptions = {
   readonly profile: string;
   readonly mode: ResolvedScanMode;
   readonly full: boolean;
+  readonly frame: ResolvedFrame | undefined;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
   readonly outputDir: string;
@@ -152,6 +159,8 @@ export type CommonCliArgs = {
 export type ScanCliArgs = {
   readonly reasoning: Option.Option<string>;
   readonly full: boolean;
+  readonly frame: Option.Option<string>;
+  readonly frameStyle: Option.Option<string>;
 } & CommonCliArgs;
 
 /**
@@ -249,6 +258,27 @@ function normalizeFullPageScrollFix(
       presetSpec.preserveHorizontalOverflow ??
       DEFAULTS.fullPageScrollFix.preserveHorizontalOverflow,
   };
+}
+
+function normalizeFrame(
+  cliFrame: Option.Option<string>,
+  cliFrameStyle: Option.Option<string>,
+  presetFrame: FrameConfig | undefined,
+): ResolvedFrame | undefined {
+  const name = Option.isSome(cliFrame) ? cliFrame.value : presetFrame?.name;
+  if (name === undefined) {
+    return undefined;
+  }
+
+  const style = Option.isSome(cliFrameStyle)
+    ? cliFrameStyle.value
+    : (presetFrame?.style ?? "singleshot");
+
+  if (name !== "safari-ios" || style !== "singleshot") {
+    return undefined;
+  }
+
+  return { name, style };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -547,11 +577,13 @@ Create a config file or remove the --preset flag.`,
 
     const mode = preset?.mode ?? DEFAULTS.mode;
     const full = cliArgs.full || (preset?.full ?? DEFAULTS.full);
+    const frame = normalizeFrame(cliArgs.frame, cliArgs.frameStyle, preset?.frame);
 
     return {
       ...common,
       mode,
       full,
+      frame,
     };
   });
 }

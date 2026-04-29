@@ -155,6 +155,29 @@ describe("captureOnly preset", () => {
     expect(captureConfig(pipeline).withDOM).toBeUndefined();
   });
 
+  it("adds Safari frame as an independent capture artifact", () => {
+    const pipeline = captureOnly(
+      "https://example.com",
+      mobileViewport,
+      true,
+      true,
+      undefined,
+      undefined,
+      {
+        name: "safari-ios",
+        style: "singleshot",
+      },
+    );
+
+    expect(pipeline.outputs).toEqual(["image-with-grid", "safari-frame"]);
+    expect(nodeIds(pipeline)).toEqual(["capture", "safari-frame", "folds", "grid"]);
+    expect(edgeRefs(pipeline)).toEqual([
+      "capture->safari-frame:image",
+      "capture->folds:image",
+      "folds->grid:image",
+    ]);
+  });
+
   describe("artifact lifecycle", () => {
     const tempDirs: string[] = [];
     const server = Bun.serve({

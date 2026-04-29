@@ -37,6 +37,7 @@ describe("ConsoleReporter", () => {
         profile: "minimal",
         mode: "analyze",
         full: false,
+        frame: undefined,
         placeholderMedia: undefined,
         fullPageScrollFix: undefined,
         outputDir: "/tmp/vex-output",

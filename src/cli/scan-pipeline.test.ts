@@ -33,6 +33,7 @@ describe("buildScanPipeline", () => {
       provider: "codex-cli",
       model: "gpt-5.4",
       reasoning: "low",
+      frame: undefined,
       placeholderMedia,
       fullPageScrollFix,
     });
@@ -56,6 +57,7 @@ describe("buildScanPipeline", () => {
       provider: "codex-cli",
       model: "gpt-5.4",
       reasoning: "medium",
+      frame: undefined,
       placeholderMedia,
       fullPageScrollFix,
     });
@@ -81,6 +83,7 @@ describe("buildScanPipeline", () => {
       provider: "ollama",
       model: undefined,
       reasoning: undefined,
+      frame: undefined,
       placeholderMedia: undefined,
       fullPageScrollFix: undefined,
     });
@@ -99,5 +102,30 @@ describe("buildScanPipeline", () => {
       model: undefined,
       reasoning: undefined,
     });
+  });
+
+  test("adds Safari frame node when requested", () => {
+    const pipeline = buildScanPipeline({
+      url: "https://example.com",
+      viewport,
+      mode: "capture-only",
+      full: false,
+      provider: "codex-cli",
+      model: undefined,
+      reasoning: undefined,
+      frame: { name: "safari-ios", style: "singleshot" },
+      placeholderMedia: undefined,
+      fullPageScrollFix: undefined,
+    });
+
+    expect(pipeline.nodes.map((node) => node.id)).toEqual([
+      "capture",
+      "safari-frame",
+      "folds",
+      "grid",
+    ]);
+    expect(pipeline.edges.map((edge) => `${edge.from}->${edge.to}:${edge.output}`)).toContain(
+      "capture->safari-frame:image",
+    );
   });
 });

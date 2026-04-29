@@ -3,7 +3,7 @@
  */
 
 import type { FullPageScrollFixOptions, PlaceholderMediaOptions } from "../core/capture.js";
-import type { ViewportConfig } from "../core/types.js";
+import type { SafariFrameOptions, ViewportConfig } from "../core/types.js";
 import type { PipelineDefinition, PipelineEdge, PipelineNode } from "./types.js";
 
 type CaptureNodeOptions = {
@@ -74,6 +74,16 @@ function gridNode(input: string): PipelineNode {
     operation: "overlay-grid",
     config: { showLabels: true },
     inputs: [input],
+    outputs: ["image"],
+  };
+}
+
+function safariFrameNode(frame: SafariFrameOptions): PipelineNode {
+  return {
+    id: "safari-frame",
+    operation: "overlay-safari-frame",
+    config: frame,
+    inputs: ["image"],
     outputs: ["image"],
   };
 }
@@ -155,17 +165,20 @@ function analysisBaseNodes(
   reasoning?: string,
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
+  safariFrame?: SafariFrameOptions,
 ): PipelineNode[] {
   return [
     domScreenshotCaptureNode(url, viewport, placeholderMedia, fullPageScrollFix),
+    ...(safariFrame !== undefined ? [safariFrameNode(safariFrame)] : []),
     foldsNode(viewport),
     gridNode("image-with-folds"),
     analyzeNode(provider, model, reasoning),
   ];
 }
 
-function analysisBaseEdges(): PipelineEdge[] {
+function analysisBaseEdges(safariFrame?: SafariFrameOptions): PipelineEdge[] {
   return [
+    ...(safariFrame !== undefined ? [edge("capture", "safari-frame", "image")] : []),
     edge("capture", "folds", "image"),
     edge("folds", "grid", "image"),
     edge("grid", "analyze", "image"),
@@ -183,6 +196,7 @@ export function simpleAnalysis(
   reasoning?: string,
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
+  safariFrame?: SafariFrameOptions,
 ): PipelineDefinition {
   return {
     name: "simple-analysis",
@@ -197,8 +211,9 @@ export function simpleAnalysis(
       reasoning,
       placeholderMedia,
       fullPageScrollFix,
+      safariFrame,
     ),
-    edges: analysisBaseEdges(),
+    edges: analysisBaseEdges(safariFrame),
   };
 }
 
@@ -213,6 +228,7 @@ export function fullAnnotation(
   reasoning?: string,
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
+  safariFrame?: SafariFrameOptions,
 ): PipelineDefinition {
   return {
     name: "full-annotation",
@@ -228,12 +244,13 @@ export function fullAnnotation(
         reasoning,
         placeholderMedia,
         fullPageScrollFix,
+        safariFrame,
       ),
       annotateNode(provider),
       renderNode(),
     ],
     edges: [
-      ...analysisBaseEdges(),
+      ...analysisBaseEdges(safariFrame),
       edge("analyze", "annotate", "result"),
       edge("grid", "render", "image"),
       edge("annotate", "render", "toolCalls"),
@@ -292,12 +309,20 @@ export function captureOnly(
   withGrid = true,
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
+  safariFrame?: SafariFrameOptions,
 ): PipelineDefinition {
   const nodes: PipelineNode[] = [
     screenshotCaptureNode(url, viewport, placeholderMedia, fullPageScrollFix),
   ];
   const edges: PipelineEdge[] = [];
   let currentOutput = "image";
+  const outputs: string[] = [];
+
+  if (safariFrame !== undefined) {
+    nodes.push(safariFrameNode(safariFrame));
+    edges.push(edge("capture", "safari-frame", "image"));
+    outputs.push("safari-frame");
+  }
 
   if (withFolds) {
     nodes.push(foldsNode(viewport));
@@ -310,6 +335,7 @@ export function captureOnly(
     edges.push(edge(withFolds ? "folds" : "capture", "grid", "image"));
     currentOutput = "image-with-grid";
   }
+  outputs.unshift(currentOutput);
 
   return {
     name: "capture-only",
@@ -322,7 +348,7 @@ export function captureOnly(
             ? "Capture screenshot with grid"
             : "Capture screenshot without fold lines",
     inputs: ["url", "viewport"],
-    outputs: [currentOutput],
+    outputs,
     nodes,
     edges,
   };

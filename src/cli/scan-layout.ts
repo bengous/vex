@@ -38,6 +38,8 @@ export type AuditManifest = {
   devices: readonly string[];
   mode?: "analyze" | "capture-only";
   full: boolean;
+  frame?: string;
+  frameStyle?: string;
   placeholderMedia: boolean;
   fullPageScrollFix: boolean;
   totalRuns: number;

@@ -22,6 +22,8 @@ const emptyScanArgs: ScanCliArgs = {
   provider: Option.none(),
   model: Option.none(),
   reasoning: Option.none(),
+  frame: Option.none(),
+  frameStyle: Option.none(),
   providerProfile: Option.none(),
   full: false,
   placeholderMedia: false,
@@ -110,7 +112,21 @@ describe("resolveScanOptions", () => {
     expect(result.model).toBeUndefined();
     expect(result.reasoning).toBeUndefined();
     expect(result.full).toBe(false);
+    expect(result.frame).toBeUndefined();
     expect(result.placeholderMedia).toBeUndefined();
+  });
+
+  it("resolves Safari frame CLI options", async () => {
+    const args: ScanCliArgs = {
+      ...emptyScanArgs,
+      url: Option.some("https://example.com"),
+      frame: Option.some("safari-ios"),
+      frameStyle: Option.some("singleshot"),
+    };
+
+    const result = await runEffect(resolveScanOptions(args));
+
+    expect(result.frame).toEqual({ name: "safari-ios", style: "singleshot" });
   });
 
   it("errors when URL is missing", async () => {

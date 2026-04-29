@@ -72,6 +72,13 @@ export type FoldConfig = {
   readonly showLabels: boolean;
 };
 
+export type SafariFrameStyle = "singleshot";
+
+export type SafariFrameOptions = {
+  readonly name: "safari-ios";
+  readonly style: SafariFrameStyle;
+};
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Geometry Types (not in schema)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -411,6 +418,7 @@ export const ARTIFACT_NAMES = {
   annotations: "06-annotations.json",
   annotated: "07-annotated.png",
   diffReport: "08-diff-report.json",
+  safariFrame: "09-safari-frame.png",
 } as const;
 
 export type ArtifactName = keyof typeof ARTIFACT_NAMES;

@@ -28,6 +28,7 @@ import { captureOperation } from "./operations/capture.js";
 import { diffOperation } from "./operations/diff.js";
 import { overlayFoldsOperation } from "./operations/overlay-folds.js";
 import { overlayGridOperation } from "./operations/overlay-grid.js";
+import { overlaySafariFrameOperation } from "./operations/overlay-safari-frame.js";
 import { renderOperation } from "./operations/render.js";
 import {
   createSessionDir,
@@ -87,6 +88,7 @@ const OPERATIONS: Record<string, RuntimeOperation> = {
   capture: toRuntimeOperation(captureOperation),
   "overlay-grid": toRuntimeOperation(overlayGridOperation),
   "overlay-folds": toRuntimeOperation(overlayFoldsOperation),
+  "overlay-safari-frame": toRuntimeOperation(overlaySafariFrameOperation),
   analyze: toRuntimeOperation(analyzeOperation),
   annotate: toRuntimeOperation(annotateOperation),
   render: toRuntimeOperation(renderOperation),
