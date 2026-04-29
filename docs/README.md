@@ -12,10 +12,10 @@ The root [README](../README.md) explains the product: VEX exists to show where d
 - [Mobile Captures](MOBILE-CAPTURES.md) - use phone presets, folds, and sticky-aware fold markers.
 - [AI Analysis](AI-ANALYSIS.md) - understand the optional AI direction without treating it as the only workflow.
 
-## Technical Docs
+## Technical Notes
 
-- [Technical Docs Map](TECHNICAL-DOCS.md) - where agents and maintainers should look for architecture, implementation notes, and research logs.
+Technical architecture and development guidance live in [AI.md](../AI.md). Durable Effect patterns live in [src/docs/EFFECT-PATTERNS.md](../src/docs/EFFECT-PATTERNS.md).
 
 ## Writing Rule
 
-Human docs explain outcomes, workflows, and how to read results. They should not become stack documentation. If a section mostly explains internal code, move it to the technical docs.
+Human docs explain outcomes, workflows, and how to read results. They should not become stack documentation. If a section mostly explains internal code, move it to the technical notes.

@@ -55,5 +55,3 @@ If you compare VEX with a physical iPhone screenshot, remember:
 - the physical screenshot includes browser UI;
 - `frame: "safari-ios"` creates a separate framed artifact for first-screen comparison;
 - fold markers on the default artifact should still be based on the page viewport.
-
-For implementation details and source research, see [Mobile Capture Research](../src/docs/MOBILE-CAPTURE-RESEARCH.md).

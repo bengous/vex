@@ -99,7 +99,6 @@ For now, treat AI analysis as optional and experimental. The capture workflow is
 - [Reading Audit Output](docs/READING-AUDIT-OUTPUT.md)
 - [Mobile Captures](docs/MOBILE-CAPTURES.md)
 - [AI Analysis](docs/AI-ANALYSIS.md)
-- [Technical Docs Map](docs/TECHNICAL-DOCS.md)
 
 Technical architecture and development guidance live in [AI.md](AI.md).
 
