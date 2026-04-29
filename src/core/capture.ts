@@ -624,14 +624,14 @@ async function captureDOMSnapshot(
   );
 
   const html = await page.content();
-  const domElements: DOMElement[] = elements.map((el) =>
-    Object.assign({ tagName: el.tagName }, el.id !== undefined ? { id: el.id } : {}, {
-      classes: el.classes,
-      boundingBox: el.boundingBox as BoundingBox,
-      computedStyles: el.computedStyles,
-      attributes: el.attributes,
-    }),
-  );
+  const domElements: DOMElement[] = elements.map((el) => ({
+    tagName: el.tagName,
+    ...(el.id !== undefined ? { id: el.id } : {}),
+    classes: el.classes,
+    boundingBox: el.boundingBox as BoundingBox,
+    computedStyles: el.computedStyles,
+    attributes: el.attributes,
+  }));
 
   return {
     url,
@@ -691,6 +691,9 @@ async function runCapture(
     });
 
     await cleanupOverlays(page);
+    // Detect repeated sticky/fixed chrome before fullPageScrollFix mutates the
+    // page. Internal-scroll apps can lose their real sticky layout once the
+    // capture fix expands containers for a synthetic full-page screenshot.
     const foldOcclusionMetrics =
       foldOcclusion?.enabled === true
         ? await collectFoldOcclusionMetrics(page, foldOcclusion)

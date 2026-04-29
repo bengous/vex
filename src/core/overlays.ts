@@ -265,6 +265,8 @@ export function calculateFoldPositions(options: {
 }): readonly FoldLinePosition[] {
   const cssViewportHeight = options.cssViewportHeight ?? options.viewportHeight;
   const scale = options.viewportHeight / cssViewportHeight;
+  // Fold 1 stays at the raw viewport boundary. If sticky/fixed page chrome
+  // repeats while scrolling, later folds advance by the usable page area.
   const cssStep = options.foldOcclusion?.usableViewportHeight ?? cssViewportHeight;
   const positions: FoldLinePosition[] = [];
 

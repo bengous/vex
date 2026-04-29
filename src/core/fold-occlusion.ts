@@ -23,6 +23,10 @@ type DetectionOptions = {
   readonly sampleScrolls?: readonly number[];
 };
 
+// Browser chrome is outside Playwright screenshots, but fixed/sticky page UI is
+// part of the captured page. The first fold remains the raw viewport height;
+// later folds advance by the viewport height minus repeated top/bottom
+// occlusion.
 function mergeIntervals(intervals: readonly EdgeInterval[]): readonly EdgeInterval[] {
   const sorted = [...intervals].toSorted((a, b) => a.start - b.start);
   const merged: EdgeInterval[] = [];
@@ -48,6 +52,8 @@ function computeEdgeOcclusion(
   viewportHeight: number,
   minHeight: number,
 ): number {
+  // Multiple detected regions can overlap, for example a sticky header and a
+  // sticky child inside it. Merging intervals prevents double-counting them.
   const intervals = regions
     .filter((region) => region.edge === edge)
     .map(
@@ -158,6 +164,9 @@ async function detectFoldOcclusionRegions(
     const regions: DetectedRegion[] = [];
 
     try {
+      // Keep the zero-scroll sample: apps with internal scroll containers can
+      // report window.scrollY as 0 even after scroll attempts, but their sticky
+      // chrome still occludes repeated visual folds.
       for (const targetScrollY of sampleScrolls) {
         window.scrollTo(originalX, targetScrollY);
         await waitForFrame();

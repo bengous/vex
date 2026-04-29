@@ -76,6 +76,9 @@ export type FoldOcclusionMode = "auto";
 
 export type FoldOcclusionEdge = "top" | "bottom";
 
+/**
+ * Fixed/sticky page UI detected at a viewport edge while measuring fold steps.
+ */
 export type FoldOcclusionRegion = {
   readonly selector: string;
   readonly tagName: string;
@@ -88,6 +91,9 @@ export type FoldOcclusionRegion = {
   readonly height: number;
 };
 
+/**
+ * Repeated viewport occlusion used to position fold lines after the first fold.
+ */
 export type FoldOcclusionMetrics = {
   readonly mode: FoldOcclusionMode;
   readonly top: number;
@@ -96,6 +102,9 @@ export type FoldOcclusionMetrics = {
   readonly regions: readonly FoldOcclusionRegion[];
 };
 
+/**
+ * Capture-time options for sticky/fixed fold occlusion detection.
+ */
 export type FoldOcclusionOptions = {
   readonly enabled: true;
   readonly mode: FoldOcclusionMode;

@@ -8,59 +8,61 @@
  *   vex scan <url> --preset <name>
  *   vex loop <url> --preset <name> --project <path>
  */
-import { defineConfig } from './src/config/index.js';
+import { defineConfig } from "./src/config/index.js";
 
 export default defineConfig({
   // Required: where to save session output
-  outputDir: 'vex-output',
+  outputDir: "vex-output",
 
   // Scan command presets
   scanPresets: {
     // Quick development testing (low reasoning, fast)
     quick: {
-      devices: 'desktop-b3ngous-arch', // Your 1440x1248 setup
+      devices: "desktop-b3ngous-arch", // Your 1440x1248 setup
       provider: {
-        name: 'codex-cli',
-        model: 'gpt-5.4',
-        reasoning: 'low',
+        name: "codex-cli",
+        model: "gpt-5.4",
+        reasoning: "low",
       },
       full: false,
     },
 
     // Full dev test (high reasoning, annotated) - ACCEPTANCE TEST PRESET
-    'dev-full': {
-      devices: 'desktop-b3ngous-arch', // Your 1440x1248 setup
+    "dev-full": {
+      devices: "desktop-b3ngous-arch", // Your 1440x1248 setup
       provider: {
-        name: 'codex-cli',
-        model: 'gpt-5.4',
-        reasoning: 'high',
+        name: "codex-cli",
+        model: "gpt-5.4",
+        reasoning: "high",
       },
       full: true,
     },
 
     // Mobile quick check
-    'quick-mobile': {
-      devices: 'iphone-15-pro',
+    "quick-mobile": {
+      devices: "iphone-15-pro",
       provider: {
-        name: 'codex-cli',
-        model: 'gpt-5.4',
-        reasoning: 'low',
+        name: "codex-cli",
+        model: "gpt-5.4",
+        reasoning: "low",
       },
       full: false,
     },
 
     // Capture only (no model/API calls, includes folds + grid overlays)
-    'capture-only': {
-      devices: 'desktop-1920',
-      mode: 'capture-only',
+    "capture-only": {
+      devices: "desktop-1920",
+      mode: "capture-only",
+      // Optional: adjust later fold lines for repeated sticky/fixed page chrome.
+      // foldOcclusion: true,
     },
 
     // Responsive audit (multiple devices)
     responsive: {
-      devices: ['desktop-1920', 'iphone-15-pro', 'ipad-pro-11'],
+      devices: ["desktop-1920", "iphone-15-pro", "ipad-pro-11"],
       provider: {
-        name: 'claude-cli',
-        model: 'claude-sonnet-4-20250514',
+        name: "claude-cli",
+        model: "claude-sonnet-4-20250514",
       },
       full: true,
       placeholderMedia: true,
@@ -69,13 +71,13 @@ export default defineConfig({
     },
 
     // Batch scan multiple pages
-    'site-pages': {
-      urls: ['https://example.com/', 'https://example.com/about', 'https://example.com/contact'],
-      devices: ['desktop-1920', 'iphone-15-pro'],
+    "site-pages": {
+      urls: ["https://example.com/", "https://example.com/about", "https://example.com/contact"],
+      devices: ["desktop-1920", "iphone-15-pro"],
       provider: {
-        name: 'codex-cli',
-        model: 'gpt-5.4',
-        reasoning: 'low',
+        name: "codex-cli",
+        model: "gpt-5.4",
+        reasoning: "low",
       },
     },
   },
@@ -84,26 +86,26 @@ export default defineConfig({
   loopPresets: {
     // Safe testing (no code changes)
     safe: {
-      devices: 'desktop-1920',
+      devices: "desktop-1920",
       provider: {
-        name: 'codex-cli',
-        model: 'gpt-5.4',
-        reasoning: 'low',
+        name: "codex-cli",
+        model: "gpt-5.4",
+        reasoning: "low",
       },
       maxIterations: 3,
-      autoFix: 'none',
+      autoFix: "none",
       dryRun: true,
     },
 
     // Aggressive fixing
     aggressive: {
-      devices: 'desktop-1920',
+      devices: "desktop-1920",
       provider: {
-        name: 'claude-cli',
-        model: 'claude-sonnet-4-20250514',
+        name: "claude-cli",
+        model: "claude-sonnet-4-20250514",
       },
       maxIterations: 10,
-      autoFix: 'medium',
+      autoFix: "medium",
       dryRun: false,
     },
   },
