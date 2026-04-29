@@ -14,6 +14,7 @@ import { listDevices } from "../../core/devices.js";
 import { runScanAudit } from "../audit-runner.js";
 import {
   deviceOption,
+  foldOcclusionOption,
   frameOption,
   frameStyleOption,
   fullOption,
@@ -54,6 +55,7 @@ export const scanCommand = Command.make(
     full: fullOption,
     frame: frameOption,
     frameStyle: frameStyleOption,
+    foldOcclusion: foldOcclusionOption,
     placeholderMedia: placeholderMediaOption,
     output: outputOption,
     listDevices: listDevicesOption,
@@ -76,6 +78,7 @@ export const scanCommand = Command.make(
         full: args.full,
         frame: args.frame,
         frameStyle: args.frameStyle,
+        foldOcclusion: args.foldOcclusion,
         placeholderMedia: args.placeholderMedia,
         output: args.output,
       };
@@ -94,6 +97,7 @@ export const scanCommand = Command.make(
           full: args.full,
           frame: Option.getOrUndefined(args.frame),
           frameStyle: Option.getOrUndefined(args.frameStyle),
+          foldOcclusion: Option.getOrUndefined(args.foldOcclusion),
           placeholderMedia: args.placeholderMedia,
           output: Option.getOrUndefined(args.output),
         },

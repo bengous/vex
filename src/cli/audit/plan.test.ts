@@ -14,6 +14,7 @@ const resolved = (overrides: Partial<ResolvedScanOptions> = {}): ResolvedScanOpt
   frame: undefined,
   placeholderMedia: undefined,
   fullPageScrollFix: undefined,
+  foldOcclusion: undefined,
   outputDir: "/tmp/vex-output",
   ...overrides,
 });

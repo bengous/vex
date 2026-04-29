@@ -31,6 +31,7 @@ export const EffectPipelineRunner: PipelineRunner = {
         frame: resolved.frame,
         placeholderMedia: resolved.placeholderMedia,
         fullPageScrollFix: resolved.fullPageScrollFix,
+        foldOcclusion: resolved.foldOcclusion,
       });
 
       const exit = yield* Effect.either(

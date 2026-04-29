@@ -3,7 +3,7 @@
  */
 
 import type { FullPageScrollFixOptions, PlaceholderMediaOptions } from "../core/capture.js";
-import type { SafariFrameOptions, ViewportConfig } from "../core/types.js";
+import type { FoldOcclusionOptions, SafariFrameOptions, ViewportConfig } from "../core/types.js";
 import type { PipelineDefinition, PipelineEdge, PipelineNode } from "./types.js";
 
 type CaptureNodeOptions = {
@@ -15,12 +15,14 @@ type CaptureNodeOptions = {
   readonly includeCaptureOptions?: true | undefined;
   readonly placeholderMedia?: PlaceholderMediaOptions | undefined;
   readonly fullPageScrollFix?: FullPageScrollFixOptions | undefined;
+  readonly foldOcclusion?: FoldOcclusionOptions | undefined;
 };
 
 type CaptureNodeConfig = Record<string, unknown> & {
   withDOM?: true;
   placeholderMedia?: PlaceholderMediaOptions;
   fullPageScrollFix?: FullPageScrollFixOptions;
+  foldOcclusion?: FoldOcclusionOptions;
 };
 
 function edge(from: string, to: string, output: string, input?: string): PipelineEdge {
@@ -46,6 +48,9 @@ function captureNode(options: CaptureNodeOptions): PipelineNode {
     }
     if (options.fullPageScrollFix !== undefined) {
       config.fullPageScrollFix = options.fullPageScrollFix;
+    }
+    if (options.foldOcclusion !== undefined) {
+      config.foldOcclusion = options.foldOcclusion;
     }
   }
 
@@ -127,6 +132,7 @@ function screenshotCaptureNode(
   viewport: ViewportConfig,
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
+  foldOcclusion?: FoldOcclusionOptions,
 ): PipelineNode {
   return captureNode({
     id: "capture",
@@ -136,6 +142,7 @@ function screenshotCaptureNode(
     includeCaptureOptions: true,
     placeholderMedia,
     fullPageScrollFix,
+    foldOcclusion,
   });
 }
 
@@ -144,6 +151,7 @@ function domScreenshotCaptureNode(
   viewport: ViewportConfig,
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
+  foldOcclusion?: FoldOcclusionOptions,
 ): PipelineNode {
   return captureNode({
     id: "capture",
@@ -154,6 +162,7 @@ function domScreenshotCaptureNode(
     includeCaptureOptions: true,
     placeholderMedia,
     fullPageScrollFix,
+    foldOcclusion,
   });
 }
 
@@ -166,9 +175,10 @@ function analysisBaseNodes(
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
   safariFrame?: SafariFrameOptions,
+  foldOcclusion?: FoldOcclusionOptions,
 ): PipelineNode[] {
   return [
-    domScreenshotCaptureNode(url, viewport, placeholderMedia, fullPageScrollFix),
+    domScreenshotCaptureNode(url, viewport, placeholderMedia, fullPageScrollFix, foldOcclusion),
     ...(safariFrame !== undefined ? [safariFrameNode(safariFrame)] : []),
     foldsNode(viewport),
     gridNode("image-with-folds"),
@@ -197,6 +207,7 @@ export function simpleAnalysis(
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
   safariFrame?: SafariFrameOptions,
+  foldOcclusion?: FoldOcclusionOptions,
 ): PipelineDefinition {
   return {
     name: "simple-analysis",
@@ -212,6 +223,7 @@ export function simpleAnalysis(
       placeholderMedia,
       fullPageScrollFix,
       safariFrame,
+      foldOcclusion,
     ),
     edges: analysisBaseEdges(safariFrame),
   };
@@ -229,6 +241,7 @@ export function fullAnnotation(
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
   safariFrame?: SafariFrameOptions,
+  foldOcclusion?: FoldOcclusionOptions,
 ): PipelineDefinition {
   return {
     name: "full-annotation",
@@ -245,6 +258,7 @@ export function fullAnnotation(
         placeholderMedia,
         fullPageScrollFix,
         safariFrame,
+        foldOcclusion,
       ),
       annotateNode(provider),
       renderNode(),
@@ -310,9 +324,10 @@ export function captureOnly(
   placeholderMedia?: PlaceholderMediaOptions,
   fullPageScrollFix?: FullPageScrollFixOptions,
   safariFrame?: SafariFrameOptions,
+  foldOcclusion?: FoldOcclusionOptions,
 ): PipelineDefinition {
   const nodes: PipelineNode[] = [
-    screenshotCaptureNode(url, viewport, placeholderMedia, fullPageScrollFix),
+    screenshotCaptureNode(url, viewport, placeholderMedia, fullPageScrollFix, foldOcclusion),
   ];
   const edges: PipelineEdge[] = [];
   let currentOutput = "image";

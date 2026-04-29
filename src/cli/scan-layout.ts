@@ -40,6 +40,7 @@ export type AuditManifest = {
   full: boolean;
   frame?: string;
   frameStyle?: string;
+  foldOcclusion: boolean;
   placeholderMedia: boolean;
   fullPageScrollFix: boolean;
   totalRuns: number;

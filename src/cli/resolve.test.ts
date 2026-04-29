@@ -24,6 +24,7 @@ const emptyScanArgs: ScanCliArgs = {
   reasoning: Option.none(),
   frame: Option.none(),
   frameStyle: Option.none(),
+  foldOcclusion: Option.none(),
   providerProfile: Option.none(),
   full: false,
   placeholderMedia: false,
@@ -127,6 +128,18 @@ describe("resolveScanOptions", () => {
     const result = await runEffect(resolveScanOptions(args));
 
     expect(result.frame).toEqual({ name: "safari-ios", style: "singleshot" });
+  });
+
+  it("resolves fold occlusion from CLI", async () => {
+    const args: ScanCliArgs = {
+      ...emptyScanArgs,
+      url: Option.some("https://example.com"),
+      foldOcclusion: Option.some("auto"),
+    };
+
+    const result = await runEffect(resolveScanOptions(args));
+
+    expect(result.foldOcclusion).toEqual({ enabled: true, mode: "auto", minHeight: 24 });
   });
 
   it("errors when URL is missing", async () => {
@@ -243,6 +256,43 @@ describe("resolveScanOptions", () => {
         selectors: ["#root-scroll"],
         settleMs: 750,
         preserveHorizontalOverflow: true,
+      });
+    } finally {
+      rmSync(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("resolves foldOcclusion from preset config", async () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), "vex-resolve-"));
+    try {
+      writeFileSync(
+        join(projectRoot, "vex.config.ts"),
+        `export default {
+  outputDir: 'vex-output',
+  scanPresets: {
+    capture: {
+      urls: ['https://example.com'],
+      foldOcclusion: {
+        mode: 'auto',
+        minHeight: 32,
+        sampleScrolls: [740, 1480]
+      }
+    }
+  }
+};`,
+      );
+
+      const args: ScanCliArgs = {
+        ...emptyScanArgs,
+        preset: Option.some("capture"),
+      };
+
+      const result = await runEffect(resolveScanOptions(args, projectRoot));
+      expect(result.foldOcclusion).toEqual({
+        enabled: true,
+        mode: "auto",
+        minHeight: 32,
+        sampleScrolls: [740, 1480],
       });
     } finally {
       rmSync(projectRoot, { recursive: true, force: true });

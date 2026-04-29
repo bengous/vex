@@ -11,6 +11,7 @@ import type {
 import type {
   BrowserType,
   DOMSnapshotArtifact,
+  FoldOcclusionOptions,
   ImageArtifact,
   ViewportConfig,
 } from "../../core/types.js";
@@ -84,6 +85,8 @@ export type CaptureConfig = {
   readonly placeholderMedia?: PlaceholderMediaOptions;
   /** Expand internal scroll container(s) before fullPage capture */
   readonly fullPageScrollFix?: FullPageScrollFixOptions;
+  /** Detect fixed/sticky viewport occlusion for fold line spacing */
+  readonly foldOcclusion?: FoldOcclusionOptions;
 };
 
 export type CaptureOutput = {
@@ -108,7 +111,14 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
   },
 
   execute: (_, config, ctx) => {
-    const { url, viewport, withDOM = false, placeholderMedia, fullPageScrollFix } = config;
+    const {
+      url,
+      viewport,
+      withDOM = false,
+      placeholderMedia,
+      fullPageScrollFix,
+      foldOcclusion,
+    } = config;
     const browserType = getBrowserTypeForViewport(viewport);
 
     ctx.logger.info(`Capturing ${url} at ${viewport.width}x${viewport.height} via ${browserType}`);
@@ -155,6 +165,7 @@ export const captureOperation: Operation<void, CaptureOutput, CaptureConfig> = {
                 filename: "01-screenshot.png",
                 ...(placeholderMedia !== undefined ? { placeholderMedia } : {}),
                 ...(fullPageScrollFix !== undefined ? { fullPageScrollFix } : {}),
+                ...(foldOcclusion !== undefined ? { foldOcclusion } : {}),
               }),
             catch: (e) =>
               new OperationError({

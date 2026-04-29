@@ -15,6 +15,7 @@ const baseManifest: AuditManifest = {
   devices: ["desktop-1920"],
   mode: "analyze",
   full: false,
+  foldOcclusion: false,
   placeholderMedia: false,
   fullPageScrollFix: false,
   totalRuns: 1,

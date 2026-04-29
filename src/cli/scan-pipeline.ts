@@ -1,4 +1,4 @@
-import type { SafariFrameOptions, ViewportConfig } from "../core/types.js";
+import type { FoldOcclusionOptions, SafariFrameOptions, ViewportConfig } from "../core/types.js";
 import type { PipelineDefinition } from "../pipeline/types.js";
 import type {
   ResolvedFullPageScrollFix,
@@ -18,6 +18,7 @@ export type BuildScanPipelineSpec = {
   readonly frame: SafariFrameOptions | undefined;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
+  readonly foldOcclusion: FoldOcclusionOptions | undefined;
 };
 
 export function buildScanPipeline(spec: BuildScanPipelineSpec): PipelineDefinition {
@@ -30,6 +31,7 @@ export function buildScanPipeline(spec: BuildScanPipelineSpec): PipelineDefiniti
       spec.placeholderMedia,
       spec.fullPageScrollFix,
       spec.frame,
+      spec.foldOcclusion,
     );
   }
 
@@ -43,6 +45,7 @@ export function buildScanPipeline(spec: BuildScanPipelineSpec): PipelineDefiniti
       spec.placeholderMedia,
       spec.fullPageScrollFix,
       spec.frame,
+      spec.foldOcclusion,
     );
   }
 
@@ -55,5 +58,6 @@ export function buildScanPipeline(spec: BuildScanPipelineSpec): PipelineDefiniti
     spec.placeholderMedia,
     spec.fullPageScrollFix,
     spec.frame,
+    spec.foldOcclusion,
   );
 }

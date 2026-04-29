@@ -67,6 +67,9 @@ export const ConsoleReporter: AuditReporter = {
     if (resolved.fullPageScrollFix !== undefined) {
       console.log("Full-page scroll fix: enabled");
     }
+    if (resolved.foldOcclusion !== undefined) {
+      console.log("Fold occlusion: auto");
+    }
     console.log(`Output: ${spec.viewportDir}`);
     console.log("");
   },

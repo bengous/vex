@@ -8,6 +8,8 @@
 import type {
   DeviceSpec,
   FrameConfig,
+  FoldOcclusionMode,
+  FoldOcclusionSpec,
   FrameName,
   FrameStyle,
   FullPageScrollFixSpec,
@@ -17,7 +19,7 @@ import type {
   ScanPreset,
   VexConfig,
 } from "../config/schema.js";
-import type { SafariFrameOptions } from "../core/types.js";
+import type { FoldOcclusionOptions, SafariFrameOptions } from "../core/types.js";
 import type { FileSystem } from "@effect/platform";
 import { Effect, Option } from "effect";
 import {
@@ -69,6 +71,8 @@ export type ResolvedFullPageScrollFix = {
   readonly preserveHorizontalOverflow: boolean;
 };
 
+export type ResolvedFoldOcclusion = FoldOcclusionOptions;
+
 export type ResolvedScanMode = "analyze" | "capture-only";
 
 /**
@@ -86,6 +90,7 @@ export type ResolvedScanOptions = {
   readonly frame: SafariFrameOptions | undefined;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
+  readonly foldOcclusion: ResolvedFoldOcclusion | undefined;
   readonly outputDir: string;
 };
 
@@ -116,6 +121,7 @@ export type CommonPresetFields = {
   readonly provider?: ProviderSpec | undefined;
   readonly placeholderMedia?: PlaceholderMediaSpec | undefined;
   readonly fullPageScrollFix?: FullPageScrollFixSpec | undefined;
+  readonly foldOcclusion?: FoldOcclusionSpec | undefined;
 };
 
 /**
@@ -130,6 +136,7 @@ export type ResolvedCommonOptions = {
   readonly profile: string;
   readonly placeholderMedia: ResolvedPlaceholderMedia | undefined;
   readonly fullPageScrollFix: ResolvedFullPageScrollFix | undefined;
+  readonly foldOcclusion: ResolvedFoldOcclusion | undefined;
   readonly outputDir: string;
 };
 
@@ -159,6 +166,7 @@ export type ScanCliArgs = {
   readonly full: boolean;
   readonly frame: Option.Option<FrameName>;
   readonly frameStyle: Option.Option<FrameStyle>;
+  readonly foldOcclusion: Option.Option<FoldOcclusionMode>;
 } & CommonCliArgs;
 
 /**
@@ -192,6 +200,10 @@ const DEFAULTS = {
     selectors: ["#page-scroll-container"] as readonly string[],
     settleMs: 500,
     preserveHorizontalOverflow: false,
+  },
+  foldOcclusion: {
+    mode: "auto" as const,
+    minHeight: 24,
   },
 };
 
@@ -273,6 +285,42 @@ function normalizeFrame(
     : (presetFrame?.style ?? "singleshot");
 
   return { name, style };
+}
+
+function normalizeFoldOcclusion(
+  cliMode: Option.Option<FoldOcclusionMode>,
+  presetSpec: FoldOcclusionSpec | undefined,
+): ResolvedFoldOcclusion | undefined {
+  if (Option.isSome(cliMode)) {
+    return {
+      enabled: true,
+      mode: cliMode.value,
+      minHeight: DEFAULTS.foldOcclusion.minHeight,
+    };
+  }
+
+  if (presetSpec === undefined || presetSpec === false) {
+    return undefined;
+  }
+
+  if (presetSpec === true) {
+    return { enabled: true, ...DEFAULTS.foldOcclusion };
+  }
+
+  if (typeof presetSpec === "string") {
+    return {
+      enabled: true,
+      mode: presetSpec,
+      minHeight: DEFAULTS.foldOcclusion.minHeight,
+    };
+  }
+
+  return {
+    enabled: true,
+    mode: presetSpec.mode ?? DEFAULTS.foldOcclusion.mode,
+    minHeight: presetSpec.minHeight ?? DEFAULTS.foldOcclusion.minHeight,
+    ...(presetSpec.sampleScrolls !== undefined ? { sampleScrolls: presetSpec.sampleScrolls } : {}),
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -520,6 +568,9 @@ Known: ${providerMeta.knownModels.join(", ")}`,
       preset?.placeholderMedia,
     );
     const fullPageScrollFix = normalizeFullPageScrollFix(preset?.fullPageScrollFix);
+    const foldOcclusion = hasReasoning(cliArgs)
+      ? normalizeFoldOcclusion(cliArgs.foldOcclusion, preset?.foldOcclusion)
+      : undefined;
     const outputDir = yield* resolveOutputDir(cliArgs.output, config);
 
     return {
@@ -531,6 +582,7 @@ Known: ${providerMeta.knownModels.join(", ")}`,
       profile,
       placeholderMedia,
       fullPageScrollFix,
+      foldOcclusion,
       outputDir,
     };
   });
@@ -608,12 +660,11 @@ Create a config file or remove the --preset flag.`,
       preset = yield* getLoopPreset(config, cliArgs.preset.value);
     }
 
-    const { reasoning: _reasoning, ...commonBase } = yield* resolveCommonOptions(
-      cliArgs,
-      preset,
-      config,
-      Option.getOrUndefined(cliArgs.preset),
-    );
+    const {
+      reasoning: _reasoning,
+      foldOcclusion: _foldOcclusion,
+      ...commonBase
+    } = yield* resolveCommonOptions(cliArgs, preset, config, Option.getOrUndefined(cliArgs.preset));
 
     const maxIterations = Option.isSome(cliArgs.maxIterations)
       ? cliArgs.maxIterations.value

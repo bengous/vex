@@ -87,6 +87,9 @@ export const FrameConfig = S.Struct({
 });
 export type FrameConfig = S.Schema.Type<typeof FrameConfig>;
 
+export const FoldOcclusionMode = S.Literal("auto");
+export type FoldOcclusionMode = S.Schema.Type<typeof FoldOcclusionMode>;
+
 /**
  * Positive integer (for maxIterations, etc.).
  */
@@ -147,6 +150,19 @@ export type FullPageScrollFixConfig = S.Schema.Type<typeof FullPageScrollFixConf
  */
 export const FullPageScrollFixSpec = S.Union(S.Boolean, FullPageScrollFixConfig);
 export type FullPageScrollFixSpec = S.Schema.Type<typeof FullPageScrollFixSpec>;
+
+export const FoldOcclusionConfig = S.Struct({
+  /** Detection mode. Only automatic DOM detection is supported for now. */
+  mode: S.optional(FoldOcclusionMode),
+  /** Ignore detected fixed/sticky regions smaller than this CSS-pixel height. */
+  minHeight: S.optional(PositiveInt),
+  /** CSS scroll offsets sampled when looking for active sticky regions. */
+  sampleScrolls: S.optional(S.Array(S.Number.pipe(S.nonNegative()))),
+});
+export type FoldOcclusionConfig = S.Schema.Type<typeof FoldOcclusionConfig>;
+
+export const FoldOcclusionSpec = S.Union(S.Boolean, FoldOcclusionMode, FoldOcclusionConfig);
+export type FoldOcclusionSpec = S.Schema.Type<typeof FoldOcclusionSpec>;
 
 /**
  * Profile name: alphanumeric with hyphens/underscores, no colons.
@@ -231,6 +247,8 @@ export const ScanPreset = S.Struct({
   placeholderMedia: S.optional(PlaceholderMediaSpec),
   /** Expand internal scroll container(s) for true full-page screenshots */
   fullPageScrollFix: S.optional(FullPageScrollFixSpec),
+  /** Detect sticky/fixed top-bottom occlusion and adjust later fold markers. */
+  foldOcclusion: S.optional(FoldOcclusionSpec),
   /** Optional browser chrome frame artifact. */
   frame: S.optional(FrameConfig),
 });

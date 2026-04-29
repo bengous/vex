@@ -1,4 +1,4 @@
-import type { FrameName, FrameStyle } from "../../config/schema.js";
+import type { FoldOcclusionMode, FrameName, FrameStyle } from "../../config/schema.js";
 import type { ResolvedScanOptions } from "../resolve.js";
 
 export type ScanAuditCliMetadata = {
@@ -11,6 +11,7 @@ export type ScanAuditCliMetadata = {
   readonly full: boolean;
   readonly frame: FrameName | undefined;
   readonly frameStyle: FrameStyle | undefined;
+  readonly foldOcclusion: FoldOcclusionMode | undefined;
   readonly placeholderMedia: boolean;
   readonly output: string | undefined;
 };

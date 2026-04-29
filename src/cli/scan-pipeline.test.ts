@@ -36,6 +36,7 @@ describe("buildScanPipeline", () => {
       frame: undefined,
       placeholderMedia,
       fullPageScrollFix,
+      foldOcclusion: undefined,
     });
 
     expect(pipeline.name).toBe("capture-only");
@@ -60,6 +61,7 @@ describe("buildScanPipeline", () => {
       frame: undefined,
       placeholderMedia,
       fullPageScrollFix,
+      foldOcclusion: undefined,
     });
 
     expect(pipeline.name).toBe("simple-analysis");
@@ -86,6 +88,7 @@ describe("buildScanPipeline", () => {
       frame: undefined,
       placeholderMedia: undefined,
       fullPageScrollFix: undefined,
+      foldOcclusion: undefined,
     });
 
     expect(pipeline.name).toBe("full-annotation");
@@ -116,6 +119,7 @@ describe("buildScanPipeline", () => {
       frame: { name: "safari-ios", style: "singleshot" },
       placeholderMedia: undefined,
       fullPageScrollFix: undefined,
+      foldOcclusion: undefined,
     });
 
     expect(pipeline.nodes.map((node) => node.id)).toEqual([
@@ -127,5 +131,26 @@ describe("buildScanPipeline", () => {
     expect(pipeline.edges.map((edge) => `${edge.from}->${edge.to}:${edge.output}`)).toContain(
       "capture->safari-frame:image",
     );
+  });
+
+  test("passes fold occlusion to the capture node", () => {
+    const foldOcclusion = { enabled: true as const, mode: "auto" as const, minHeight: 24 };
+    const pipeline = buildScanPipeline({
+      url: "https://example.com",
+      viewport,
+      mode: "capture-only",
+      full: false,
+      provider: "codex-cli",
+      model: undefined,
+      reasoning: undefined,
+      frame: undefined,
+      placeholderMedia: undefined,
+      fullPageScrollFix: undefined,
+      foldOcclusion,
+    });
+
+    expect(pipeline.nodes.find((node) => node.id === "capture")?.config).toMatchObject({
+      foldOcclusion,
+    });
   });
 });

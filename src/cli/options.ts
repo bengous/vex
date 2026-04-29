@@ -9,6 +9,7 @@ import { Options } from "@effect/cli";
 import {
   AutoFixThreshold,
   DeviceId,
+  FoldOcclusionMode,
   FrameName,
   FrameStyle,
   PositiveInt,
@@ -114,6 +115,14 @@ export const frameOption = Options.text("frame").pipe(
 export const frameStyleOption = Options.text("frame-style").pipe(
   Options.withSchema(FrameStyle),
   Options.withDescription("Browser chrome frame style (singleshot)"),
+  Options.optional,
+);
+
+export const foldOcclusionOption = Options.text("fold-occlusion").pipe(
+  Options.withSchema(FoldOcclusionMode),
+  Options.withDescription(
+    "Adjust later fold lines for detected fixed/sticky viewport chrome (auto)",
+  ),
   Options.optional,
 );
 
