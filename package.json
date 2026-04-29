@@ -56,5 +56,6 @@
     "effect": "^3.19.15",
     "sharp": "^0.34.5",
     "@effect/platform": "0.96.0"
-  }
+  },
+  "license": "MIT"
 }
