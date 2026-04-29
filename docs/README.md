@@ -2,7 +2,7 @@
 
 These docs are organized around what a person wants to do with VEX.
 
-The root [README](../README.md) explains the product. This folder explains the main workflows. Technical architecture and implementation notes live elsewhere.
+The root [README](../README.md) explains the product: VEX exists to show where device viewports cut a page, so broken responsive folds are easier to see and fix. This folder explains the main workflows. Technical architecture and implementation notes live elsewhere.
 
 ## Human Docs
 

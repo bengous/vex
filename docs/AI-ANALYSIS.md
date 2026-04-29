@@ -2,13 +2,21 @@
 
 AI analysis is optional in VEX.
 
-The most exercised workflow today is capture-only: collect screenshots, fold markers, grids, and audit folders. AI-assisted review is the product direction, but it should not be treated as the only way to use VEX.
+The most exercised workflow today is capture-only: collect screenshots, fold markers, grids, and audit folders. AI-assisted review is the product direction, especially for detecting suspicious viewport cuts automatically, but it should not be treated as the only way to use VEX.
 
 ## When To Use It
 
 Use AI analysis when you want a model to inspect visual evidence and produce issue candidates.
 
 Do not use it as a substitute for checking the screenshot yourself. Treat model output as review assistance, not truth.
+
+Good future targets for AI review:
+
+- a fold cuts through a CTA;
+- a text block is split in a way that harms reading;
+- a sticky header consumes too much repeated viewport space;
+- a section rhythm works on one phone size but breaks on another;
+- a responsive tweak improves one device and regresses another.
 
 ## Basic Scan
 

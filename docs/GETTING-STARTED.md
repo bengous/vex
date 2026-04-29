@@ -1,6 +1,6 @@
 # Getting Started
 
-VEX is useful as soon as it can produce visual evidence: a screenshot, fold markers, and a grid overlay. Start there before adding AI analysis.
+VEX is useful as soon as it can show where a device cuts the page. Start with a screenshot, fold markers, and a grid overlay before adding AI analysis.
 
 ## Install
 
@@ -43,7 +43,7 @@ bun src/cli/index.ts scan --preset capture
 VEX creates an audit folder under `vex-output`. Open the page/device folder and start with:
 
 - `01-screenshot.png` - clean full-page capture.
-- `03-with-folds.png` - red viewport fold markers.
+- `03-with-folds.png` - red viewport fold markers, useful for seeing cut buttons, awkward text breaks, and first-screen rhythm.
 - `04-with-grid.png` - grid overlay for pointing to visual regions.
 
 ## Next

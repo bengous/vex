@@ -1,11 +1,14 @@
 # Capture-Only Workflow
 
-Capture-only mode is for visual evidence without model calls.
+Capture-only mode is for checking viewport cuts without model calls.
+
+The point is not just to take screenshots. The point is to see whether a real device viewport slices through important content: a button, a heading, a card, a form, or a block of text. Once the cut is visible, you can adjust spacing, layout, content order, or responsive rules for that device size.
 
 Use it when you want to:
 
 - capture a page across desktop, tablet, and phone presets;
 - see where viewport folds land inside a full-page screenshot;
+- catch cut CTAs, awkward text breaks, and broken section rhythm;
 - add a grid so visual regions are easy to reference;
 - compare output with a physical device;
 - collect screenshots quickly before deciding whether AI analysis is useful.
@@ -46,7 +49,7 @@ For each URL and device, VEX creates:
 
 ## Recommended Review Order
 
-1. Open `03-with-folds.png` to see whether content lands above or below key viewport cuts.
+1. Open `03-with-folds.png` to see whether a fold cuts through important UI.
 2. Open `04-with-grid.png` when you need to point to a region precisely.
 3. Check `01-screenshot-viewport-metrics.json` if fold placement looks surprising.
 4. Run AI analysis only if the visual evidence is worth model interpretation.

@@ -1,5 +1,13 @@
 # Mobile Captures
 
+Mobile capture in VEX is for finding layout cuts by device size.
+
+The common failure mode is simple: a page is technically responsive, but the viewport cuts through the wrong thing. A CTA is half-visible, a heading breaks at an awkward moment, a card starts below the fold, or a sticky header leaves less usable space than expected.
+
+VEX makes those cuts explicit.
+
+## Browser Emulation Boundary
+
 Mobile capture in VEX is page capture, not a physical phone screenshot.
 
 Playwright can emulate a phone viewport, DPR, touch behavior, user agent, and browser engine preference. It does not include native browser chrome in `page.screenshot()`: no iOS status bar, no Safari address bar, no bottom toolbar, no Android system navigation area.
@@ -13,6 +21,7 @@ For mobile review, this answers questions like:
 - What is visible on the first screen?
 - Where does the second screen begin?
 - Does a CTA land before or after a real viewport cut?
+- Does a fold slice through a button, card, form, or heading?
 - Is the page rhythm different on a small phone, large phone, tablet, and desktop?
 
 ## Sticky Headers And Fixed Bars
