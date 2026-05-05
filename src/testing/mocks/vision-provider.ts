@@ -61,9 +61,7 @@ export function createMockAnalysisError(
 // Mock Service Factory
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function createMockVisionProvider(
-  options: MockVisionProviderOptions = {},
-): VisionProviderService {
+function createMockVisionProvider(options: MockVisionProviderOptions = {}): VisionProviderService {
   const {
     name = "mock-provider",
     displayName = "Mock Provider",
