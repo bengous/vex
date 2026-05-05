@@ -22,7 +22,7 @@ function hasFrontendWorkspace(): boolean {
   return existsSync("apps/frontend/package.json");
 }
 
-export function classifyFile(filePath: string): Scope | null {
+function classifyFile(filePath: string): Scope | null {
   const normalized = filePath.replaceAll("\\", "/").replaceAll(/^\.\//g, "");
 
   if (normalized.startsWith("apps/frontend/") && hasFrontendWorkspace()) {

@@ -59,7 +59,7 @@ export function createPipelineState(overrides: Partial<PipelineState> = {}): Pip
   };
 }
 
-export const DEFAULT_VIEWPORT: ViewportConfig = {
+const DEFAULT_VIEWPORT: ViewportConfig = {
   width: 1920,
   height: 1080,
   deviceScaleFactor: 1,

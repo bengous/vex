@@ -22,7 +22,7 @@ import { join } from "node:path";
 /**
  * Silent logger that captures nothing (for quiet tests).
  */
-export function createSilentLogger(): Logger {
+function createSilentLogger(): Logger {
   return {
     debug: () => {},
     info: () => {},

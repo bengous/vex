@@ -70,7 +70,7 @@ export function createTestSignalListener(): TestSignalListener {
   };
 }
 
-export function createNoopSignalListener(): SignalListener {
+function createNoopSignalListener(): SignalListener {
   return {
     onInterrupt: () => Effect.succeed(Effect.void),
   };

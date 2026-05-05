@@ -160,7 +160,7 @@ function normalizePipelineDefinition(
   };
 }
 
-export const PipelineStateFromUnknown = S.transformOrFail(
+const PipelineStateFromUnknown = S.transformOrFail(
   PersistedPipelineState,
   S.declare((value): value is PipelineState => typeof value === "object" && value !== null),
   {
