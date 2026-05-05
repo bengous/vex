@@ -221,24 +221,7 @@ export function getScanPreset(
   config: VexConfig,
   presetName: string,
 ): Effect.Effect<NonNullable<VexConfig["scanPresets"]>[string], ConfigError> {
-  return Effect.gen(function* () {
-    const presets = config.scanPresets ?? {};
-    const preset = presets[presetName];
-
-    if (preset === undefined) {
-      const available = Object.keys(presets);
-      return yield* new ConfigError({
-        kind: "preset_not_found",
-        message:
-          available.length > 0
-            ? `Unknown scan preset '${presetName}'. Available: ${available.join(", ")}`
-            : `Unknown scan preset '${presetName}'. No scan presets defined in config.`,
-        availablePresets: available,
-      });
-    }
-
-    return preset;
-  });
+  return getPreset(config.scanPresets ?? {}, presetName, "scan");
 }
 
 /**
@@ -248,8 +231,15 @@ export function getLoopPreset(
   config: VexConfig,
   presetName: string,
 ): Effect.Effect<NonNullable<VexConfig["loopPresets"]>[string], ConfigError> {
+  return getPreset(config.loopPresets ?? {}, presetName, "loop");
+}
+
+function getPreset<T>(
+  presets: Record<string, T>,
+  presetName: string,
+  kind: "scan" | "loop",
+): Effect.Effect<T, ConfigError> {
   return Effect.gen(function* () {
-    const presets = config.loopPresets ?? {};
     const preset = presets[presetName];
 
     if (preset === undefined) {
@@ -258,8 +248,8 @@ export function getLoopPreset(
         kind: "preset_not_found",
         message:
           available.length > 0
-            ? `Unknown loop preset '${presetName}'. Available: ${available.join(", ")}`
-            : `Unknown loop preset '${presetName}'. No loop presets defined in config.`,
+            ? `Unknown ${kind} preset '${presetName}'. Available: ${available.join(", ")}`
+            : `Unknown ${kind} preset '${presetName}'. No ${kind} presets defined in config.`,
         availablePresets: available,
       });
     }
