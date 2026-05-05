@@ -506,8 +506,7 @@ function executeNode(
   });
 }
 
-/** @internal Exported for testing only. */
-export function syncContextFromState(
+function syncContextFromState(
   state: PipelineState,
   ctx: {
     artifacts: Map<string, Artifact>;
